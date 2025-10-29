@@ -1,0 +1,23 @@
+import logging
+import os
+
+
+class System:
+    """
+    The System is the core class of a RoSys project to initialize all components of a robot or system.
+    """
+
+    def __init__(self) -> None:
+        self._log = logging.getLogger('Feldfreund_devkit.system')
+
+        # add your components here like:
+        # self.wheels: Wheels = WheelsHardware()
+
+    def restart(self) -> None:
+        os.utime('main.py')
+
+    def log_status(self) -> None:
+        msg = '== System Status: '
+        # msg += f'speed: {self.wheels.angular_target_speed} '
+        msg += '=='
+        self._log.info(msg)

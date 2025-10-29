@@ -1,42 +1,50 @@
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = [
+    "poetry-core>=1.0.0",
+    "poetry-dynamic-versioning>=1.0.0,<2.0.0",
+]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [project]
-name = "basekit"
-version = "0.1.0-dev"
+name = "Feldfreund_devkit"
+version = "0.0.0"
 description = "TODO"
 authors = [{ name="Zauberzeug GmbH", email="info@zauberzeug.com" }]
 readme = "README.md"
-requires-python = ">=3.11, <"
+requires-python = ">=3.11, <3.15"
 dependencies = [
-    "nicegui >= 2.15.0","rosys >= 0.27.0",]
+    "nicegui >= 2.15.0",
+    "rosys >= 0.27.0",
+]
 
 [project.optional-dependencies]
 dev = [
-    "mypy (>=1.14.1, <2.0.0)",
-    "pylint (>=3.3.3, <4.0.0)","pre-commit (>=4.2.0, <5.0.0)","ruff (>=0.11.0, <1.0.0)"
+    "mypy (>=1.18.2, <2.0.0)",
+    "pylint (>=3.3.3, <4.0.0)",
+    "pre-commit (>=4.3.0, <5.0.0)",
+    "ruff (>=0.13.2, <1.0.0)",
+    "autopep8 (>=2.3.2, <3.0.0)",
+    "poetry-dynamic-versioning (>=1.8.0, <2.0.0)",
 ]
 test = [
     "pytest (>=8.3.4, <9.0.0)",
     "pytest-asyncio (>=0.25.3, <0.26.0)",
 ]
 
-[tool.poetry]
-package-mode = false
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "pep440"
 
 [tool.mypy]
 python_version = "3.11"
 check_untyped_defs = true
-no_implicit_optional = true
 
 [tool.pylint]
 disable = [
-    "C0301", # Line too long
     "C0114", # Missing module docstring
     "C0116", # Missing function or method docstring
-    "R0903", # Too few public methods
+    "C0301", # Line too long (exceeds character limit)
 ]
 
 [tool.ruff]
@@ -46,14 +54,14 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle
-    "F",  # pyflakes
-    "W",  # pycodestyle
-    "B",  # bugbear
-    "I",  # isort
+    "B", # bugbear
+    "E", # pycodestyle
+    "F", # pyflakes
+    "I", # isort
+    "PL", # pylint
     "RUF", # ruff
     "UP", # pyupgrade
-    "PL", # pylint
+    "W", # pycodestyle
 ]
 fixable = [
     "I", # isort

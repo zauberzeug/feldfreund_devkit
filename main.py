@@ -6,10 +6,10 @@ from rosys.analysis.logging_page import LoggingPage
 def startup() -> None:
     @ui.page('/')
     def home_page() -> None:
-        ui.label('Hello to your new project: basekit!').classes('text-4xl absolute-center')
+        ui.label('Hello to your new project: Feldfreund_devkit!').classes('text-4xl absolute-center')
 
 
-    logging_groups = ['basekit', 'rosys', 'nicegui']
+    logging_groups = ['Feldfreund_devkit', 'rosys', 'nicegui']
     LoggingPage(logging_groups)
 
 
@@ -20,4 +20,4 @@ def status() -> dict[str, str]:
 
 app.on_startup(startup)
 
-ui.run(title='basekit')
+ui.run(title='Feldfreund_devkit')
