@@ -30,7 +30,7 @@ jobs:
           python-version: "3.12"
           cache: "poetry"
       - name: install dependencies
-        run: poetry install --extra dev --no-root
+        run: poetry install --with dev --no-root
       - name: ${{ matrix.tools.command[0] }}
         run: poetry run ${{ join(matrix.tools.command, ' ') }}
   test:
@@ -50,6 +50,6 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: "poetry"
       - name: install dependencies
-        run: poetry install --extra test --no-root
+        run: poetry install --with test --no-root
       - name: pytest
         run: poetry run pytest
