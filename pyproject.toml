@@ -11,10 +11,10 @@ version = "0.0.0"
 description = "TODO"
 authors = [{ name="Zauberzeug GmbH", email="info@zauberzeug.com" }]
 readme = "README.md"
-requires-python = ">=3.11, <3.15"
+requires-python = ">=3.11, <3.14"
 dependencies = [
-    "nicegui >= 2.15.0",
-    "rosys >= 0.27.0",
+    "nicegui >= 3.2.0",
+    "rosys >= 0.30.0",
 ]
 
 [project.optional-dependencies]
@@ -37,7 +37,7 @@ vcs = "git"
 style = "pep440"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 check_untyped_defs = true
 
 [tool.pylint]
@@ -50,7 +50,7 @@ disable = [
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = [
