@@ -8,7 +8,7 @@ class System:
     """
 
     def __init__(self) -> None:
-        self._log = logging.getLogger('Feldfreund_devkit.system')
+        self._log = logging.getLogger('feldfreund.system')
 
         # add your components here like:
         # self.wheels: Wheels = WheelsHardware()
