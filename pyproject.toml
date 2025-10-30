@@ -6,10 +6,10 @@ requires = [
 build-backend = "poetry_dynamic_versioning.backend"
 
 [project]
-name = "Feldfreund_devkit"
+name = "feldfreund_devkit"
 version = "0.0.0"
 description = "TODO"
-authors = [{ name="Zauberzeug GmbH", email="info@zauberzeug.com" }]
+authors = [{ name="Zauberzeug GmbH", email="feldfreund@zauberzeug.com" }]
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
 dependencies = [

@@ -1,4 +1,4 @@
-# Feldfreund_devkit
+# Feldfreund DevKit
 
 TODO
 
@@ -13,6 +13,7 @@ TODO
 ## Development
 
 1. create a virtual environment and activate it:
+
 ```bash
 virtualenv .venv # or without virtualenv:
 python -m venv .venv
@@ -21,16 +22,19 @@ source .venv/bin/activate # to activate your virtual environment
 ```
 
 2. install dependencies:
+
 ```bash
 poetry install --all-extras --no-root
 ```
 
 3. start your project:
+
 ```bash
 poetry run ./main.py
 ```
 
 4. run your tests:
+
 ```bash
 poetry run pytest
 ```
