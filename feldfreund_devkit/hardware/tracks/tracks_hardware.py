@@ -15,15 +15,14 @@ class TracksHardware(Wheels, ModuleHardware):
     def __init__(self, config: TracksConfiguration,
                  robot_brain: RobotBrain,
                  estop: EStopHardware, *,
-                 can: CanHardware,
-                 m_per_tick: float = 0.01,
-                 width: float = 0.5) -> None:
+                 can: CanHardware) -> None:
         self.config = config
-        self.estop = estop
+        self._estop = estop
         self._l0_error = False
         self._r0_error = False
         self._l1_error = False
         self._r1_error = False
+        m_per_tick = self.config.m_per_tick
         lizard_code = remove_indentation(f'''
             l0 = ODriveMotor({can.name}, {config.left_back_can_address}{', 6' if config.odrive_version == self.ERROR_FLAG_VERSION else ''})
             r0 = ODriveMotor({can.name}, {config.right_back_can_address}{', 6' if config.odrive_version == self.ERROR_FLAG_VERSION else ''})
@@ -39,8 +38,8 @@ class TracksHardware(Wheels, ModuleHardware):
             r1.reversed = {'true' if config.is_right_reversed else 'false'}
             {config.name} = ODriveWheels(l0, r0)
             {config.name}_front = ODriveWheels(l1, r1)
-            {config.name}.width = {width}
-            {config.name}_front.width = {width}
+            {config.name}.width = {self.config.width}
+            {config.name}_front.width = {self.config.width}
             {config.name}.shadow({config.name}_front)
         ''')
         core_message_fields = [f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3']
@@ -70,7 +69,7 @@ class TracksHardware(Wheels, ModuleHardware):
         await self.robot_brain.send(f'{self.config.name}.speed({linear}, {angular})')
 
     async def reset_motors(self) -> None:
-        if self.estop.active:
+        if self._estop.active:
             return
         if not self.motor_error:
             return
