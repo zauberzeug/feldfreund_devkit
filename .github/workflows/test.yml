@@ -8,13 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         tools:
-          - command:
-              [
-                "mypy",
-                "./feldfreund_devkit",
-                "--non-interactive",
-                "--install-types",
-              ]
+          - command: ["mypy", "./feldfreund_devkit", "--non-interactive", "--install-types"]
           - command: ["pylint", "./feldfreund_devkit"]
           - command: ["pre-commit", "run", "--all-files"]
     name: code check - ${{ matrix.tools.command[0] }}

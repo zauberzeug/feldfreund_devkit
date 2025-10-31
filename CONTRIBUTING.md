@@ -36,7 +36,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 3. Install dependencies:
 
 ```bash
-poetry install --all-extras
+poetry install --with dev,test
 ```
 
 4. Install pre-commit hooks:

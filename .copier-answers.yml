@@ -1,10 +1,10 @@
 # Changes here will be overwritten by Copier
-_commit: v0.4.0
+_commit: v0.4.1
 _src_path: git@github.com:zauberzeug/nicegui-template.git
 include_ai_instructions: true
 module_name: feldfreund_devkit
 project_description: TODO
-project_name: Feldfreund_devkit
+project_name: feldfreund_devkit
 python_versions:
 - '3.11'
 - '3.12'

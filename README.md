@@ -24,7 +24,7 @@ source .venv/bin/activate # to activate your virtual environment
 2. install dependencies:
 
 ```bash
-poetry install --all-extras --no-root
+poetry install --with dev,test
 ```
 
 3. start your project:
