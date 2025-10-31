@@ -95,6 +95,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
             while self.has_waypoints:
                 await self._run()
                 await rosys.sleep(0.1)
+            await self._run()
             rosys.notify('Automation finished', 'positive')
             self.PATH_COMPLETED.emit()
         except Exception as e:
