@@ -4,13 +4,19 @@ import rosys
 from rosys.analysis import track
 from rosys.geometry import Point
 
+from ..config import ImplementConfiguration
+
 
 class Implement(rosys.persistence.Persistable):
 
-    def __init__(self, name: str = 'None') -> None:
+    def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
-        self.name = name
+        self.config = config
         self.is_active = False
+
+    @property
+    def name(self) -> str:
+        return self.config.name if self.config is not None else 'None'
 
     async def prepare(self) -> bool:
         """Prepare the implement once at the beginning (for reference points, etc.);
