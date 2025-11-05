@@ -12,7 +12,7 @@ from rosys.driving import Driver
 from rosys.driving.driver import PoseProvider
 from rosys.geometry import Point, Pose, PoseStep
 
-from ..implements.implement import Implement
+from ..implement import Implement
 from .drive_segment import DriveSegment
 from .utils import sub_spline
 
@@ -83,10 +83,9 @@ class WaypointNavigation(rosys.persistence.Persistable):
             if not await self.prepare():
                 self.log.error('Preparation failed')
                 return
-            if not await self.implement.prepare():
-                self.log.error('Implement preparation failed')
+            if not await self.implement.activate():
+                self.log.error('Implement activation failed')
                 return
-            await self.implement.activate()
             rosys.notify('Automation started')
             self.log.debug('Navigation started')
 
@@ -102,9 +101,8 @@ class WaypointNavigation(rosys.persistence.Persistable):
             rosys.notify('Automation failed', 'negative')
             self.log.exception('Navigation failed: %s', e)
         finally:
-            await self.implement.finish()
-            await self.finish()
             await self.implement.deactivate()
+            await self.finish()
             await self.driver.wheels.stop()
 
     async def _run(self) -> None:
@@ -118,20 +116,14 @@ class WaypointNavigation(rosys.persistence.Persistable):
         if not self.has_waypoints:
             return
         assert self.current_segment is not None
-        # TODO
-        # if isinstance(self.implement, WeedingImplement) and self.current_segment.use_implement:
         if self.current_segment.use_implement:
             implement_target = await self._get_valid_implement_target()
             if not implement_target:
                 self.log.debug('Implement has no target anymore. Possibly overshot, continuing...')
                 return
             if not await self._follow_segment_until(implement_target):
-                # TODO
-                # assert isinstance(self.detector, rosys.vision.Detector)
-                # await self.detector.NEW_DETECTIONS.emitted(5)
                 return
             await self.driver.wheels.stop()
-            self.implement.has_plants_to_handle()
             await self.implement.start_workflow()
             await self.implement.stop_workflow()
 
@@ -221,9 +213,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         spline = self.current_segment.spline
         target_t = spline.closest_point(target.x, target.y, t_min=-0.2, t_max=1.2)
         target_pose = spline.pose(target_t)
-        # TODO: get self.system.field_friend.WORK_X from implement
-        work_x = 0.085
-        return target_pose + PoseStep(linear=-work_x, angular=0, time=0)
+        return target_pose + PoseStep(linear=-self.implement.offset.x, angular=0, time=0)
 
     async def _get_valid_implement_target(self) -> Point | None:
         if self.current_segment is None or not self.current_segment.use_implement:

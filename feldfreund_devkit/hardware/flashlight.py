@@ -1,6 +1,7 @@
 import abc
 
 import rosys
+from nicegui import ui
 from rosys.helpers import remove_indentation
 
 from ..config import FlashlightConfiguration
@@ -38,6 +39,15 @@ class Flashlight(rosys.hardware.Module, abc.ABC):
             raise ValueError('duty cycle must be between 0 and 1')
         self._duty_cycle = duty_cycle
         self.log.debug('Setting duty cycle to %s', duty_cycle)
+
+    def developer_ui(self) -> None:
+        with ui.column():
+            ui.label('Flashlight').classes('text-center text-bold')
+            with ui.button_group():
+                ui.button('ON', on_click=self.turn_on)
+                ui.button('OFF', on_click=self.turn_off)
+            ui.slider(min=0, max=1, step=0.01, on_change=lambda e: self.set_duty_cycle(e.value)) \
+                .bind_value_from(self, '_duty_cycle')
 
 
 class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware):
@@ -160,6 +170,13 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware):
         power_at_full_duty = voltage * current
         duty_cycle = 20 / power_at_full_duty
         return min(max(duty_cycle, 0), 1)
+
+    def developer_ui(self) -> None:
+        with ui.column():
+            ui.label('Flashlight').classes('text-center text-bold')
+            with ui.button_group():
+                ui.button('ON', on_click=self.turn_on)
+                ui.button('OFF', on_click=self.turn_off)
 
 
 class FlashlightSimulation(Flashlight, rosys.hardware.ModuleSimulation):

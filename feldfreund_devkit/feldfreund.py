@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import rosys
 from rosys.hardware import (
     BatteryControlHardware,
@@ -26,18 +30,27 @@ from rosys.hardware import (
     WheelsSimulation,
 )
 
-from ..config import (
+from .config import (
     BatteryControlConfiguration,
     FeldfreundConfiguration,
     FlashlightConfiguration,
     FlashlightMosfetConfiguration,
     ImplementConfiguration,
 )
-from .can_open_master import CanOpenMasterHardware
-from .flashlight import Flashlight, FlashlightHardware, FlashlightHardwareMosfet, FlashlightSimulation
-from .implement_hardware import ImplementHardware
-from .status_control import StatusControlHardware
-from .tracks import TracksHardware, TracksSimulation
+from .hardware import (
+    CanOpenMasterHardware,
+    Flashlight,
+    FlashlightHardware,
+    FlashlightHardwareMosfet,
+    FlashlightSimulation,
+    StatusControlHardware,
+    TracksHardware,
+    TracksSimulation,
+)
+from .implement import Implement
+
+if TYPE_CHECKING:
+    from ..system import System
 
 
 class Feldfreund(Robot):
@@ -46,7 +59,6 @@ class Feldfreund(Robot):
                  bumper: Bumper | None,
                  estop: EStop,
                  flashlight: Flashlight | None,
-                 implement: ImplementHardware | None,
                  imu: Imu | None,
                  #  safety: Safety | None,
                  wheels: Wheels,
@@ -57,13 +69,18 @@ class Feldfreund(Robot):
         self.bumper = bumper
         self.estop = estop
         self.flashlight = flashlight
-        self.implement = implement
+        self.implement: Implement | None = None
         self.imu = imu
         # self.safety = safety
         self.wheels = wheels
         rosys.on_shutdown(self.stop)
         if self.estop:
             self.estop.ESTOP_TRIGGERED.subscribe(self.stop)
+
+    def add_implement(self, implement: Implement) -> None:
+        self.implement = implement
+        for module in implement.modules:
+            self.add_module(module)
 
     async def stop(self) -> None:
         await self.wheels.stop()
@@ -72,7 +89,7 @@ class Feldfreund(Robot):
 
 
 class FeldfreundHardware(Feldfreund, RobotHardware):
-    def __init__(self, config: FeldfreundConfiguration, **kwargs) -> None:
+    def __init__(self, config: FeldfreundConfiguration, system: System, **kwargs) -> None:
         communication = SerialCommunication()
         robot_brain = RobotBrain(communication,
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
@@ -120,22 +137,16 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                                     expander=expander,
                                                     rdyp_pin=39,
                                                     vdp_pin=39) if config.has_status_control else None
-
-        implement = self._setup_implement(config.implement,
-                                          robot_brain=robot_brain,
-                                          expander=expander,
-                                          can=self.can) if config.implement else None
         # safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper,
         #                                         y_axis=y_axis, z_axis=z_axis, flashlight=flashlight)
         modules = [bluetooth, self.can, wheels, serial, expander, can_open_master,
                    flashlight, bms, estop, self.battery_control, bumper, imu, self.status_control]
-        modules = [*modules, *(implement.modules if implement else [])]
         active_modules = [module for module in modules if module is not None]
-        super().__init__(bms=bms,
+        super().__init__(config,
+                         bms=bms,
                          bumper=bumper,
                          estop=estop,
                          flashlight=flashlight,
-                         implement=implement,
                          imu=imu,
                          #  safety: Safety | None,
                          wheels=wheels,
@@ -173,15 +184,9 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
             return FlashlightHardwareMosfet(config, robot_brain, bms, expander=expander if config.on_expander else None)
         raise NotImplementedError(f'Unknown flashlight configuration: {config}')
 
-    def _setup_implement(self, config: ImplementConfiguration, *,
-                         robot_brain: RobotBrain,
-                         expander: ExpanderHardware,
-                         can: CanHardware) -> ImplementHardware:
-        raise NotImplementedError(f'Unknown implement configuration: {config}')
-
 
 class FeldfreundSimulation(Feldfreund, RobotSimulation):
-    def __init__(self, config: FeldfreundConfiguration, *, use_acceleration: bool = False, **kwargs) -> None:
+    def __init__(self, config: FeldfreundConfiguration, system: System, *, use_acceleration: bool = False, **kwargs) -> None:
         wheels = TracksSimulation(config.wheels.width) if use_acceleration \
             else WheelsSimulation(config.wheels.width)
         flashlight = FlashlightSimulation() if config.flashlight else None
@@ -189,23 +194,20 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         bumper = BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
         imu = ImuSimulation(wheels=wheels)
-        implement = self._setup_implement(config.implement) if config.implement else None
         # safety = SafetySimulation(wheels=wheels, estop=estop, y_axis=y_axis,
         #                           z_axis=z_axis, flashlight=flashlight)
         modules = [wheels, flashlight, bumper, imu, bms, estop]
-        modules = [*modules, *(implement.modules if implement else [])]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
                          bms=bms,
                          bumper=bumper,
                          estop=estop,
                          flashlight=flashlight,
-                         implement=implement,
                          imu=imu,
                          #  safety: Safety | None,
                          wheels=wheels,
                          modules=active_modules,
                          **kwargs)
 
-    def _setup_implement(self, config: ImplementConfiguration) -> ImplementHardware:
+    def _setup_implement(self, config: ImplementConfiguration) -> Implement:
         raise NotImplementedError(f'Unknown implement configuration: {config}')

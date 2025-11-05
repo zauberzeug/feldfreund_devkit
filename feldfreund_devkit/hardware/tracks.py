@@ -1,4 +1,5 @@
 import rosys
+from nicegui import ui
 from rosys.geometry import PoseStep, Velocity
 from rosys.hardware import CanHardware, EStopHardware, ModuleHardware, RobotBrain, Wheels, WheelsSimulation
 from rosys.helpers import remove_indentation
@@ -99,7 +100,20 @@ class TracksHardware(Wheels, ModuleHardware):
             rosys.notify('Motor Error', 'negative')
 
     def developer_ui(self) -> None:
-        pass
+        @ui.refreshable
+        def _ui() -> None:
+            ui.label('ODrive Motor Errors').classes('text-center text-bold')
+            with ui.grid(columns=2).classes('gap-0'):
+                ui.label(f'L0: {"Error" if self._l0_error else "No error"}')
+                ui.label(f'L1: {"Error" if self._l1_error else "No error"}')
+                ui.label(f'R0: {"Error" if self._r0_error else "No error"}')
+                ui.label(f'R1: {"Error" if self._r1_error else "No error"}')
+            ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(not self.motor_error)
+
+        if self.config.odrive_version != 6:
+            return
+        _ui()
+        ui.timer(rosys.config.ui_update_interval, _ui.refresh)
 
 
 class TracksSimulation(WheelsSimulation):
