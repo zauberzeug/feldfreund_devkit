@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import rosys
 from rosys.hardware import (
     BatteryControlHardware,
@@ -48,9 +46,6 @@ from .hardware import (
     TracksSimulation,
 )
 from .implement import Implement
-
-if TYPE_CHECKING:
-    from ..system import System
 
 
 class Feldfreund(Robot):
