@@ -89,7 +89,7 @@ class Feldfreund(Robot):
 
 
 class FeldfreundHardware(Feldfreund, RobotHardware):
-    def __init__(self, config: FeldfreundConfiguration, system: System, **kwargs) -> None:
+    def __init__(self, config: FeldfreundConfiguration, **kwargs) -> None:
         communication = SerialCommunication()
         robot_brain = RobotBrain(communication,
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
@@ -186,7 +186,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
 
 
 class FeldfreundSimulation(Feldfreund, RobotSimulation):
-    def __init__(self, config: FeldfreundConfiguration, system: System, *, use_acceleration: bool = False, **kwargs) -> None:
+    def __init__(self, config: FeldfreundConfiguration, *, use_acceleration: bool = False, **kwargs) -> None:
         wheels = TracksSimulation(config.wheels.width) if use_acceleration \
             else WheelsSimulation(config.wheels.width)
         flashlight = FlashlightSimulation() if config.flashlight else None
