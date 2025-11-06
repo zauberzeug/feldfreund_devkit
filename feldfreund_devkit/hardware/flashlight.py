@@ -5,6 +5,7 @@ from nicegui import ui
 from rosys.helpers import remove_indentation
 
 from ..config import FlashlightConfiguration
+from .safety import SafetyMixin
 
 
 class Flashlight(rosys.hardware.Module, abc.ABC):
@@ -50,7 +51,7 @@ class Flashlight(rosys.hardware.Module, abc.ABC):
                 .bind_value_from(self, '_duty_cycle')
 
 
-class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware):
+class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin):
     def __init__(self, config: FlashlightConfiguration,
                  robot_brain: rosys.hardware.RobotBrain, *,
                  expander: rosys.hardware.ExpanderHardware | None) -> None:
@@ -64,6 +65,14 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware):
             {config.name}_front.shadow({config.name}_back)
         ''')
         super().__init__(robot_brain=robot_brain, lizard_code=lizard_code)
+
+    @property
+    def enable_code(self) -> str:
+        return f'{self.config.name}_front.on(); {self.config.name}_back.on();'
+
+    @property
+    def disable_code(self) -> str:
+        return f'{self.config.name}_front.off(); {self.config.name}_back.off();'
 
     def _convert_duty_cycle_to_8_bit(self, duty_cycle: float) -> int:
         """Convert the duty cycle to a 8 bit value (0-255).
@@ -105,7 +114,7 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware):
         )
 
 
-class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware):
+class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin):
     UPDATE_INTERVAL = 5.0
 
     def __init__(self, config: FlashlightConfiguration,
@@ -125,6 +134,14 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware):
         #  pylint: disable=unreachable
         raise NotImplementedError('FlashlightHardwareMosfet needs to be tested before it can be used again.')
         rosys.on_repeat(self.set_duty_cycle, 60.0)
+
+    @property
+    def enable_code(self) -> str:
+        return f'{self.config.name}.on();'
+
+    @property
+    def disable_code(self) -> str:
+        return f'{self.config.name}.off();'
 
     async def turn_on(self) -> None:
         if not self.robot_brain.is_ready:

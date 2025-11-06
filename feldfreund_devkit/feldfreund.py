@@ -43,6 +43,10 @@ from .hardware import (
     FlashlightHardware,
     FlashlightHardwareMosfet,
     FlashlightSimulation,
+    Safety,
+    SafetyHardware,
+    SafetyMixin,
+    SafetySimulation,
     StatusControlHardware,
     TracksHardware,
     TracksSimulation,
@@ -60,7 +64,7 @@ class Feldfreund(Robot):
                  estop: EStop,
                  flashlight: Flashlight | None,
                  imu: Imu | None,
-                 #  safety: Safety | None,
+                 safety: Safety,
                  wheels: Wheels,
                  **kwargs) -> None:
         super().__init__(**kwargs)
@@ -71,7 +75,7 @@ class Feldfreund(Robot):
         self.flashlight = flashlight
         self.implement: Implement | None = None
         self.imu = imu
-        # self.safety = safety
+        self.safety = safety
         self.wheels = wheels
         rosys.on_shutdown(self.stop)
         if self.estop:
@@ -95,7 +99,6 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
                                  use_espresso=config.robot_brain.use_espresso)
         robot_brain.lizard_firmware.flash_params += config.robot_brain.flash_params
-
         bluetooth = BluetoothHardware(robot_brain, name=config.name)
         serial = SerialHardware(robot_brain)
         expander = ExpanderHardware(robot_brain, serial=serial)
@@ -133,14 +136,15 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                           name=config.imu.name,
                           offset_rotation=config.imu.offset_rotation,
                           min_gyro_calibration=config.imu.min_gyro_calibration) if config.imu else None
+        safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
+        if flashlight:
+            safety.add_module(flashlight)
         self.status_control = StatusControlHardware(robot_brain,
                                                     expander=expander,
                                                     rdyp_pin=39,
                                                     vdp_pin=39) if config.has_status_control else None
-        # safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper,
-        #                                         y_axis=y_axis, z_axis=z_axis, flashlight=flashlight)
         modules = [bluetooth, self.can, wheels, serial, expander, can_open_master,
-                   flashlight, bms, estop, self.battery_control, bumper, imu, self.status_control]
+                   flashlight, bms, estop, self.battery_control, bumper, imu, safety, self.status_control]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
                          bms=bms,
@@ -148,11 +152,23 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                          estop=estop,
                          flashlight=flashlight,
                          imu=imu,
-                         #  safety: Safety | None,
+                         safety=safety,
                          wheels=wheels,
                          modules=active_modules,
                          robot_brain=robot_brain,
                          **kwargs)
+
+    def add_implement(self, implement: Implement) -> None:
+        super().add_implement(implement)
+        if isinstance(implement, SafetyMixin):
+            self.add_safety_module(implement)
+        for module in implement.modules:
+            if isinstance(module, SafetyMixin):
+                self.add_safety_module(module)
+
+    def add_safety_module(self, module: SafetyMixin) -> None:
+        self.safety.add_module(module)
+        self.robot_brain.lizard_code = self.generate_lizard_code()
 
     def _setup_battery_control(self, config: BatteryControlConfiguration, *, robot_brain: RobotBrain, bms: Bms, expander: ExpanderHardware) -> BatteryControlHardware:
         battery_control = BatteryControlHardware(
@@ -194,9 +210,8 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         bumper = BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
         imu = ImuSimulation(wheels=wheels)
-        # safety = SafetySimulation(wheels=wheels, estop=estop, y_axis=y_axis,
-        #                           z_axis=z_axis, flashlight=flashlight)
-        modules = [wheels, flashlight, bumper, imu, bms, estop]
+        safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)
+        modules = [wheels, flashlight, bumper, imu, bms, estop, safety]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
                          bms=bms,
@@ -204,7 +219,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
                          estop=estop,
                          flashlight=flashlight,
                          imu=imu,
-                         #  safety: Safety | None,
+                         safety=safety,
                          wheels=wheels,
                          modules=active_modules,
                          **kwargs)
