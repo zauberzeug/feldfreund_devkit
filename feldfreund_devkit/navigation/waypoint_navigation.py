@@ -97,7 +97,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
             await self._run()
             rosys.notify('Automation finished', 'positive')
             self.PATH_COMPLETED.emit()
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-exception-caught
             rosys.notify('Automation failed', 'negative')
             self.log.exception('Navigation failed: %s', e)
         finally:
