@@ -106,7 +106,6 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware):
 
 
 class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware):
-    # TODO: check https://github.com/zauberzeug/field_friend/commit/1e4fcfcdf5107a6912346a9b306dd0afb0af2673
     UPDATE_INTERVAL = 5.0
 
     def __init__(self, config: FlashlightConfiguration,

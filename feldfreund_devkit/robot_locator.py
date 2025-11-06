@@ -4,10 +4,11 @@ from typing import Any
 import numpy as np
 import rosys
 import rosys.helpers
-from feldfreund_devkit.config import GnssConfiguration
 from nicegui import ui
 from rosys.geometry import Pose, Pose3d, Rotation, Velocity
 from rosys.hardware import Gnss, GnssMeasurement, Imu, ImuMeasurement, Wheels, WheelsSimulation
+
+from .config import GnssConfiguration
 
 
 class RobotLocator(rosys.persistence.Persistable):
@@ -30,7 +31,7 @@ class RobotLocator(rosys.persistence.Persistable):
         self._imu = imu
         self._gnss_config = gnss_config
 
-        self.pose_frame = Pose3d().as_frame('field_friend.robot_locator')
+        self.pose_frame = Pose3d().as_frame('feldfreund.robot_locator')
 
         state_size = 3
         self._x = np.zeros((state_size, 1))
