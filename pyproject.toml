@@ -46,6 +46,12 @@ style = "pep440"
 python_version = "3.12"
 check_untyped_defs = true
 
+[[tool.mypy.overrides]]
+module = [
+    "coloredlogs",
+]
+ignore_missing_imports = true
+
 [tool.pylint]
 disable = [
     "C0114", # Missing module docstring

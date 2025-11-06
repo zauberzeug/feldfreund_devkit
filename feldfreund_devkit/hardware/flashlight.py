@@ -4,7 +4,7 @@ import rosys
 from nicegui import ui
 from rosys.helpers import remove_indentation
 
-from ..config import FlashlightConfiguration
+from ..config import FlashlightConfiguration, FlashlightMosfetConfiguration
 from .safety import SafetyMixin
 
 
@@ -117,7 +117,7 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
 class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin):
     UPDATE_INTERVAL = 5.0
 
-    def __init__(self, config: FlashlightConfiguration,
+    def __init__(self, config: FlashlightMosfetConfiguration,
                  robot_brain: rosys.hardware.RobotBrain,
                  bms: rosys.hardware.Bms, *,
                  expander: rosys.hardware.ExpanderHardware | None) -> None:

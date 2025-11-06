@@ -62,7 +62,7 @@ class TeltonikaRouter:
         elif 'ifWan' in up_connection or 'wifi' in up_connection:
             self._connection_status = ConnectionStatus.WIFI
         elif up_connection in ('mob1s1a1', 'mob1s2a1'):
-            self.connection_status = ConnectionStatus.MOBILE
+            self._connection_status = ConnectionStatus.MOBILE
         else:
             self._connection_status = ConnectionStatus.DISCONNECTED
         if last_connection != self.connection_status:

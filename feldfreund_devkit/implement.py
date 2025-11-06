@@ -36,6 +36,10 @@ class Implement(rosys.persistence.Persistable):
     def modules(self) -> list[rosys.hardware.Module]:
         ...
 
+    @abstractmethod
+    async def stop(self) -> None:
+        ...
+
     @track
     async def activate(self) -> bool:
         """Activate and prepare the implement for use"""
@@ -84,19 +88,14 @@ class Implement(rosys.persistence.Persistable):
 
 class ImplementDummy(Implement):
     def __init__(self) -> None:
-        super().__init__(None)
-
-    @property
-    def name(self) -> str:
-        return 'None'
-
-    @property
-    def offset(self) -> Pose3d:
-        return Pose3d.zero()
+        super().__init__(ImplementConfiguration(lizard_name='None', display_name='None', work_radius=0.0))
 
     @property
     def modules(self) -> list[rosys.hardware.Module]:
         return []
+
+    async def stop(self) -> None:
+        pass
 
     async def is_ready(self) -> bool:
         return True

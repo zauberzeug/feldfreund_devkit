@@ -109,7 +109,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                tx_pin=config.can.tx_pin,
                                baud=config.can.baud)
         estop = EStopHardware(robot_brain, name=config.estop.name, pins=config.estop.pins)
-        wheels = TracksHardware(config.tracks, robot_brain, estop, can=self.can)
+        wheels = TracksHardware(config.wheels, robot_brain, estop, can=self.can)
         can_open_master = CanOpenMasterHardware(robot_brain, can=self.can, name='master')
         bms = BmsHardware(robot_brain,
                           expander=expander if config.bms.on_expander else None,
@@ -139,10 +139,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
         if flashlight:
             safety.add_module(flashlight)
-        self.status_control = StatusControlHardware(robot_brain,
-                                                    expander=expander,
-                                                    rdyp_pin=39,
-                                                    vdp_pin=39) if config.has_status_control else None
+        self.status_control = StatusControlHardware(robot_brain, expander=expander, rdyp_pin=39, vdp_pin=39)
         modules = [bluetooth, self.can, wheels, serial, expander, can_open_master,
                    flashlight, bms, estop, self.battery_control, bumper, imu, safety, self.status_control]
         active_modules = [module for module in modules if module is not None]

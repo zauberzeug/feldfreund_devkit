@@ -52,6 +52,10 @@ class TracksHardware(Wheels, ModuleHardware):
         super().__init__(robot_brain=robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
 
     @property
+    def name(self) -> str:
+        return self.config.name
+
+    @property
     def motor_error(self) -> bool:
         if self.config.odrive_version != self.ERROR_FLAG_VERSION:
             self.log.warning('Motor error detection is not available for this ODrive firmware version.')

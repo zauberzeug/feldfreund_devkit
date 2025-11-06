@@ -18,7 +18,7 @@ from .tracks_configuration import TracksConfiguration, create_drive_parameters
 @dataclass(kw_only=True)
 class FeldfreundConfiguration:
     name: str
-    battery_control: BatteryControlConfiguration | None = field(default_factory=BatteryControlConfiguration)
+    battery_control: BatteryControlConfiguration = field(default_factory=BatteryControlConfiguration)
     bms: BmsConfiguration = field(default_factory=BmsConfiguration)
     bumper: BumperConfiguration | None = None
     can: CanConfiguration = field(default_factory=CanConfiguration)

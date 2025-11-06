@@ -17,11 +17,6 @@ class SafetyMixin(ABC):
     def disable_code(self) -> str:
         ...
 
-    @property
-    @abstractmethod
-    def stop_code(self) -> str:
-        ...
-
 
 class Safety(rosys.hardware.Module, ABC):
     """The safety module is a simple example for a representation of real or simulated robot hardware."""
@@ -61,13 +56,16 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
         self.lizard_code = self._generate_lizard_code()
 
     def _generate_lizard_code(self) -> str:
+        assert isinstance(self.wheels, TracksHardware | rosys.hardware.WheelsHardware)
+        assert isinstance(self.estop, rosys.hardware.EStopHardware)
+        assert isinstance(self.bumper, rosys.hardware.BumperHardware)
         lizard_code = 'bool disabled = false\n'
-        lizard_code += f'let disable do disabled = true; {self.wheels.config.name if isinstance(self.wheels, TracksHardware) else self.wheels.name}.disable();'
+        lizard_code += f'let disable do disabled = true; {self.wheels.name}.disable();'
         for module in self.modules:
             lizard_code += module.disable_code
         lizard_code += 'end\n'
 
-        lizard_code += f'let enable do disabled = false; {self.wheels.config.name if isinstance(self.wheels, TracksHardware) else self.wheels.name}.enable();'
+        lizard_code += f'let enable do disabled = false; {self.wheels.name}.enable();'
         for module in self.modules:
             lizard_code += module.enable_code
         lizard_code += 'end\n'
@@ -88,7 +86,7 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
             lizard_code += f'when estop_active == false and disabled == true {"and bumper_active == false" if self.bumper is not None else ""} then enable(); end\n'
             lizard_code += f'when estop_active {"or bumper_active" if self.bumper is not None else ""} then disable(); end\n'
 
-        lizard_code += f'when core.last_message_age > 1000 then {self.wheels.config.name if isinstance(self.wheels, TracksHardware) else self.wheels.name}.speed(0, 0); end\n'
+        lizard_code += f'when core.last_message_age > 1000 then {self.wheels.name}.speed(0, 0); end\n'
         lizard_code += 'when core.last_message_age > 20000 then disable(); end\n'
         return lizard_code
 
