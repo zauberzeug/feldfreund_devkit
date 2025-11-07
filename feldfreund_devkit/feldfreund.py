@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import rosys
 from rosys.hardware import (
     BatteryControlHardware,
@@ -35,7 +33,6 @@ from .config import (
     FeldfreundConfiguration,
     FlashlightConfiguration,
     FlashlightMosfetConfiguration,
-    ImplementConfiguration,
 )
 from .hardware import (
     CanOpenMasterHardware,
@@ -52,9 +49,6 @@ from .hardware import (
     TracksSimulation,
 )
 from .implement import Implement
-
-if TYPE_CHECKING:
-    from .system import System
 
 
 class Feldfreund(Robot):
@@ -220,6 +214,3 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
                          wheels=wheels,
                          modules=active_modules,
                          **kwargs)
-
-    def _setup_implement(self, config: ImplementConfiguration, system: System) -> Implement:
-        raise NotImplementedError(f'Unknown implement configuration: {config}')
