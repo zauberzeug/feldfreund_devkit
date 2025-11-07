@@ -1,0 +1,2 @@
+
+from feldfreund_devkit.testing.fixtures import *  # pylint: disable=wildcard-import,unused-wildcard-import # noqa: F403
