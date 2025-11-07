@@ -200,7 +200,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         estop = EStopSimulation()
         bumper = BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
-        imu = ImuSimulation(wheels=wheels)
+        imu = ImuSimulation(wheels=wheels) if config.imu else None
         safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)
         modules = [wheels, flashlight, bumper, imu, bms, estop, safety]
         active_modules = [module for module in modules if module is not None]
