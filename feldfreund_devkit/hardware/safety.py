@@ -25,9 +25,7 @@ class Safety(ABC):
                  wheels: rosys.hardware.Wheels,
                  estop: rosys.hardware.EStop,
                  bumper: rosys.hardware.Bumper | None = None,
-                 modules: list[SafetyMixin] | None = None,
-                 **kwargs) -> None:
-        super().__init__(**kwargs)
+                 modules: list[SafetyMixin] | None = None) -> None:
         self.wheels = wheels
         self.estop = estop
         self.bumper = bumper

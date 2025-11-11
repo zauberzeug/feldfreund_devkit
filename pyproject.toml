@@ -54,7 +54,6 @@ ignore_missing_imports = true
 
 [tool.pylint]
 disable = [
-    "B024", # abstract class without abstract method
     "C0103", # Invalid name (e.g., variable/function/class naming conventions)
     "C0111", # Missing docstring (in function/class/method)
     "C0114", # Missing module docstring
@@ -98,6 +97,7 @@ fixable = [
 ]
 ignore = [
     "E501", # line too long
+    "B024", # abstract base class without abstract methods
 ]
 
 [tool.pytest.ini_options]
