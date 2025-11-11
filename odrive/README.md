@@ -33,6 +33,8 @@ and for the left track:
 python3 calibrate_two_motors_l.py
 ```
 
+If the calibration does not work calling it with `sudo` can help.
+
 These scripts will set the motor parameters and start the calibration of the hall sensors.
 
 When you are done, don't forget to reconfigure the ESP with your Feldfreund code.
