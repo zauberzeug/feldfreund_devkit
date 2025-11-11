@@ -6,7 +6,7 @@ To Flash an Odrive it has to be put into DFU Mode. For this there is a switch on
 Then the Odrive needs to be connected to the Robot Brain using a Micro USB Cable. Now the command
 
 ```bash
-./flash_odrive.sh fw-v5.6-fieldfriend/ODriveFirmware.bin
+./flash_odrive.sh fw-v5.6-feldfreund/ODriveFirmware.bin
 ```
 
 can be run. This will flash the STM chip with the newest firmware.
