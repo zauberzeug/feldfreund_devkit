@@ -71,7 +71,7 @@ class TeltonikaRouter:
 
     async def _get_token(self) -> None:
         try:
-            self.log.info('Getting authentication token for Teltonika router...')
+            self.log.debug('Getting authentication token for Teltonika router...')
             response = await self._client.post(f'{self._url}/login',
                                                json={'username': 'admin', 'password': self._admin_password})
             response.raise_for_status()
@@ -88,7 +88,7 @@ class TeltonikaRouter:
             self._token_time = 0.0
             return
         self._token_time = rosys.time()
-        self.log.info('Getting authentication token for Teltonika router: success')
+        self.log.debug('Getting authentication token for Teltonika router: success')
 
     def status(self) -> ui.element:
         icon = ui.icon('wifi', size='sm')

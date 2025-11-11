@@ -8,7 +8,7 @@ class TracksConfiguration:
     """Configuration for the tracks of the Feldfreund robot.
 
     Defaults:
-        name: 'tracks'
+        name: 'wheels'
         is_left_reversed: False
         is_right_reversed: False
         left_back_can_address: 0x000
@@ -21,7 +21,7 @@ class TracksConfiguration:
         pitch: 0.033
         motor_gear_ratio: 12.52
     """
-    name: str = 'tracks'
+    name: str = 'wheels'
     is_left_reversed: bool = False
     is_right_reversed: bool = False
     left_back_can_address: int = 0x000

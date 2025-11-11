@@ -93,11 +93,11 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
                                  use_espresso=config.robot_brain.use_espresso)
         robot_brain.lizard_firmware.flash_params += config.robot_brain.flash_params
-        bluetooth = BluetoothHardware(robot_brain, name=config.name)
+        self.bluetooth = BluetoothHardware(robot_brain, name=config.name)
         serial = SerialHardware(robot_brain)
-        expander = ExpanderHardware(robot_brain, serial=serial)
+        self.expander = ExpanderHardware(robot_brain, serial=serial)
         self.can = CanHardware(robot_brain,
-                               expander=expander if config.can.on_expander else None,
+                               expander=self.expander if config.can.on_expander else None,
                                name=config.can.name,
                                rx_pin=config.can.rx_pin,
                                tx_pin=config.can.tx_pin,
@@ -106,7 +106,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         wheels = TracksHardware(config.wheels, robot_brain, estop, can=self.can)
         can_open_master = CanOpenMasterHardware(robot_brain, can=self.can, name='master')
         bms = BmsHardware(robot_brain,
-                          expander=expander if config.bms.on_expander else None,
+                          expander=self.expander if config.bms.on_expander else None,
                           name=config.bms.name,
                           rx_pin=config.bms.rx_pin,
                           tx_pin=config.bms.tx_pin,
@@ -116,13 +116,13 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         self.battery_control = self._setup_battery_control(config.battery_control,
                                                            robot_brain=robot_brain,
                                                            bms=bms,
-                                                           expander=expander)
+                                                           expander=self.expander)
         flashlight = self._setup_flashlight(config.flashlight,
                                             robot_brain=robot_brain,
                                             bms=bms,
-                                            expander=expander)
+                                            expander=self.expander)
         bumper = BumperHardware(robot_brain,
-                                expander=expander if config.bumper.on_expander else None,
+                                expander=self.expander if config.bumper.on_expander else None,
                                 estop=estop,
                                 name=config.bumper.name,
                                 pins=config.bumper.pins) if config.bumper else None
@@ -130,12 +130,12 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                           name=config.imu.name,
                           offset_rotation=config.imu.offset_rotation,
                           min_gyro_calibration=config.imu.min_gyro_calibration) if config.imu else None
-        safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
+        self.safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
         if flashlight:
-            safety.add_module(flashlight)
-        self.status_control = StatusControlHardware(robot_brain, expander=expander, rdyp_pin=39, vdp_pin=39)
-        modules = [bluetooth, self.can, wheels, serial, expander, can_open_master,
-                   flashlight, bms, estop, self.battery_control, bumper, imu, safety, self.status_control]
+            self.safety.add_module(flashlight)
+        self.status_control = StatusControlHardware(robot_brain, expander=self.expander, rdyp_pin=39, vdp_pin=39)
+        modules = [self.bluetooth, self.can, wheels, serial, self.expander, can_open_master,
+                   flashlight, bms, estop, self.battery_control, bumper, imu, self.safety, self.status_control]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
                          bms=bms,
@@ -143,7 +143,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                          estop=estop,
                          flashlight=flashlight,
                          imu=imu,
-                         safety=safety,
+                         safety=self.safety,
                          wheels=wheels,
                          modules=active_modules,
                          robot_brain=robot_brain,
@@ -160,6 +160,14 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
     def add_safety_module(self, module: SafetyMixin) -> None:
         self.safety.add_module(module)
         self.robot_brain.lizard_code = self.generate_lizard_code()
+
+    def generate_lizard_code(self) -> str:
+        # TODO: This is a hack to move safety and status control to the end of the lizard code.
+        self.modules.remove(self.safety)
+        self.modules.remove(self.status_control)
+        self.modules.append(self.safety)
+        self.modules.append(self.status_control)
+        return super().generate_lizard_code()
 
     def _setup_battery_control(self, config: BatteryControlConfiguration, *, robot_brain: RobotBrain, bms: Bms, expander: ExpanderHardware) -> BatteryControlHardware:
         battery_control = BatteryControlHardware(

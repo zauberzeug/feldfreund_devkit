@@ -18,7 +18,7 @@ class SafetyMixin(ABC):
         ...
 
 
-class Safety(rosys.hardware.Module, ABC):
+class Safety(ABC):
     """The safety module is a simple example for a representation of real or simulated robot hardware."""
 
     def __init__(self, *,
