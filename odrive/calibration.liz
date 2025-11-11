@@ -1,6 +1,6 @@
 rdyp = Output(15)
 en3 = Output(12)
-bluetooth = Bluetooth("fieldfriend-calibration")
+bluetooth = Bluetooth("feldfreund-calibration")
 can = Can(32, 33, 1000000)
 l0 = ODriveMotor(can, 0)
 r0 = ODriveMotor(can, 512)
