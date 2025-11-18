@@ -9,6 +9,8 @@ class ImuConfiguration:
 
     Defaults:
         name: 'imu'
+        offset_rotation: Rotation.zero
+        min_gyro_calibration: 1.0
     """
     name: str = 'imu'
     offset_rotation: Rotation = field(default_factory=Rotation.zero)

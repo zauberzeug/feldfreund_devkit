@@ -1,15 +1,12 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import Self
 
-import rosys
-import rosys.geometry
+from rosys.driving import PathSegment
 from rosys.geometry import Point, Pose, Spline
 
 
 @dataclass(slots=True, kw_only=True)
-class DriveSegment(rosys.driving.PathSegment):
+class DriveSegment(PathSegment):
     # TODO: move methods to rosys.driving.PathSegment
     use_implement: bool = False
     stop_at_end: bool = True

@@ -100,5 +100,5 @@ class ImplementDummy(Implement):
     async def is_ready(self) -> bool:
         return True
 
-    def can_reach(self, local_point: rosys.geometry.Point) -> bool:
+    def can_reach(self, local_point: Point) -> bool:
         return True

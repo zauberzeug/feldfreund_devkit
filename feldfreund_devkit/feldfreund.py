@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import rosys
 from rosys.hardware import (
     BatteryControlHardware,
@@ -76,9 +74,8 @@ class Feldfreund(Robot):
         self.safety = safety
         self.wheels = wheels
         self.gnss = gnss
+        self.estop.ESTOP_TRIGGERED.subscribe(self.stop)
         rosys.on_shutdown(self.stop)
-        if self.estop:
-            self.estop.ESTOP_TRIGGERED.subscribe(self.stop)
 
     def add_implement(self, implement: Implement) -> None:
         self.implement = implement
