@@ -7,7 +7,6 @@ from .fixtures import (
     gnss_driving,
     imu,
 )
-from .helpers import set_robot_pose
 
 __all__ = [
     'ROBOT_GEO_START_POSITION',
@@ -17,5 +16,4 @@ __all__ = [
     'gnss',
     'gnss_driving',
     'imu',
-    'set_robot_pose',
 ]

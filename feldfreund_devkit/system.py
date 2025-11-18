@@ -29,7 +29,7 @@ class System(rosys.persistence.Persistable):
             rosys.enter_simulation()
 
         self.GNSS_REFERENCE_CHANGED: Event[[]] = Event()
-
+        self.feldfreund: FeldfreundHardware | FeldfreundSimulation
         self.teltonika_router: TeltonikaRouter | None = None
         if rosys.is_simulation():
             self.feldfreund = FeldfreundSimulation(self.config, use_acceleration=use_acceleration)
