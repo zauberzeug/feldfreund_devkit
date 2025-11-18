@@ -1,12 +1,11 @@
 from . import log_configuration
-from .entity_locator import EntityLocator
 from .feldfreund import Feldfreund, FeldfreundHardware, FeldfreundSimulation
 from .implement import Implement, ImplementDummy, ImplementException
 from .robot_locator import RobotLocator
 from .system import System
+from .target_locator import TargetLocator
 
 __all__ = [
-    'EntityLocator',
     'Feldfreund',
     'FeldfreundHardware',
     'FeldfreundSimulation',
@@ -15,5 +14,6 @@ __all__ = [
     'ImplementException',
     'RobotLocator',
     'System',
+    'TargetLocator',
     'log_configuration',
 ]

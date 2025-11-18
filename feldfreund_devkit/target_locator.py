@@ -4,10 +4,15 @@ from abc import ABC, abstractmethod
 import rosys
 
 
-class EntityLocator(rosys.persistence.Persistable, ABC):
+class TargetLocator(rosys.persistence.Persistable, ABC):
+    """The TargetLocator serves as the base class for all classes that generate navigation or implement targets.
+
+    For example generating a 3D target pose from a given image or point cloud.
+    """
+
     def __init__(self) -> None:
         super().__init__()
-        self.log = logging.getLogger('devkit.entity_locator')
+        self.log = logging.getLogger('devkit.target_locator')
         self._is_active = False
 
     @property
