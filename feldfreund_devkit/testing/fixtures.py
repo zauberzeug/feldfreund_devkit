@@ -1,3 +1,4 @@
+# pylint: disable=unused-argument
 from collections.abc import AsyncGenerator, Generator
 
 import pytest
@@ -87,10 +88,10 @@ def imu(devkit_system: System) -> ImuSimulation:
 
 
 @pytest.fixture
-def driving(devkit_system: System) -> Generator[System, None, None]:
+def driving(devkit_system: System, *, drive_distance: float = 10.0) -> Generator[System, None, None]:
     """Drive 10 meters in a straight line"""
     async def automation():
-        while devkit_system.driver.prediction.point.x < 10.0:
+        while devkit_system.driver.prediction.point.x < drive_distance:
             await devkit_system.driver.wheels.drive(0.2, 0)
             await rosys.sleep(0.1)
     devkit_system.automator.start(automation())

@@ -24,11 +24,12 @@ class TracksHardware(Wheels, ModuleHardware):
         self._l1_error = False
         self._r1_error = False
         m_per_tick = self.config.m_per_tick
+        version_suffix = f', {self.ERROR_FLAG_VERSION}' if config.odrive_version == self.ERROR_FLAG_VERSION else ''
         lizard_code = remove_indentation(f'''
-            l0 = ODriveMotor({can.name}, {config.left_back_can_address}{', 6' if config.odrive_version == self.ERROR_FLAG_VERSION else ''})
-            r0 = ODriveMotor({can.name}, {config.right_back_can_address}{', 6' if config.odrive_version == self.ERROR_FLAG_VERSION else ''})
-            l1 = ODriveMotor({can.name}, {config.left_front_can_address}{', 6' if config.odrive_version == self.ERROR_FLAG_VERSION else ''})
-            r1 = ODriveMotor({can.name}, {config.right_front_can_address}{', 6' if config.odrive_version == self.ERROR_FLAG_VERSION else ''})
+            l0 = ODriveMotor({can.name}, {config.left_back_can_address}{version_suffix})
+            r0 = ODriveMotor({can.name}, {config.right_back_can_address}{version_suffix})
+            l1 = ODriveMotor({can.name}, {config.left_front_can_address}{version_suffix})
+            r1 = ODriveMotor({can.name}, {config.right_front_can_address}{version_suffix})
             l0.m_per_tick = {m_per_tick}
             r0.m_per_tick = {m_per_tick}
             l1.m_per_tick = {m_per_tick}
@@ -114,7 +115,7 @@ class TracksHardware(Wheels, ModuleHardware):
                 ui.label(f'R1: {"Error" if self._r1_error else "No error"}')
             ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(not self.motor_error)
 
-        if self.config.odrive_version != 6:
+        if self.config.odrive_version != self.ERROR_FLAG_VERSION:
             return
         _ui()
         ui.timer(rosys.config.ui_update_interval, _ui.refresh)

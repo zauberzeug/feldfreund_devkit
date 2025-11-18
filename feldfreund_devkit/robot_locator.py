@@ -190,7 +190,7 @@ class RobotLocator(rosys.persistence.Persistable):
                                  y=self._gnss_config.z * np.sin(roll), yaw=0)
         return pose.transform_pose(antenna_roll_correction).transform_pose(height_correction)
 
-    def _update(self, *, z: np.ndarray, h: np.ndarray, H: np.ndarray, Q: np.ndarray) -> None:  # noqa: N803
+    def _update(self, *, z: np.ndarray, h: np.ndarray, H: np.ndarray, Q: np.ndarray) -> None:
         S = H @ self._Sxx @ H.T + Q
         # Use Cholesky decomposition for numerical stability
         try:

@@ -38,9 +38,20 @@ def sub_spline(spline: Spline, t_min: float, t_max: float) -> Spline:
     return Spline(start=r0, control1=r1, control2=r2, end=r3)
 
 
-def generate_three_point_turn(end_pose_current_row: Pose, start_pose_next_row: Pose, *, radius: float = 1.5) -> list[DriveSegment]:
+def generate_three_point_turn(end_pose_current_row: Pose,
+                              start_pose_next_row: Pose, *,
+                              radius: float = 1.5,
+                              same_row_threshold: float = 0.01) -> list[DriveSegment]:
+    """Generates a three-point turn between two poses
+
+    :param end_pose_current_row: the pose of the end of the current row
+    :param start_pose_next_row: the pose of the start of the next row
+    :param radius: the radius of the turn
+    :param same_row_threshold: the threshold distance between the end of the current row and the start of the next row to consider them to be on the same row
+    :return: a list of drive segments to perform the turn
+    """
     direction_to_start = end_pose_current_row.relative_direction(start_pose_next_row)
-    if end_pose_current_row.distance(start_pose_next_row) < 0.01:
+    if end_pose_current_row.distance(start_pose_next_row) < same_row_threshold:
         direction_to_start = np.deg2rad(90)
     first_turn_pose = end_pose_current_row.transform_pose(Pose(x=radius,
                                                                y=radius * np.sign(direction_to_start),

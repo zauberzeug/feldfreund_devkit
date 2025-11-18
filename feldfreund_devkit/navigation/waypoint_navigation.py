@@ -155,13 +155,15 @@ class WaypointNavigation(rosys.persistence.Persistable):
                 return target
             await rosys.sleep(0.1)
 
-    def _remove_segments_behind_robot(self, path_segments: list[DriveSegment]) -> list[DriveSegment]:
+    def _remove_segments_behind_robot(self,
+                                      path_segments: list[DriveSegment], *,
+                                      completed_percentage: float = 0.99) -> list[DriveSegment]:
         """Create new path (list of segments) starting at the closest segment to the current pose"""
         current_pose = self.pose_provider.pose
         start_index = 0
         for i, segment in enumerate(path_segments):
             t = segment.spline.closest_point(current_pose.x, current_pose.y, t_min=-0.1, t_max=1.1)
-            if t > 0.99:
+            if t > completed_percentage:
                 continue
             start_index = i
             break

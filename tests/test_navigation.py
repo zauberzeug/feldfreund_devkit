@@ -8,7 +8,7 @@ from rosys.testing import assert_point, forward
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.navigation import DriveSegment, StraightLineNavigation
 from feldfreund_devkit.system import System
-from feldfreund_devkit.testing import devkit_system, devkit_system_with_acceleration, set_robot_pose
+from feldfreund_devkit.testing import set_robot_pose
 
 
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
@@ -137,7 +137,7 @@ async def test_skip_first_segment(devkit_system: System):
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.current_navigation is not None and devkit_system.current_navigation.current_segment is not None)
     assert devkit_system.current_navigation.current_segment is not None
-    assert len(devkit_system.current_navigation.path) == 3
+    assert len(devkit_system.current_navigation.path) == 3  # noqa: PLR2004  # number of segments is expected to be 3
     assert devkit_system.current_navigation.current_segment.end.x == pytest.approx(pose3.x, abs=0.1)
     assert devkit_system.current_navigation.current_segment.end.y == pytest.approx(pose3.y, abs=0.1)
     assert devkit_system.current_navigation.current_segment.end.yaw_deg == pytest.approx(pose3.yaw_deg, abs=0.1)

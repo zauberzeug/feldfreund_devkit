@@ -38,16 +38,25 @@ class HeaderBar:
         with wrapper:
             with ui.row().classes('items-center gap-1'):
                 ui.icon('battery_charging_full', size='sm').bind_visibility_from(bms.state, 'is_charging')
-                ui.icon('', size='sm').bind_name_from(bms.state, 'percentage', lambda p: (
-                    (p is None and 'battery_unknown') or
-                    (p < 5 and 'battery_0_bar') or
-                    (p < 20 and 'battery_1_bar') or
-                    (p < 35 and 'battery_2_bar') or
-                    (p < 50 and 'battery_3_bar') or
-                    (p < 65 and 'battery_4_bar') or
-                    (p < 80 and 'battery_5_bar') or
-                    (p < 95 and 'battery_6_bar') or
-                    ('battery_full'))).bind_visibility_from(bms.state, 'is_charging', lambda c: not c)
+
+                def get_battery_icon(p: float | None) -> str:
+                    battery_icons = {
+                        5: 'battery_0_bar',
+                        20: 'battery_1_bar',
+                        35: 'battery_2_bar',
+                        50: 'battery_3_bar',
+                        65: 'battery_4_bar',
+                        80: 'battery_5_bar',
+                        95: 'battery_6_bar',
+                    }
+                    if p is None:
+                        return 'battery_unknown'
+                    for threshold, icon in battery_icons.items():
+                        if p < threshold:
+                            return icon
+                    return 'battery_full'
+                ui.icon('', size='sm').bind_name_from(bms.state, 'percentage', get_battery_icon) \
+                    .bind_visibility_from(bms.state, 'is_charging', lambda c: not c)
                 ui.label().bind_text_from(bms.state, 'percentage', lambda p: f'{p:.0f}%' if p is not None else '?')
         return wrapper
 
