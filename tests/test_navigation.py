@@ -7,11 +7,10 @@ from rosys.testing import assert_point, forward
 
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.navigation import DriveSegment, StraightLineNavigation
-from feldfreund_devkit.system import System
 
 
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
-async def test_stopping_at_different_distances(devkit_system: System, distance: float):
+async def test_stopping_at_different_distances(devkit_system, distance: float):
     assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
     devkit_system.current_navigation.length = distance
     devkit_system.current_navigation.linear_speed_limit = 0.13
@@ -24,7 +23,7 @@ async def test_stopping_at_different_distances(devkit_system: System, distance: 
 
 
 @pytest.mark.parametrize('heading_degrees', (-180, -90, -45, 0, 45, 90, 180, 360))
-async def test_straight_line_different_headings(devkit_system: System, heading_degrees: float):
+async def test_straight_line_different_headings(devkit_system, heading_degrees: float):
     heading = np.deg2rad(heading_degrees)
     current_pose = devkit_system.robot_locator.pose
     devkit_system.set_robot_pose(Pose(x=current_pose.x, y=current_pose.y, yaw=heading))
@@ -38,7 +37,7 @@ async def test_straight_line_different_headings(devkit_system: System, heading_d
 
 
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
-async def test_deceleration_different_distances(devkit_system_with_acceleration: System, distance: float):
+async def test_deceleration_different_distances(devkit_system_with_acceleration, distance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
     assert isinstance(devkit_system_with_acceleration.current_navigation, StraightLineNavigation)
     devkit_system_with_acceleration.current_navigation.length = distance
@@ -56,7 +55,7 @@ async def test_deceleration_different_distances(devkit_system_with_acceleration:
     (0.3, 0.0025),
     (0.4, 0.005),
 ])
-async def test_deceleration_different_speeds(devkit_system_with_acceleration: System, linear_speed_limit: float, tolerance: float):
+async def test_deceleration_different_speeds(devkit_system_with_acceleration, linear_speed_limit: float, tolerance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
     assert isinstance(devkit_system_with_acceleration.current_navigation, StraightLineNavigation)
     devkit_system_with_acceleration.current_navigation.length = 0.005
@@ -67,7 +66,7 @@ async def test_deceleration_different_speeds(devkit_system_with_acceleration: Sy
     assert devkit_system_with_acceleration.robot_locator.pose.point.x == pytest.approx(0.005, abs=tolerance)
 
 
-async def test_slippage(devkit_system: System):
+async def test_slippage(devkit_system):
     assert isinstance(devkit_system.feldfreund.wheels, rosys.hardware.WheelsSimulation)
     assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
     devkit_system.current_navigation.length = 2.0
@@ -79,7 +78,7 @@ async def test_slippage(devkit_system: System):
 
 
 @pytest.mark.parametrize('start_offset', (0.5, 0.0, -0.25, -0.5, -0.75, -0.99))
-async def test_start_inbetween_waypoints(devkit_system: System, start_offset: float):
+async def test_start_inbetween_waypoints(devkit_system, start_offset: float):
     assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
     # generate path which expands left and right from current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=start_offset, y=0.0, yaw=0.0))
@@ -94,7 +93,7 @@ async def test_start_inbetween_waypoints(devkit_system: System, start_offset: fl
     assert devkit_system.current_navigation.current_segment.end.yaw_deg == pytest.approx(end.yaw_deg, abs=0.1)
 
 
-async def test_start_on_end(devkit_system: System):
+async def test_start_on_end(devkit_system):
     segment_started = False
 
     def handle_segment_started(_: DriveSegment):
@@ -115,7 +114,7 @@ async def test_start_on_end(devkit_system: System):
     assert devkit_system.robot_locator.pose.yaw_deg == pytest.approx(end.yaw_deg, abs=0.1)
 
 
-async def test_skip_first_segment(devkit_system: System):
+async def test_skip_first_segment(devkit_system):
     pose1 = Pose(x=-1, y=1, yaw=-np.pi/2)
     pose2 = Pose(x=0, y=0.0, yaw=0.0)
     pose3 = Pose(x=1.0, y=1.0, yaw=np.pi/2)

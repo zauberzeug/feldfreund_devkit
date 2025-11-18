@@ -4,12 +4,10 @@ from rosys.geometry import Pose
 from rosys.hardware import ImuSimulation
 from rosys.testing import forward
 
-from feldfreund_devkit.system import System
-
 
 @pytest.mark.parametrize('roll_direction', (-1, 1))
 @pytest.mark.parametrize('pitch_direction', (-1, 1))
-async def test_height_correction(devkit_system: System, imu: ImuSimulation, roll_direction: int, pitch_direction: int):
+async def test_height_correction(devkit_system, imu: ImuSimulation, roll_direction: int, pitch_direction: int):
     # pylint: disable=protected-access
     imu.roll = np.deg2rad(10.0) * roll_direction
     imu.pitch = np.deg2rad(10.0) * pitch_direction
