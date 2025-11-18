@@ -15,6 +15,9 @@ from rosys.hardware import (
     EStopHardware,
     EStopSimulation,
     ExpanderHardware,
+    Gnss,
+    GnssHardware,
+    GnssSimulation,
     Imu,
     ImuHardware,
     ImuSimulation,
@@ -60,6 +63,7 @@ class Feldfreund(Robot):
                  imu: Imu | None,
                  safety: Safety,
                  wheels: Wheels,
+                 gnss: Gnss | None,
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self.config = config
@@ -71,6 +75,7 @@ class Feldfreund(Robot):
         self.imu = imu
         self.safety = safety
         self.wheels = wheels
+        self.gnss = gnss
         rosys.on_shutdown(self.stop)
         if self.estop:
             self.estop.ESTOP_TRIGGERED.subscribe(self.stop)
@@ -134,6 +139,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         if flashlight:
             self.safety.add_module(flashlight)
         self.status_control = StatusControlHardware(robot_brain, expander=self.expander, rdyp_pin=39, vdp_pin=39)
+        gnss = GnssHardware(antenna_pose=config.gnss.pose) if config.gnss else None
         modules = [self.bluetooth, self.can, wheels, serial, self.expander, can_open_master,
                    flashlight, bms, estop, self.battery_control, bumper, imu, self.safety, self.status_control]
         active_modules = [module for module in modules if module is not None]
@@ -145,6 +151,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                          imu=imu,
                          safety=self.safety,
                          wheels=wheels,
+                         gnss=gnss,
                          modules=active_modules,
                          robot_brain=robot_brain,
                          **kwargs)
@@ -210,6 +217,9 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
         imu = ImuSimulation(wheels=wheels) if config.imu else None
         safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)
+        # NOTE: quick fix for https://github.com/zauberzeug/feldfreund/issues/348
+        gnss = GnssSimulation(wheels=wheels, lat_std_dev=1e-10, lon_std_dev=1e-10, heading_std_dev=1e-10) if rosys.is_test \
+            else GnssSimulation(wheels=wheels, lat_std_dev=0.008, lon_std_dev=0.008, heading_std_dev=0.01, interval=0.1, latency=0.1)
         modules = [wheels, flashlight, bumper, imu, bms, estop, safety]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
@@ -220,5 +230,6 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
                          imu=imu,
                          safety=safety,
                          wheels=wheels,
+                         gnss=gnss,
                          modules=active_modules,
                          **kwargs)
