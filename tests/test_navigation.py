@@ -8,7 +8,6 @@ from rosys.testing import assert_point, forward
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.navigation import DriveSegment, StraightLineNavigation
 from feldfreund_devkit.system import System
-from feldfreund_devkit.testing import set_robot_pose
 
 
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
@@ -28,7 +27,7 @@ async def test_stopping_at_different_distances(devkit_system: System, distance: 
 async def test_straight_line_different_headings(devkit_system: System, heading_degrees: float):
     heading = np.deg2rad(heading_degrees)
     current_pose = devkit_system.robot_locator.pose
-    set_robot_pose(devkit_system, Pose(x=current_pose.x, y=current_pose.y, yaw=heading))
+    devkit_system.set_robot_pose(Pose(x=current_pose.x, y=current_pose.y, yaw=heading))
     assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)

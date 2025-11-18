@@ -48,7 +48,6 @@ from .hardware import (
     SafetyMixin,
     SafetySimulation,
     StatusControlHardware,
-    TeltonikaRouter,
     TracksHardware,
     TracksSimulation,
 )
