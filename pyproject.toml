@@ -15,6 +15,12 @@ requires-python = ">=3.11, <3.14"
 dependencies = [
     "nicegui >= 3.2.0",
     "rosys @ git+https://github.com/zauberzeug/rosys.git@c379d2a526a3915e7fc64128fc2f396a1b3de619",
+    "coloredlogs",
+    "httpcore",
+    "httpx",
+    "numpy",
+    "psutil",
+    "pytest (>=8.3.4, <9.0.0)",
 ]
 
 [dependency-groups]
@@ -27,7 +33,6 @@ dev = [
     "poetry-dynamic-versioning (>=1.8.0, <2.0.0)",
 ]
 test = [
-    "pytest (>=8.3.4, <9.0.0)",
     "pytest-asyncio (>=0.25.3, <0.26.0)",
 ]
 
