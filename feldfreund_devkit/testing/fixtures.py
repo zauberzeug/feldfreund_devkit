@@ -76,35 +76,41 @@ async def devkit_system_with_acceleration(rosys_integration) -> AsyncGenerator[S
 
 
 @pytest.fixture
-def gnss(devkit_system: System) -> GnssSimulation:
-    assert isinstance(devkit_system.feldfreund.gnss, GnssSimulation)
-    return devkit_system.feldfreund.gnss
+def gnss(request: pytest.FixtureRequest) -> GnssSimulation:
+    s = request.getfixturevalue('devkit_system')
+    assert isinstance(s.feldfreund.gnss, GnssSimulation)
+    return s.feldfreund.gnss
 
 
 @pytest.fixture
-def imu(devkit_system: System) -> ImuSimulation:
-    assert isinstance(devkit_system.feldfreund.imu, ImuSimulation)
-    return devkit_system.feldfreund.imu
+def imu(request: pytest.FixtureRequest) -> ImuSimulation:
+    s = request.getfixturevalue('devkit_system')
+    assert isinstance(s.feldfreund.imu, ImuSimulation)
+    return s.feldfreund.imu
 
 
 @pytest.fixture
-def driving(devkit_system: System, *, drive_distance: float = 10.0) -> Generator[System, None, None]:
+def driving(request: pytest.FixtureRequest, *, drive_distance: float = 10.0) -> Generator[System, None, None]:
     """Drive 10 meters in a straight line"""
+    s = request.getfixturevalue('devkit_system')
+
     async def automation():
-        while devkit_system.driver.prediction.point.x < drive_distance:
-            await devkit_system.driver.wheels.drive(0.2, 0)
+        while s.driver.prediction.point.x < drive_distance:
+            await s.driver.wheels.drive(0.2, 0)
             await rosys.sleep(0.1)
-    devkit_system.automator.start(automation())
-    yield devkit_system
+    s.automator.start(automation())
+    yield s
 
 
 @pytest.fixture
-def gnss_driving(devkit_system: System, *, drive_distance: float = 10.0) -> Generator[System, None, None]:
+def gnss_driving(request: pytest.FixtureRequest, *, drive_distance: float = 10.0) -> Generator[System, None, None]:
     """Use GNSS to drive 10 meters in a straight line"""
+    s = request.getfixturevalue('devkit_system')
+
     async def automation():
         while devkit_system.driver.prediction.point.x < drive_distance:
-            await devkit_system.driver.wheels.drive(0.2, 0)
+            await s.driver.wheels.drive(0.2, 0)
             await rosys.sleep(0.1)
-    devkit_system.automation_watcher.robot_locator_watch_active = True
-    devkit_system.automator.start(automation())
-    yield devkit_system
+    s.automation_watcher.robot_locator_watch_active = True
+    s.automator.start(automation())
+    yield s
