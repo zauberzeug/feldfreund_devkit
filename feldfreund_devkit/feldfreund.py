@@ -48,6 +48,7 @@ from .hardware import (
     SafetyMixin,
     SafetySimulation,
     StatusControlHardware,
+    TeltonikaRouter,
     TracksHardware,
     TracksSimulation,
 )
@@ -140,6 +141,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
             self.safety.add_module(flashlight)
         self.status_control = StatusControlHardware(robot_brain, expander=self.expander, rdyp_pin=39, vdp_pin=39)
         gnss = GnssHardware(antenna_pose=config.gnss.pose) if config.gnss else None
+        self.router = TeltonikaRouter(url=config.router.url, admin_password=config.router.admin_password)
         modules = [self.bluetooth, self.can, wheels, serial, self.expander, can_open_master,
                    flashlight, bms, estop, self.battery_control, bumper, imu, self.safety, self.status_control]
         active_modules = [module for module in modules if module is not None]
@@ -215,7 +217,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         estop = EStopSimulation()
         bumper = BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
-        imu = ImuSimulation(wheels=wheels) if config.imu else None
+        imu = ImuSimulation(wheels=wheels)
         safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)
         # NOTE: quick fix for https://github.com/zauberzeug/feldfreund/issues/348
         gnss = GnssSimulation(wheels=wheels, lat_std_dev=1e-10, lon_std_dev=1e-10, heading_std_dev=1e-10) if rosys.is_test \
