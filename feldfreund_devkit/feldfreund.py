@@ -173,7 +173,10 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         self.modules.append(self.status_control)
         return super().generate_lizard_code()
 
-    def _setup_battery_control(self, config: BatteryControlConfiguration, *, robot_brain: RobotBrain, bms: Bms, expander: ExpanderHardware) -> BatteryControlHardware:
+    def _setup_battery_control(self, config: BatteryControlConfiguration, *,
+                               robot_brain: RobotBrain,
+                               bms: Bms,
+                               expander: ExpanderHardware | None) -> BatteryControlHardware:
         battery_control = BatteryControlHardware(
             robot_brain,
             expander=expander if config.on_expander else None,
