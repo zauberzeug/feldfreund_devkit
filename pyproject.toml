@@ -114,5 +114,5 @@ testpaths = [
     "tests"
 ]
 
-[tool.poetry.plugins.pytest11]
+[tool.poetry.plugins.pytest12]
 feldfreund_devkit = "feldfreund_devkit.testing.fixtures"
