@@ -135,7 +135,7 @@ async def test_skip_first_segment(devkit_system):
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.current_navigation is not None and devkit_system.current_navigation.current_segment is not None)
     assert devkit_system.current_navigation.current_segment is not None
-    assert len(devkit_system.current_navigation.path) == 3  # noqa: PLR2004  # number of segments is expected to be 3
+    assert len(devkit_system.current_navigation.path) == 3
     assert devkit_system.current_navigation.current_segment.end.x == pytest.approx(pose3.x, abs=0.1)
     assert devkit_system.current_navigation.current_segment.end.y == pytest.approx(pose3.y, abs=0.1)
     assert devkit_system.current_navigation.current_segment.end.yaw_deg == pytest.approx(pose3.yaw_deg, abs=0.1)
