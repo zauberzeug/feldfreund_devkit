@@ -18,6 +18,7 @@ def get_config(robot_name: str) -> FeldfreundConfiguration:
     try:
         module_name = f'config.{robot_name.lower()}'
         config_module = importlib.import_module(module_name)
+        importlib.reload(config_module)  # reload to avoid cached config
         return config_module.config
     except ImportError as e:
         raise RuntimeError(f'No configuration found for robot: {robot_name}') from e
