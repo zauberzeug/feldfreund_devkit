@@ -1,0 +1,29 @@
+from feldfreund_devkit.config import (
+    BumperConfiguration,
+    CameraConfiguration,
+    CircleSightPositions,
+    FeldfreundConfiguration,
+    FlashlightConfiguration,
+    GnssConfiguration,
+    RobotBrainConfiguration,
+    TracksConfiguration,
+)
+
+config = FeldfreundConfiguration(
+    name='example',
+    bumper=BumperConfiguration(pin_front_top=21, pin_front_bottom=35, pin_back=18),
+    camera=CameraConfiguration(width=1280, height=720, fps=10),
+    circle_sight_positions=CircleSightPositions(right='-1', left='-2', front='-4', back='-3'),
+    flashlight=FlashlightConfiguration(),
+    gnss=GnssConfiguration(),
+    implement=None,
+    imu=None,
+    robot_brain=RobotBrainConfiguration(name='rbexample', flash_params=['orin', 'v05', 'nand']),
+    wheels=TracksConfiguration(is_left_reversed=True,
+                               is_right_reversed=False,
+                               left_back_can_address=0x000,
+                               left_front_can_address=0x100,
+                               right_back_can_address=0x200,
+                               right_front_can_address=0x300,
+                               odrive_version=6),
+)

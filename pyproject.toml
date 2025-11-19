@@ -1,59 +1,101 @@
-
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = [
+    "poetry-core>=1.0.0",
+    "poetry-dynamic-versioning>=1.0.0,<2.0.0",
+]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [project]
-name = "basekit"
-version = "0.1.0-dev"
+name = "feldfreund_devkit"
+version = "0.0.0"
 description = "TODO"
-authors = [{ name="Zauberzeug GmbH", email="info@zauberzeug.com" }]
+authors = [{ name="Zauberzeug GmbH", email="feldfreund@zauberzeug.com" }]
 readme = "README.md"
-requires-python = ">=3.11, <"
+requires-python = ">=3.11, <3.14"
 dependencies = [
-    "nicegui >= 2.15.0","rosys >= 0.27.0",]
+    "nicegui (>= 3.2.0, <4.0.0)",
+    "rosys @ git+https://github.com/zauberzeug/rosys.git@c379d2a526a3915e7fc64128fc2f396a1b3de619",
+    "httpx >=0.25.0",
+    "numpy (>=1.20.1,<2.0.0)", # required by opencv-python < 4.9.0
+    "coloredlogs",
+    "httpcore",
+    "psutil",
+    "pytest (>=8.3.4, <9.0.0)",
+]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "mypy (>=1.14.1, <2.0.0)",
-    "pylint (>=3.3.3, <4.0.0)","pre-commit (>=4.2.0, <5.0.0)","ruff (>=0.11.0, <1.0.0)"
+    "mypy (>=1.18.2, <2.0.0)",
+    "pylint (>=3.3.3, <4.0.0)",
+    "pre-commit (>=4.3.0, <5.0.0)",
+    "ruff (>=0.13.2, <1.0.0)",
+    "autopep8 (>=2.3.2, <3.0.0)",
+    "poetry-dynamic-versioning (>=1.8.0, <2.0.0)",
 ]
 test = [
-    "pytest (>=8.3.4, <9.0.0)",
     "pytest-asyncio (>=0.25.3, <0.26.0)",
 ]
 
-[tool.poetry]
-package-mode = false
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "pep440"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
+install_types = true
 check_untyped_defs = true
-no_implicit_optional = true
+
+[[tool.mypy.overrides]]
+module = [
+    "coloredlogs",
+]
+ignore_missing_imports = true
 
 [tool.pylint]
 disable = [
-    "C0301", # Line too long
+    "C0103", # Invalid name (e.g., variable/function/class naming conventions)
+    "C0111", # Missing docstring (in function/class/method)
     "C0114", # Missing module docstring
+    "C0115", # Missing class docstring
     "C0116", # Missing function or method docstring
+    "C0301", # Line too long (exceeds character limit)
+    "R0902", # Too many public methods
     "R0903", # Too few public methods
+    "R0904", # Too many public methods
+    "R0911", # Too many return statements
+    "R0912", # Too many branches
+    "R0913", # Too many arguments
+    "R0914", # Too many local variables
+    "R0913", # Too many arguments
+    "R0914", # Too many local variables
+    "R0915", # Too many statements
+    "R0917", # Too many positional arguments
+    "W0511", # TODO: comments
+    "W0718", # Catching too general exception
 ]
 
 [tool.ruff]
 line-length = 120
 indent-width = 4
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle
-    "F",  # pyflakes
-    "W",  # pycodestyle
-    "B",  # bugbear
-    "I",  # isort
+    "B", # bugbear
+    "E", # pycodestyle
+    "F", # pyflakes
+    "I", # isort
+    "PL", # pylint
     "RUF", # ruff
     "UP", # pyupgrade
-    "PL", # pylint
+    "W", # pycodestyle
 ]
 fixable = [
     "I", # isort
@@ -61,6 +103,12 @@ fixable = [
 ]
 ignore = [
     "E501", # line too long
+    "B024", # abstract base class without abstract methods
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0913", # too many arguments
+    "PLR0915", # too many statements
+    "PLR2004", # magic value comparison
 ]
 
 [tool.pytest.ini_options]
