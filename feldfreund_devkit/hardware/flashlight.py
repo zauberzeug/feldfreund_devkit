@@ -68,11 +68,11 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
 
     @property
     def enable_code(self) -> str:
-        return f'{self.config.name}_front.on(); {self.config.name}_back.on();'
+        return f'{self.config.name}_front.enable(); {self.config.name}_back.enable();'
 
     @property
     def disable_code(self) -> str:
-        return f'{self.config.name}_front.off(); {self.config.name}_back.off();'
+        return f'{self.config.name}_front.disable(); {self.config.name}_back.disable();'
 
     def _convert_duty_cycle_to_8_bit(self, duty_cycle: float) -> int:
         """Convert the duty cycle to a 8 bit value (0-255).
@@ -137,11 +137,11 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, Safety
 
     @property
     def enable_code(self) -> str:
-        return f'{self.config.name}.on();'
+        return f'{self.config.name}.enable();'
 
     @property
     def disable_code(self) -> str:
-        return f'{self.config.name}.off();'
+        return f'{self.config.name}.disable();'
 
     async def turn_on(self) -> None:
         if not self.robot_brain.is_ready:
