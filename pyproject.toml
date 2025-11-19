@@ -103,7 +103,9 @@ fixable = [
 ignore = [
     "E501", # line too long
     "B024", # abstract base class without abstract methods
+    "PLR0911", # too many return statements
     "PLR0913", # too many arguments
+    "PLR2004", # magic value comparison
 ]
 
 [tool.pytest.ini_options]
