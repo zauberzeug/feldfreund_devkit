@@ -3,8 +3,9 @@ import inspect
 import sys
 import time
 
-import odrive
 import odrive.enums as enums  # noqa: PLR0402
+
+import odrive
 
 odrv0 = odrive.find_any()
 
@@ -16,9 +17,9 @@ def assert_equal(a, b):
         frame = inspect.currentframe().f_back
         line = inspect.stack()[1].code_context[0].strip()
         arguments = tuple(line.replace('assert_equal(', '').replace(')', '').split(', '))
-        print('  > %s == %s != %s' % (arguments[0], eval(arguments[0], frame.f_globals, frame.f_locals), arguments[1]))
-        exec('%s = %s' % arguments, frame.f_globals, frame.f_locals)
-
+        actual_value = eval(arguments[0], frame.f_globals, frame.f_locals)  # pylint: disable=eval-used
+        print(f'  > {arguments[0]} == {actual_value} != {arguments[1]}')
+        exec(f'{arguments[0]} = {arguments[1]}', frame.f_globals, frame.f_locals)  # pylint: disable=exec-used
     except Exception as e:
         print(e)
 
@@ -77,7 +78,7 @@ for i, axis in enumerate([odrv0.axis0, odrv0.axis1]):
 
 try:
     odrv0.save_configuration()
-except:
+except Exception:
     pass
 finally:
     time.sleep(1.0)
@@ -114,5 +115,5 @@ assert_equal(axis.encoder.config.pre_calibrated, True)
 
 try:
     odrv0.save_configuration()
-except:
+except Exception:
     sys.exit(0)
