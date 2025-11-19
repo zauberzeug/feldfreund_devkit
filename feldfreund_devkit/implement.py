@@ -17,7 +17,7 @@ class Implement(rosys.persistence.Persistable):
     def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
         self._config = config
-        self._frame = self._config.offset.as_frame('implement') if self._config is not None else Frame3d.zero()
+        self._frame = self._config.offset.as_frame('implement')
 
     @property
     def name(self) -> str:
