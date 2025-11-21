@@ -23,6 +23,10 @@ class TracksHardware(Wheels, ModuleHardware):
         self._r0_error = False
         self._l1_error = False
         self._r1_error = False
+        self._l0_temperature = 0.0
+        self._r0_temperature = 0.0
+        self._l1_temperature = 0.0
+        self._r1_temperature = 0.0
         m_per_tick = self.config.m_per_tick
         version_suffix = f', {self.ERROR_FLAG_VERSION}' if config.odrive_version == self.ERROR_FLAG_VERSION else ''
         lizard_code = remove_indentation(f'''
@@ -47,7 +51,9 @@ class TracksHardware(Wheels, ModuleHardware):
         core_message_fields = [f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3']
         if config.odrive_version == self.ERROR_FLAG_VERSION:
             core_message_fields.extend(['l0.motor_error_flag', 'r0.motor_error_flag',
-                                       'l1.motor_error_flag', 'r1.motor_error_flag'])
+                                       'l1.motor_error_flag', 'r1.motor_error_flag',
+                                        'l0.motor_temperature', 'r0.motor_temperature',
+                                        'l1.motor_temperature', 'r1.motor_temperature'])
         else:
             self.log.warning('ODrive firmware is deprecated. Please update to benefit from the motor error detection.')
         super().__init__(robot_brain=robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
@@ -101,6 +107,10 @@ class TracksHardware(Wheels, ModuleHardware):
         self._r0_error = int(words.pop(0)) == 1
         self._l1_error = int(words.pop(0)) == 1
         self._r1_error = int(words.pop(0)) == 1
+        self._l0_temperature = float(words.pop(0))
+        self._r0_temperature = float(words.pop(0))
+        self._l1_temperature = float(words.pop(0))
+        self._r1_temperature = float(words.pop(0))
         if self.motor_error and not motor_error:
             rosys.notify('Motor Error', 'negative')
 
@@ -114,6 +124,11 @@ class TracksHardware(Wheels, ModuleHardware):
                 ui.label(f'R0: {"Error" if self._r0_error else "No error"}')
                 ui.label(f'R1: {"Error" if self._r1_error else "No error"}')
             ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(not self.motor_error)
+            with ui.grid(columns=2).classes('gap-0'):
+                ui.label(f'L0: {self._l0_temperature:.1f}°C')
+                ui.label(f'L1: {self._l1_temperature:.1f}°C')
+                ui.label(f'R0: {self._r0_temperature:.1f}°C')
+                ui.label(f'R1: {self._r1_temperature:.1f}°C')
 
         if self.config.odrive_version != self.ERROR_FLAG_VERSION:
             return
