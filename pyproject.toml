@@ -14,7 +14,7 @@ readme = "README.md"
 requires-python = ">=3.11, <3.14"
 dependencies = [
     "nicegui (>= 3.2.0, <4.0.0)",
-    "rosys @ git+https://github.com/zauberzeug/rosys.git@c379d2a526a3915e7fc64128fc2f396a1b3de619",
+    "rosys (>=0.31.0, <1.0.0)",
     "httpx >=0.25.0",
     "numpy (>=1.20.1,<2.0.0)", # required by opencv-python < 4.9.0
     "coloredlogs",

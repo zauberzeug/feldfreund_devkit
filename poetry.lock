@@ -3377,6 +3377,20 @@ dev = ["tox"]
 docs = ["sphinx"]
 
 [[package]]
+name = "pyturbojpeg"
+version = "1.8.2"
+description = "A Python wrapper of libjpeg-turbo for decoding and encoding JPEG image."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "PyTurboJPEG-1.8.2.tar.gz", hash = "sha256:b7d9625bbb2121b923228fc70d0c2b010b386687501f5b50acec4501222e152b"},
+]
+
+[package.dependencies]
+numpy = "*"
+
+[[package]]
 name = "pyudev"
 version = "0.24.4"
 description = "A libudev binding"
@@ -3507,52 +3521,51 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "rosys"
-version = "0.30.0.post14.dev0+c379d2a5"
+version = "0.31.0"
 description = "Modular Robot System With Elegant Automation Capabilities"
 optional = false
-python-versions = ">=3.11, <3.14"
+python-versions = "<3.14,>=3.11"
 groups = ["main"]
-files = []
-develop = false
+files = [
+    {file = "rosys-0.31.0-py3-none-any.whl", hash = "sha256:2e1fca3b1201085fadb14dbb9f2ef96d974689dcc3f1de4206a651be75b20c68"},
+    {file = "rosys-0.31.0.tar.gz", hash = "sha256:327a466d311ed40ccfe31bb50f57dabf84dbdd6e95a69b8802ede3ca90f59ba6"},
+]
 
 [package.dependencies]
-cairosvg = "^2.7.0"
-coloredlogs = "^15.0.1"
-dataclasses-json = "^0.5.7"
-esptool = "^4.3"
+aiohttp = ">=3.12.14"
+cairosvg = ">=2.7.0,<3.0.0"
+coloredlogs = ">=15.0.1,<16.0.0"
+dataclasses-json = ">=0.5.7,<0.6.0"
+esptool = ">=4.3,<5.0"
 httpx = ">=0.25.0"
-humanize = "^4.0.0"
+humanize = ">=4.0.0,<5.0.0"
 idna = ">=3.7"
-ifaddr = "^0.2.0"
-imgsize = "^2.1"
-line-profiler = "^4.1.3"
-matplotlib = "^3.7.2"
-networkx = "^2.6.2"
-nicegui = "^3.0.4"
+ifaddr = ">=0.2.0,<0.3.0"
+imgsize = ">=2.1,<3.0"
+line-profiler = ">=4.1.3,<5.0.0"
+matplotlib = ">=3.7.2,<4.0.0"
+networkx = ">=2.6.2,<3.0.0"
+nicegui = ">=3.0.4,<4.0.0"
 numpy = ">=1.20.1,<2.0.0"
-objgraph = "^3.6.1"
+objgraph = ">=3.6.1,<4.0.0"
 opencv-contrib-python = "4.9.0.80"
 opencv-python = "4.9.0.80"
-pillow = ">=10.3.0"
-psutil = "^5.9.0"
-pyloot = "^0.1.0"
-pyquaternion = "^0.9.9"
-pyserial = "^3.5"
+pillow = ">=11.3.0"
+psutil = ">=5.9.0,<6.0.0"
+pyloot = ">=0.1.0,<0.2.0"
+pyquaternion = ">=0.9.9,<0.10.0"
+pyserial = ">=3.5,<4.0"
+pyturbojpeg = ">=1.8.2,<2.0.0"
 pyudev = ">=0.21.0"
 requests = ">=2.32.4"
-scipy = "^1.7.2"
-suntime = "^1.2.5"
-tabulate = "^0.8.9"
+scipy = ">=1.7.2,<2.0.0"
+starlette = ">=0.49.1"
+suntime = ">=1.2.5,<2.0.0"
+tabulate = ">=0.8.9,<0.9.0"
 urllib3 = ">=2.5.0"
 uvicorn = "!=0.29.0"
 uvloop = ">=0.17.0"
-yappi = "^1.6.0"
-
-[package.source]
-type = "git"
-url = "https://github.com/zauberzeug/rosys.git"
-reference = "c379d2a526a3915e7fc64128fc2f396a1b3de619"
-resolved_reference = "c379d2a526a3915e7fc64128fc2f396a1b3de619"
+yappi = ">=1.6.0,<2.0.0"
 
 [[package]]
 name = "ruff"
@@ -4428,4 +4441,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <3.14"
-content-hash = "ece9230406bc2a7750c02a6e3f55458a1967ca3f63682c5e0422526704b92431"
+content-hash = "246dd73a4584e27c650529858600427f2efd6055fad2d65ccaa1113a53b97fcb"
