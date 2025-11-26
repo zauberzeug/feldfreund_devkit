@@ -128,7 +128,7 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, Safety
             {config.name} = {expander.name + "." if expander else ""}PwmOutput({config.pin})
             {config.name}.duty = 204
         ''')
-        # NOTE: Electronically the dutycycle should be variable based on the battery voltage, but 204 has been tested extensively and works well.
+        # NOTE: Electronically the duty cycle should be variable based on the battery voltage, but 204 has been tested extensively and works well.
         super().__init__(robot_brain=robot_brain, lizard_code=lizard_code)
         self._last_update: float = 0
         self._duty_cycle: float = 0.1
