@@ -194,7 +194,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         rosys.on_startup(wait_and_release_battery_relay)
         return battery_control
 
-    def _setup_flashlight(self, config: FlashlightConfiguration | None, *,
+    def _setup_flashlight(self, config: FlashlightConfiguration | FlashlightMosfetConfiguration | None, *,
                           robot_brain: RobotBrain,
                           bms: Bms,
                           expander: ExpanderHardware) -> FlashlightHardware | FlashlightHardwareMosfet | None:
