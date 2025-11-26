@@ -132,8 +132,6 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, Safety
         super().__init__(robot_brain=robot_brain, lizard_code=lizard_code)
         self._last_update: float = 0
         self._duty_cycle: float = 0.1
-        #  pylint: disable=unreachable
-        raise NotImplementedError('FlashlightHardwareMosfet needs to be tested before it can be used again.')
 
     @property
     def enable_code(self) -> str:
