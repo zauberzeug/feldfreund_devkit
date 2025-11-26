@@ -7,7 +7,7 @@ from .bumper_configuration import BumperConfiguration
 from .camera_configuration import CameraConfiguration, CircleSightPositions
 from .can_configuration import CanConfiguration
 from .estop_configuration import EstopConfiguration
-from .flashlight_configuration import FlashlightConfiguration
+from .flashlight_configuration import FlashlightConfiguration, FlashlightMosfetConfiguration
 from .gnss_configuration import GnssConfiguration
 from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
@@ -26,7 +26,7 @@ class FeldfreundConfiguration:
     circle_sight_positions: CircleSightPositions | None
     driver: DriveParameters = field(default_factory=create_drive_parameters)
     estop: EstopConfiguration = field(default_factory=EstopConfiguration)
-    flashlight: FlashlightConfiguration | None = None
+    flashlight: FlashlightConfiguration | FlashlightMosfetConfiguration | None = None
     gnss: GnssConfiguration | None = None
     implement: ImplementConfiguration | None = None
     imu: ImuConfiguration | None = None
