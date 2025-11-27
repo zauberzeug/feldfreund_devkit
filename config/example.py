@@ -10,7 +10,8 @@ from feldfreund_devkit.config import (
 )
 
 config = FeldfreundConfiguration(
-    name='example',
+    robot_id='Example',
+    bluetooth_name='example',
     bumper=BumperConfiguration(pin_front_top=21, pin_front_bottom=35, pin_back=18),
     camera=CameraConfiguration(width=1280, height=720, fps=10),
     circle_sight_positions=CircleSightPositions(right='-1', left='-2', front='-4', back='-3'),
