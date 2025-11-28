@@ -1,4 +1,6 @@
 import importlib
+import importlib.util
+from pathlib import Path
 
 from .battery_configuration import BatteryControlConfiguration, BmsConfiguration
 from .bumper_configuration import BumperConfiguration
@@ -14,14 +16,22 @@ from .robot_brain_configuration import RobotBrainConfiguration
 from .tracks_configuration import TracksConfiguration, create_drive_parameters
 
 
-def get_config(robot_name: str) -> FeldfreundConfiguration:
-    try:
-        module_name = f'config.{robot_name.lower()}'
-        config_module = importlib.import_module(module_name)
-        importlib.reload(config_module)  # reload to avoid cached config
-        return config_module.config
-    except ImportError as e:
-        raise RuntimeError(f'No configuration found for robot: {robot_name}') from e
+def config_from_file(config_file: Path | str) -> FeldfreundConfiguration:
+    config_path = Path(config_file)
+    if not config_path.exists():
+        raise FileNotFoundError(f'No configuration file found at: {config_path}')
+    module_name = f'config.{config_path.stem}'
+    spec = importlib.util.spec_from_file_location(module_name, config_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f'Could not load configuration from: {config_path}')
+    config_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config_module)
+    return config_module.config
+
+
+def config_from_id(robot_id: str, *, config_dir: str = 'config') -> FeldfreundConfiguration:
+    config_file = Path(config_dir) / f'{robot_id.lower()}.py'
+    return config_from_file(config_file)
 
 
 __all__ = [
@@ -41,6 +51,7 @@ __all__ = [
     'ImuConfiguration',
     'RobotBrainConfiguration',
     'TracksConfiguration',
+    'config_from_file',
+    'config_from_id',
     'create_drive_parameters',
-    'get_config',
 ]

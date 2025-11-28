@@ -9,7 +9,7 @@ from rosys.geometry import GeoPoint, GeoReference, Pose
 from rosys.hardware import GnssSimulation, ImuSimulation, WheelsSimulation
 from rosys.testing import forward, helpers
 
-from feldfreund_devkit.config import create_drive_parameters
+from feldfreund_devkit.config import config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.implement import ImplementDummy
 from feldfreund_devkit.navigation import StraightLineNavigation
@@ -53,7 +53,8 @@ class TestSystem(System):
 
 @pytest.fixture
 async def devkit_system(rosys_integration) -> AsyncGenerator[TestSystem, None]:
-    s = TestSystem('example')
+    config = config_from_id('example')
+    s = TestSystem(config)
     await forward(3)
     assert s.feldfreund.gnss is not None
     assert s.feldfreund.gnss.is_connected, 'device should be created'
@@ -65,7 +66,8 @@ async def devkit_system(rosys_integration) -> AsyncGenerator[TestSystem, None]:
 
 @pytest.fixture
 async def devkit_system_with_acceleration(rosys_integration) -> AsyncGenerator[TestSystem, None]:
-    s = TestSystem('example', use_acceleration=True)
+    config = config_from_id('example')
+    s = TestSystem(config, use_acceleration=True)
     assert isinstance(s.feldfreund.wheels, TracksSimulation)
     await forward(3)
     assert s.feldfreund.gnss is not None

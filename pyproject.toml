@@ -16,11 +16,10 @@ dependencies = [
     "nicegui (>= 3.2.0, <4.0.0)",
     "rosys (>=0.31.0, <1.0.0)",
     "httpx >=0.25.0",
-    "numpy (>=1.20.1,<2.0.0)", # required by opencv-python < 4.9.0
     "coloredlogs",
     "httpcore",
     "psutil",
-    "pytest (>=8.3.4, <9.0.0)",
+    "numpy (>=1.20.1,<2.0.0)", # required by opencv-python < 4.9.0
 ]
 
 [dependency-groups]
@@ -33,6 +32,7 @@ dev = [
     "poetry-dynamic-versioning (>=1.8.0, <2.0.0)",
 ]
 test = [
+    "pytest (>=8.3.4, <9.0.0)",
     "pytest-asyncio (>=0.25.3, <0.26.0)",
 ]
 
