@@ -113,7 +113,7 @@ class TracksHardware(Wheels, ModuleHardware):
                 ui.label(f'L1: {"Error" if self._l1_error else "No error"}')
                 ui.label(f'R0: {"Error" if self._r0_error else "No error"}')
                 ui.label(f'R1: {"Error" if self._r1_error else "No error"}')
-            ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(not self.motor_error)
+            ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(self.motor_error)
 
         if self.config.odrive_version != self.ERROR_FLAG_VERSION:
             return
