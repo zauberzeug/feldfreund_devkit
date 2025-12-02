@@ -65,7 +65,7 @@ class HeaderBar:
             with ui.row().classes('mr-auto bg-red-500 text-white p-2 rounded-md') \
                     .bind_visibility_from(estop, 'active', backward=lambda active: active and not estop.is_soft_estop_active):
                 ui.icon('report').props('size=md').classes('text-white').props('elevated')
-                ui.label().bind_text_from(estop, 'pressed_estops',
+                ui.label().bind_text_from(estop, 'active_estops',
                                           lambda e: f'Emergency stop {e} is pressed!').classes('text-white text-xl').props('elevated')
             with ui.row().bind_visibility_from(estop, 'is_soft_estop_active').classes('mr-auto bg-red-500 rounded-md p-1'):
                 ui.icon('report').props('size=md').classes('text-white').props('elevated')
