@@ -3521,7 +3521,7 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "rosys"
-version = "0.31.0.post3.dev0+8a3ed85e"
+version = "0.31.0.post4.dev0+6570a580"
 description = "Modular Robot System With Elegant Automation Capabilities"
 optional = false
 python-versions = ">=3.11, <3.14"
@@ -3568,8 +3568,8 @@ yappi = "^1.6.0"
 [package.source]
 type = "git"
 url = "https://github.com/zauberzeug/rosys.git"
-reference = "main"
-resolved_reference = "8a3ed85e18c3bef0310e063a53fad03ea7668033"
+reference = "6570a5808ec326c12a24f165ee1abdc4acbcd092"
+resolved_reference = "6570a5808ec326c12a24f165ee1abdc4acbcd092"
 
 [[package]]
 name = "ruff"
@@ -4445,4 +4445,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <3.14"
-content-hash = "b59448fe968dd51dbd675403386c6022541b42185a104a3164ba158368c14507"
+content-hash = "8caf2ddb56281a8db8e5bfe610d9f5b5de675a3ab9755c22d1d9e32598f61d14"
