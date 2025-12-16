@@ -21,7 +21,7 @@ install-ci:
 
 ## mypy		Run mypy type checks.
 mypy:
-	uv run mypy .
+	uv run mypy . --non-interactive
 
 ## pylint		Run pylint code analysis.
 pylint:
