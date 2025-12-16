@@ -8,7 +8,7 @@ from nicegui import Event
 from rosys.driving import Odometer
 from rosys.geometry import GeoPoint, GeoReference
 
-from .config import get_config
+from .config import FeldfreundConfiguration
 from .feldfreund import FeldfreundHardware, FeldfreundSimulation
 from .hardware import TeltonikaRouter
 
@@ -18,12 +18,10 @@ class System(rosys.persistence.Persistable):
     The System is the core class of a RoSys project to initialize all components of a robot or system.
     """
 
-    def __init__(self, robot_id: str, *, use_acceleration: bool = False) -> None:
+    def __init__(self, config: FeldfreundConfiguration, *, use_acceleration: bool = False) -> None:
         super().__init__()
-        self._log = logging.getLogger('feldfreund.system')
-        self.robot_id = robot_id
-        assert self.robot_id != 'unknown'
-        self.config = get_config(self.robot_id)
+        self.log = logging.getLogger('feldfreund.system')
+        self.config = config
         rosys.hardware.SerialCommunication.search_paths.insert(0, '/dev/ttyTHS0')
         if not rosys.hardware.SerialCommunication.is_possible():
             rosys.enter_simulation()
@@ -39,6 +37,10 @@ class System(rosys.persistence.Persistable):
             rosys.on_repeat(self.log_status, 60 * 5)
         self.odometer = Odometer(self.feldfreund.wheels)
         self.update_gnss_reference(reference=GeoReference(GeoPoint.from_degrees(51.983204032849706, 7.434321368936861)))
+
+    @property
+    def robot_id(self) -> str:
+        return self.config.robot_id.lower()
 
     def _setup_teltonika_router(self) -> TeltonikaRouter | None:
         if teltonika_password := os.environ.get('TELTONIKA_PASSWORD', None):

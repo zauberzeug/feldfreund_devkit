@@ -1573,7 +1573,7 @@ version = "2.3.0"
 description = "brain-dead simple config-ini parsing"
 optional = false
 python-versions = ">=3.10"
-groups = ["main", "test"]
+groups = ["test"]
 files = [
     {file = "iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12"},
     {file = "iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730"},
@@ -2735,7 +2735,7 @@ version = "1.6.0"
 description = "plugin and hook calling mechanisms for python"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "test"]
+groups = ["test"]
 files = [
     {file = "pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746"},
     {file = "pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3"},
@@ -3256,7 +3256,7 @@ version = "8.4.2"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.9"
-groups = ["main", "test"]
+groups = ["test"]
 files = [
     {file = "pytest-8.4.2-py3-none-any.whl", hash = "sha256:872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79"},
     {file = "pytest-8.4.2.tar.gz", hash = "sha256:86c0d0b93306b961d58d62a4db4879f27fe25513d4b969df351abdddb3c30e01"},
@@ -3375,6 +3375,20 @@ asyncio-client = ["aiohttp (>=3.4)"]
 client = ["requests (>=2.21.0)", "websocket-client (>=0.54.0)"]
 dev = ["tox"]
 docs = ["sphinx"]
+
+[[package]]
+name = "pyturbojpeg"
+version = "1.8.2"
+description = "A Python wrapper of libjpeg-turbo for decoding and encoding JPEG image."
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "PyTurboJPEG-1.8.2.tar.gz", hash = "sha256:b7d9625bbb2121b923228fc70d0c2b010b386687501f5b50acec4501222e152b"},
+]
+
+[package.dependencies]
+numpy = "*"
 
 [[package]]
 name = "pyudev"
@@ -3507,7 +3521,7 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "rosys"
-version = "0.30.0.post14.dev0+c379d2a5"
+version = "0.31.0.post4.dev0+6570a580"
 description = "Modular Robot System With Elegant Automation Capabilities"
 optional = false
 python-versions = ">=3.11, <3.14"
@@ -3516,6 +3530,7 @@ files = []
 develop = false
 
 [package.dependencies]
+aiohttp = ">=3.12.14"
 cairosvg = "^2.7.0"
 coloredlogs = "^15.0.1"
 dataclasses-json = "^0.5.7"
@@ -3533,14 +3548,16 @@ numpy = ">=1.20.1,<2.0.0"
 objgraph = "^3.6.1"
 opencv-contrib-python = "4.9.0.80"
 opencv-python = "4.9.0.80"
-pillow = ">=10.3.0"
+pillow = ">=11.3.0"
 psutil = "^5.9.0"
 pyloot = "^0.1.0"
 pyquaternion = "^0.9.9"
 pyserial = "^3.5"
+pyturbojpeg = "^1.8.2"
 pyudev = ">=0.21.0"
 requests = ">=2.32.4"
 scipy = "^1.7.2"
+starlette = ">=0.49.1"
 suntime = "^1.2.5"
 tabulate = "^0.8.9"
 urllib3 = ">=2.5.0"
@@ -3551,8 +3568,8 @@ yappi = "^1.6.0"
 [package.source]
 type = "git"
 url = "https://github.com/zauberzeug/rosys.git"
-reference = "c379d2a526a3915e7fc64128fc2f396a1b3de619"
-resolved_reference = "c379d2a526a3915e7fc64128fc2f396a1b3de619"
+reference = "6570a5808ec326c12a24f165ee1abdc4acbcd092"
+resolved_reference = "6570a5808ec326c12a24f165ee1abdc4acbcd092"
 
 [[package]]
 name = "ruff"
@@ -4428,4 +4445,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11, <3.14"
-content-hash = "ece9230406bc2a7750c02a6e3f55458a1967ca3f63682c5e0422526704b92431"
+content-hash = "8caf2ddb56281a8db8e5bfe610d9f5b5de675a3ab9755c22d1d9e32598f61d14"

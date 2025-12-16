@@ -98,12 +98,12 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
         elif pin == 'back':
             rosys.notify('Back bumper triggered', 'warning')
 
-    def estop_triggered_safety_notifications(self) -> None:
-        rosys.notify('E-Stop triggered', 'warning')
+    def estop_triggered_safety_notifications(self, name: str) -> None:
+        rosys.notify(f'E-Stop {name} triggered', 'warning')
         self.estop_active = True
 
-    async def estop_released_safety_notifications(self) -> None:
-        rosys.notify('E-Stop released')
+    async def estop_released_safety_notifications(self, name: str) -> None:
+        rosys.notify(f'E-Stop {name} released')
         await rosys.sleep(0.1)
         self.estop_active = False
 

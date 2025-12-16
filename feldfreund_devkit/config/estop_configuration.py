@@ -7,16 +7,16 @@ class EstopConfiguration:
 
     Defaults:
         name: 'estop'
-        pin_1: 34
-        pin_2: 35
+        pin_front: 34
+        pin_back: 35
     """
     name: str = 'estop'
-    pin_1: int = 34
-    pin_2: int = 35
+    pin_front: int = 34
+    pin_back: int = 35
 
     @property
     def pins(self) -> dict[str, int]:
         return {
-            '1': self.pin_1,
-            '2': self.pin_2,
+            'front': self.pin_front,
+            'back': self.pin_back,
         }

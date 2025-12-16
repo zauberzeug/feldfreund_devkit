@@ -123,7 +123,7 @@ class TracksHardware(Wheels, ModuleHardware):
                 ui.label(f'L1: {"Error" if self._l1_error else "No error"}')
                 ui.label(f'R0: {"Error" if self._r0_error else "No error"}')
                 ui.label(f'R1: {"Error" if self._r1_error else "No error"}')
-            ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(not self.motor_error)
+            ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(self.motor_error)
             with ui.grid(columns=2).classes('gap-0'):
                 ui.label(f'L0: {self._l0_temperature:.1f if self._l0_temperature is != 0 else "N/A"}°C')
                 ui.label(f'L1: {self._l1_temperature:.1f if self._l1_temperature is != 0 else "N/A"}°C')

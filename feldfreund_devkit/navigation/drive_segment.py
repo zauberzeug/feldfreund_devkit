@@ -29,3 +29,9 @@ class DriveSegment(PathSegment):
         start_pose = Pose(x=start.x, y=start.y, yaw=yaw)
         end_pose = Pose(x=end.x, y=end.y, yaw=yaw)
         return cls.from_poses(start_pose, end_pose, use_implement=use_implement, backward=backward, stop_at_end=stop_at_end)
+
+    def __str__(self) -> str:
+        return f'DriveSegment(start={self.start}, end={self.end}, backward={self.backward}, use_implement={self.use_implement}, stop_at_end={self.stop_at_end})'
+
+    def __repr__(self) -> str:
+        return self.__str__()
