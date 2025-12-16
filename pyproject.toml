@@ -53,7 +53,7 @@ default-groups = ["dev", "test"]
 
 [tool.mypy]
 python_version = "3.12"
-install_types = true
+install_types = false
 check_untyped_defs = true
 
 [[tool.mypy.overrides]]
