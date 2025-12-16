@@ -106,34 +106,32 @@ class TracksHardware(Wheels, ModuleHardware):
             self._r0_temperature = float(words.pop(0))
             self._l1_temperature = float(words.pop(0))
             self._r1_temperature = float(words.pop(0))
-        if self.config.odrive_version != self.ERROR_FLAG_VERSION:
-            return
-        motor_error = any([self._l0_error, self._r0_error, self._l1_error, self._r1_error])
-        self._l0_error = int(words.pop(0)) == 1
-        self._r0_error = int(words.pop(0)) == 1
-        self._l1_error = int(words.pop(0)) == 1
-        self._r1_error = int(words.pop(0)) == 1
-        if self.motor_error and not motor_error:
-            rosys.notify('Motor Error', 'negative')
+        if self.config.odrive_version == self.ERROR_FLAG_VERSION:
+            motor_error = any([self._l0_error, self._r0_error, self._l1_error, self._r1_error])
+            self._l0_error = int(words.pop(0)) == 1
+            self._r0_error = int(words.pop(0)) == 1
+            self._l1_error = int(words.pop(0)) == 1
+            self._r1_error = int(words.pop(0)) == 1
+            if self.motor_error and not motor_error:
+                rosys.notify('Motor Error', 'negative')
 
     def developer_ui(self) -> None:
         @ui.refreshable
         def _ui() -> None:
             ui.label('ODrive Motor Errors').classes('text-center text-bold')
-            with ui.grid(columns=2).classes('gap-0'):
-                ui.label(f'L0: {"Error" if self._l0_error else "No error"}')
-                ui.label(f'L1: {"Error" if self._l1_error else "No error"}')
-                ui.label(f'R0: {"Error" if self._r0_error else "No error"}')
-                ui.label(f'R1: {"Error" if self._r1_error else "No error"}')
-            with ui.grid(columns=2).classes('gap-0').bind_visibility_from(self.config, 'has_temperature_sensor', lambda x: x):
-                ui.label(f'L0: {self._l0_temperature:.1f}°C')
-                ui.label(f'L1: {self._l1_temperature:.1f}°C')
-                ui.label(f'R0: {self._r0_temperature:.1f}°C')
-                ui.label(f'R1: {self._r1_temperature:.1f}°C')
-            ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(self.motor_error)
-
-        if self.config.odrive_version != self.ERROR_FLAG_VERSION:
-            return
+            if self.config.odrive_version == self.ERROR_FLAG_VERSION:
+                with ui.grid(columns=2).classes('gap-0'):
+                    ui.label(f'L0: {"Error" if self._l0_error else "No error"}')
+                    ui.label(f'L1: {"Error" if self._l1_error else "No error"}')
+                    ui.label(f'R0: {"Error" if self._r0_error else "No error"}')
+                    ui.label(f'R1: {"Error" if self._r1_error else "No error"}')
+                ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(self.motor_error)
+            if self.config.has_temperature_sensor:
+                with ui.grid(columns=2).classes('gap-0'):
+                    ui.label(f'L0: {self._l0_temperature:.1f}°C')
+                    ui.label(f'L1: {self._l1_temperature:.1f}°C')
+                    ui.label(f'R0: {self._r0_temperature:.1f}°C')
+                    ui.label(f'R1: {self._r1_temperature:.1f}°C')
         _ui()
         ui.timer(rosys.config.ui_update_interval, _ui.refresh)
 
