@@ -1,7 +1,7 @@
 [project]
 name = "feldfreund_devkit"
 dynamic = ["version"]
-description = "A sturdy development platform for autonomous outdoor robotics"
+description = "A sturdy development platform for autonomous outdoor robotics made by Zauberzeug"
 authors = [{ name="Zauberzeug GmbH", email="feldfreund@zauberzeug.com" }]
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
