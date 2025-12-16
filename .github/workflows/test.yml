@@ -8,31 +8,25 @@ jobs:
       fail-fast: false
       matrix:
         tools:
-          - command:
-              [
-                "mypy",
-                "./feldfreund_devkit",
-                "--non-interactive",
-                "--install-types",
-              ]
-          - command: ["pylint", "./feldfreund_devkit"]
-          - command: ["pre-commit", "run", "--all-files"]
-    name: code check - ${{ matrix.tools.command[0] }}
+          - command: "mypy"
+          - command: "pylint"
+          - command: "pre-commit"
+    name: code check - ${{ matrix.tools.command }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: set up Poetry
-        uses: abatilo/actions-poetry@v4
+      - name: set up uv
+        uses: astral-sh/setup-uv@v6
       - name: set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: "poetry"
       - name: install dependencies
-        run: poetry install --with dev --no-root
-      - name: ${{ matrix.tools.command[0] }}
-        run: poetry run ${{ join(matrix.tools.command, ' ') }}
+        run: make install-ci
+      - name: ${{ matrix.tools.command }}
+        run: make ${{ matrix.tools.command }}
   test:
     strategy:
       matrix:
@@ -42,14 +36,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: set up Poetry
-        uses: abatilo/actions-poetry@v4
+      - name: set up uv
+        uses: astral-sh/setup-uv@v6
       - name: setup up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-          cache: "poetry"
       - name: install dependencies
-        run: poetry install --with test
+        run: make install-ci
       - name: pytest
-        run: poetry run pytest
+        run: uv run pytest

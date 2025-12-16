@@ -1,14 +1,7 @@
-[build-system]
-requires = [
-    "poetry-core>=1.0.0",
-    "poetry-dynamic-versioning>=1.0.0,<2.0.0",
-]
-build-backend = "poetry_dynamic_versioning.backend"
-
 [project]
 name = "feldfreund_devkit"
-version = "0.0.0"
-description = "TODO"
+dynamic = ["version"]
+description = "A sturdy development platform for autonomous outdoor robotics"
 authors = [{ name="Zauberzeug GmbH", email="feldfreund@zauberzeug.com" }]
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
@@ -24,23 +17,30 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    {include-group = "types"},
     "mypy (>=1.18.2, <2.0.0)",
     "pylint (>=3.3.3, <4.0.0)",
     "pre-commit (>=4.3.0, <5.0.0)",
     "ruff (>=0.13.2, <1.0.0)",
     "autopep8 (>=2.3.2, <3.0.0)",
-    "poetry-dynamic-versioning (>=1.8.0, <2.0.0)",
+    "poetry-dynamic-versioning>=1.8.0,<2",
 ]
 test = [
     "pytest (>=8.3.4, <9.0.0)",
-    "pytest-asyncio (>=0.25.3, <0.26.0)",
+    "pytest-asyncio (>=1.2.0, <2.0.0)",
+]
+types = [
 ]
 
-[tool.poetry.group.dev]
-optional = true
+[build-system]
+requires = [
+    "poetry-core>=1.0.0",
+    "poetry-dynamic-versioning>=1.0.0,<2.0.0",
+]
+build-backend = "poetry_dynamic_versioning.backend"
 
-[tool.poetry.group.test]
-optional = true
+[tool.poetry]
+version = "0.0.0"
 
 [tool.poetry-dynamic-versioning]
 enable = true

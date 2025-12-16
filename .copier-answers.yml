@@ -1,16 +1,16 @@
 # Changes here will be overwritten by Copier
-_commit: v0.4.1
+_commit: v0.5.0
 _src_path: git@github.com:zauberzeug/nicegui-template.git
+dependency_management: uv
 include_ai_instructions: true
 module_name: feldfreund_devkit
-project_description: TODO
+project_description: Software framework for the robust Feldfreund Dev Kit mobile outdoor
+    robotic platform
 project_name: feldfreund_devkit
 python_versions:
 - '3.11'
 - '3.12'
 - '3.13'
 - '3.14'
-use_poetry: true
-use_poetry_dynamic_versioning: true
 use_precommit: true
 use_rosys: true
