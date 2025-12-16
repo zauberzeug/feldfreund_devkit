@@ -16,13 +16,13 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: set up uv
+      - name: Set up uv
         uses: astral-sh/setup-uv@v6
-      - name: set up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
-          cache: "poetry"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install 3.12
       - name: install dependencies
         run: make install-ci
       - name: ${{ matrix.tools.command }}
@@ -36,12 +36,13 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: set up uv
+      - name: Set up uv
         uses: astral-sh/setup-uv@v6
-      - name: setup up Python
-        uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Set up Python
+        run: uv python install ${{ matrix.python }}
       - name: install dependencies
         run: make install-ci
       - name: pytest
