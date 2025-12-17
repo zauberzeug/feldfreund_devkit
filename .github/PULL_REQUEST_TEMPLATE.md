@@ -12,6 +12,7 @@
 
 - [ ] I chose a meaningful title that completes the sentence: "If applied, this PR will..."
 - [ ] I chose meaningful labels (if GitHub allows me to so).
+- [ ] I documented breaking changes and set the 'breaking change' label if needed
 - [ ] The implementation is complete.
 - [ ] Tests with a real hardware have been successful (or are not necessary).
 - [ ] Pytests have been added (or are not necessary).

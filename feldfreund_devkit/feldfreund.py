@@ -95,7 +95,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
                                  use_espresso=config.robot_brain.use_espresso)
         robot_brain.lizard_firmware.flash_params += config.robot_brain.flash_params
-        self.bluetooth = BluetoothHardware(robot_brain, name=config.name)
+        self.bluetooth = BluetoothHardware(robot_brain, name=config.bluetooth_name)
         serial = SerialHardware(robot_brain)
         self.expander = ExpanderHardware(robot_brain, serial=serial)
         self.can = CanHardware(robot_brain,
@@ -194,7 +194,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         rosys.on_startup(wait_and_release_battery_relay)
         return battery_control
 
-    def _setup_flashlight(self, config: FlashlightConfiguration | None, *,
+    def _setup_flashlight(self, config: FlashlightConfiguration | FlashlightMosfetConfiguration | None, *,
                           robot_brain: RobotBrain,
                           bms: Bms,
                           expander: ExpanderHardware) -> FlashlightHardware | FlashlightHardwareMosfet | None:

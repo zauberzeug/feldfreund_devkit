@@ -20,6 +20,7 @@ class TracksConfiguration:
         tooth_count: 15
         pitch: 0.033
         motor_gear_ratio: 12.52
+        has_temperature_sensor: False
     """
     name: str = 'wheels'
     is_left_reversed: bool = False
@@ -33,6 +34,7 @@ class TracksConfiguration:
     tooth_count: int = 15
     pitch: float = 0.033
     motor_gear_ratio: float = 12.52
+    has_temperature_sensor: bool = False
 
     @property
     def m_per_tick(self) -> float:
