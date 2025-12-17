@@ -1,13 +1,13 @@
-site_name: Feldfreund Devkit Software Documentation
+site_name: Feldfreund Dev Kit Documentation
 site_url: https://docs.feldfreund.de/
 nav:
   - index.md
   - getting_started.md
   - Tutorials:
       - tutorials/tutorials.md
-      - tutorials/docker_management.md
-      - tutorials/field_creation.md
-  - Module Reference: reference/
+      - tutorials/imu_calibration.md
+      - tutorials/odrive_calibration.md
+  # - Module Reference: reference/
   - contributing.md
   - troubleshooting.md
 repo_url: https://github.com/zauberzeug/feldfreund_devkit
@@ -52,5 +52,7 @@ plugins:
             show_signature_annotations: true
             merge_init_into_class: true
             separate_signature: true
+            filters:
+              - "!^_[^_]"
 watch:
   - feldfreund_devkit

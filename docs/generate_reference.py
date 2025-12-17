@@ -2,6 +2,8 @@ import dataclasses
 import importlib
 import inspect
 import logging
+import re
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -9,65 +11,50 @@ import mkdocs_gen_files
 
 nav = mkdocs_gen_files.Nav()
 
-logging.basicConfig(level=logging.DEBUG)
-
 
 def extract_events(filepath: str) -> dict[str, str]:
     with open(filepath, encoding='utf-8') as f:
         lines = f.read().splitlines()
-    events = {}
+    events_: dict[str, str] = {}
     for i, line in enumerate(lines):
-        if line.endswith('= Event()'):
-            event_name = line.strip().split()[0].removeprefix('self.')
-            event_doc = lines[i + 1].split('"""')[1]
-            events[event_name] = event_doc
-    return events
+        if re.search(r'= Event(\[.*?\])?\(\)$', line):
+            event_name_ = line.strip().split()[0].removeprefix('self.')
+            event_doc_ = lines[i+1].split('"""')[1]
+            events_[event_name_] = event_doc_
+    return events_
 
 
 for path in sorted(Path('.').rglob('__init__.py')):
     identifier = str(path.parent).replace('/', '.')
-
-    if 'feldfreund_devkit' not in identifier:
-        continue
     if identifier in ['feldfreund_devkit',]:
         continue
-
     try:
         module = importlib.import_module(identifier)
     except Exception:
-        logging.warning('Failed to import %s', identifier)
-        continue
+        logging.exception('Failed to import %s', identifier)
+        sys.exit(1)
 
     doc_path = path.parent.with_suffix('.md')
     found_something = False
     for name in getattr(module, '__all__', dir(module)):
         if name.startswith('_'):
-            logging.debug('skipping %s.%s: private', identifier, name)
-            continue
+            continue  # skip private fields
         cls = getattr(module, name)
         if isinstance(cls, ModuleType):
-            logging.debug('skipping %s.%s: sub-module', identifier, name)
-            continue
+            continue  # skip sub-modules
         if dataclasses.is_dataclass(cls):
-            logging.debug('skipping %s.%s: dataclass', identifier, name)
-            continue
+            continue  # skip dataclasses
         if not cls.__doc__:
-            logging.debug('skipping %s.%s: no docstring', identifier, name)
-            continue
-
-        try:
-            events = extract_events(inspect.getfile(cls))
-        except Exception:
-            logging.warning('skipping %s.%s: events', identifier, name)
-            continue
-
+            continue  # skip classes without docstring
+        events = extract_events(inspect.getfile(cls))
         with mkdocs_gen_files.open(Path('reference', doc_path), 'a') as fd:
             print(f'::: {identifier}.{name}', file=fd)
+            print('    options:', file=fd)
+            print('      filters:', file=fd)
+            print('        - "!^_[^_]"', file=fd)
+            for event_name in events:
+                print(f'        - "!{event_name}"', file=fd)
             if events:
-                print('    options:', file=fd)
-                print('      filters:', file=fd)
-                for event_name in events:
-                    print(f'        - "!{event_name}"', file=fd)
                 print('### Events', file=fd)
                 print('Name | Description', file=fd)
                 print('- | -', file=fd)
