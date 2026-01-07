@@ -14,12 +14,11 @@ readme = "README.md"
 requires-python = ">=3.11, <3.14"
 dependencies = [
     "nicegui (>= 3.2.0, <4.0.0)",
-    "rosys @ git+https://github.com/zauberzeug/rosys.git@6570a5808ec326c12a24f165ee1abdc4acbcd092",
+    "rosys @ git+https://github.com/zauberzeug/rosys.git@03229377a5626535cc7258c9e16fb9ceb7962123",
     "httpx >=0.25.0",
     "coloredlogs",
     "httpcore",
     "psutil",
-    "numpy (>=1.20.1,<2.0.0)", # required by opencv-python < 4.9.0
 ]
 
 [dependency-groups]
