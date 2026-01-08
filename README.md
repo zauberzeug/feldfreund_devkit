@@ -1,14 +1,15 @@
+<img src="https://github.com/zauberzeug/feldfreund_devkit/raw/main/assets/feldfreund.webp"  alt="Feldfreund rendering" width="40%" align="right" />
+
 # Feldfreund DevKit
 
-TODO
+This is the source code of the [Feldfreund Dev Kit](https://zauberzeug.com/products/field-friend-dev-kit) for autonomous outdoor robotics made by [Zauberzeug](https://zauberzeug.com/).
+The software is based on [RoSys](https://rosys.io) and [NiceGUI](https://nicegui.io/).
+The micro controller is programmed with [Lizard](https://github.com/zauberzeug/lizard).
 
-## Tech Stack
+Our agricultural weeding robot [Feldfreund](https://zauberzeug.com/feldfreund) is based on this platform and is intended to advance organic and regenerative agriculture.
+There is also a [ROS2 implementation](https://github.com/zauberzeug/feldfreund_devkit_ros) based on this repository.
 
-- Python 3.11+
-- [NiceGUI](https://nicegui.io) for web interface
-- [Poetry](https://python-poetry.org) for dependency management
-- [RoSys](https://rosys.io) framework
-- [Copier](https://copier.readthedocs.io/) for template configuration (from [nicegui-template](https://github.com/zauberzeug/nicegui-template))
+Please see the [documentation](https://docs.feldfreund.de) for details on installation, setup and usage.
 
 ## Development
 

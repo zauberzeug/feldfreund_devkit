@@ -16,6 +16,8 @@ from .utils import sub_spline
 
 
 class WaypointNavigation(rosys.persistence.Persistable):
+    """Base class for all waypoint based navigation types."""
+
     LINEAR_SPEED_LIMIT: float = 0.13
 
     def __init__(self, *, implement: Implement, driver: Driver, pose_provider: PoseProvider, name: str = 'Waypoint Navigation') -> None:
@@ -29,7 +31,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
 
         self.PATH_GENERATED = Event[list[DriveSegment]]()
-        """a new path has been generated (argument: ``list[DriveSegment]``)"""
+        """a new path has been generated(argument: ``list[DriveSegment]``)"""
 
         self.SEGMENT_STARTED = Event[DriveSegment]()
         """a waypoint has been reached"""
@@ -42,17 +44,19 @@ class WaypointNavigation(rosys.persistence.Persistable):
 
     @property
     def path(self) -> list[DriveSegment]:
+        """Returns the whole planned path."""
         return self._upcoming_path
 
     @property
     def current_segment(self) -> DriveSegment | None:
+        """Returns the current segment to drive along or None if there are no waypoints left."""
         if not self._upcoming_path:
             return None
         return self._upcoming_path[0]
 
     @property
     def has_waypoints(self) -> bool:
-        """Returns True as long as there are waypoints to drive to"""
+        """Returns True as long as there are waypoints to drive to."""
         return self.current_segment is not None
 
     @track
@@ -156,7 +160,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
     def _remove_segments_behind_robot(self,
                                       path_segments: list[DriveSegment], *,
                                       completed_percentage: float = 0.99) -> list[DriveSegment]:
-        """Create new path (list of segments) starting at the closest segment to the current pose"""
+        """Create new path(list of segments) starting at the closest segment to the current pose"""
         current_pose = self.pose_provider.pose
         start_index = 0
         for i, segment in enumerate(path_segments):
