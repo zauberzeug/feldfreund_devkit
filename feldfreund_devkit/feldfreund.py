@@ -95,7 +95,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
                                  use_espresso=config.robot_brain.use_espresso)
         robot_brain.lizard_firmware.flash_params += config.robot_brain.flash_params
-        self.bluetooth = BluetoothHardware(robot_brain, name=config.bluetooth_name)
+        self.bluetooth = BluetoothHardware(robot_brain, name=config.bluetooth.name, pin_code=config.bluetooth.pin_code)
         serial = SerialHardware(robot_brain)
         self.expander = ExpanderHardware(robot_brain, serial=serial)
         self.can = CanHardware(robot_brain,

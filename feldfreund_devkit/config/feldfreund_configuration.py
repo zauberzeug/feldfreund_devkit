@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from rosys.driving import DriveParameters
 
 from .battery_configuration import BatteryControlConfiguration, BmsConfiguration
+from .bluetooth_configuration import BluetoothConfiguration
 from .bumper_configuration import BumperConfiguration
 from .camera_configuration import CameraConfiguration, CircleSightPositions
 from .can_configuration import CanConfiguration
@@ -19,7 +20,7 @@ from .tracks_configuration import TracksConfiguration, create_drive_parameters
 class FeldfreundConfiguration:
     robot_id: str
     battery_control: BatteryControlConfiguration = field(default_factory=BatteryControlConfiguration)
-    bluetooth_name: str
+    bluetooth: BluetoothConfiguration = field(default_factory=BluetoothConfiguration)
     bms: BmsConfiguration = field(default_factory=BmsConfiguration)
     bumper: BumperConfiguration | None = None
     can: CanConfiguration = field(default_factory=CanConfiguration)

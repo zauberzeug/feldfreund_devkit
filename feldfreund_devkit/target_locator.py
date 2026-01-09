@@ -19,6 +19,13 @@ class TargetLocator(rosys.persistence.Persistable, ABC):
     def is_active(self) -> bool:
         return self._is_active
 
+    @is_active.setter
+    def is_active(self, active: bool) -> None:
+        if active:
+            self.resume()
+        else:
+            self.pause()
+
     def pause(self) -> None:
         if not self._is_active:
             return
