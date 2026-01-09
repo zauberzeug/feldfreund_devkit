@@ -36,7 +36,7 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 3. Install dependencies:
 
 ```bash
-poetry install --with dev,test
+make sync
 ```
 
 4. Install pre-commit hooks:
@@ -105,7 +105,7 @@ pre-commit install
 Run tests before submitting:
 
 ```bash
-poetry run pytest
+uv run pytest
 ```
 
 Write tests for:
@@ -118,15 +118,17 @@ Write tests for:
 Check your code with:
 
 ```bash
-poetry run ruff check .
-poetry run mypy .
-poetry run pylint ./feldfreund_devkit
+make check # which runs:
+# ruff check .
+# mypy .
+# pylint ./feldfreund_devkit
 ```
 
 Or let pre-commit handle it:
 
 ```bash
-pre-commit run --all-files
+make pre-commit # which runs:
+# pre-commit run --all-files
 ```
 
 ## Pull Requests

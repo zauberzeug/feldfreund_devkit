@@ -227,9 +227,10 @@ class RobotLocator(rosys.persistence.Persistable):
                 self.log.error('''GNSS measurement is not available while resetting position.
                                Activate _ignore_gnss to use zero position.''')
                 return
-        self._x = np.array([[reset_pose.x, reset_pose.y, reset_pose.yaw]], dtype=float).T
+        self._x[:, 0] = [reset_pose.x, reset_pose.y, reset_pose.yaw]
         variance = np.array([r_xy, r_xy, r_theta], dtype=np.float64)**2
-        self._Sxx = np.diag(variance)
+        self._Sxx.fill(0)
+        np.fill_diagonal(self._Sxx, variance)
         self._update_frame()
 
     def developer_ui(self) -> None:

@@ -83,8 +83,8 @@ async def test_start_inbetween_waypoints(devkit_system, start_offset: float):
     # generate path which expands left and right from current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=start_offset, y=0.0, yaw=0.0))
     end = start.transform_pose(Pose(x=1.0, y=0.0, yaw=0.0))
-    devkit_system.current_navigation.generate_path = lambda: [
-        DriveSegment.from_poses(start, end)]  # type: ignore[assignment]
+    devkit_system.current_navigation.generate_path = lambda: [  # type: ignore[assignment]
+        DriveSegment.from_poses(start, end)]
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
     assert devkit_system.current_navigation.current_segment is not None
@@ -103,8 +103,8 @@ async def test_start_on_end(devkit_system):
     # set start of path 1m before current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=-1, y=0.0, yaw=0.0))
     end = devkit_system.robot_locator.pose
-    devkit_system.current_navigation.generate_path = lambda: [
-        DriveSegment.from_poses(start, end)]  # type: ignore[assignment]
+    devkit_system.current_navigation.generate_path = lambda: [  # type: ignore[assignment]
+        DriveSegment.from_poses(start, end)]
     devkit_system.current_navigation.SEGMENT_STARTED.subscribe(handle_segment_started)
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
