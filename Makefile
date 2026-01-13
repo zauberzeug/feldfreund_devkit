@@ -21,16 +21,15 @@ install-ci:
 
 ## mypy		Run mypy type checks.
 mypy:
-	uv run --active mypy ./feldfreund_devkit
+	uv run --active mypy ./feldfreund_devkit ./odrive ./config
 
 ## pylint		Run pylint code analysis.
 pylint:
-	uv run --active pylint ./feldfreund_devkit
+	uv run --active pylint ./feldfreund_devkit ./config
 
 ## ruff		Run ruff code analysis.
 ruff:
-	uv run --active ruff check ./feldfreund_devkit
-
+	uv run --active ruff check ./feldfreund_devkit ./odrive ./config
 ## pre-commit	Run pre-commit hooks on all files.
 pre-commit:
 	uv run --active pre-commit run --all-files

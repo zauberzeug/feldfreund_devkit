@@ -3,7 +3,7 @@ import inspect
 import sys
 import time
 
-import odrive.enums as enums  # noqa: PLR0402
+import odrive.enums as enums  # noqa: PLR0402 type: ignore[import]
 
 import odrive
 
