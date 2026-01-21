@@ -20,3 +20,8 @@ img {
   border-radius: 5px;
   box-shadow: rgba(0, 0, 0, 0.25) 0 5px 10px;
 }
+
+/* Hide "Defaults" section from mkdocstrings */
+details.defaults {
+  display: none;
+}

@@ -33,12 +33,12 @@ class CircleSightPositions:
 class CameraConfiguration:
     """Configuration for the camera of the Field Friend robot.
 
-    Attributes:
-        camera_type: default = 'CalibratableUsbCamera'
-        auto_exposure: default = True
-        rotation: default = 0
-        fps: default = 10
-        crop: default = None
+    Defaults:
+        camera_type: 'CalibratableUsbCamera'
+        auto_exposure: True
+        rotation: 0
+        fps: 10
+        crop: None
     """
     width: int
     height: int
@@ -50,7 +50,7 @@ class CameraConfiguration:
 
     @property
     def crop_rectangle(self) -> Rectangle | None:
-        """get a rectangle based on the crop values (left, right, up, down) of the config"""
+        """Get a rectangle based on the crop values (left, right, up, down) of the config"""
         if self.crop is None:
             return None
         new_width = self.width - (self.crop.left + self.crop.right)

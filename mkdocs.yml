@@ -6,7 +6,7 @@ nav:
       - tutorials/tutorials.md
       - tutorials/imu_calibration.md
       - tutorials/odrive_calibration.md
-  # - Module Reference: reference/
+  - Module Reference: reference/
   - troubleshooting.md
 repo_url: https://github.com/zauberzeug/feldfreund_devkit
 edit_uri: edit/main/docs/
@@ -50,6 +50,7 @@ plugins:
             show_signature_annotations: true
             merge_init_into_class: true
             separate_signature: true
+            docstring_section_style: list
             filters:
               - "!^_[^_]"
 watch:

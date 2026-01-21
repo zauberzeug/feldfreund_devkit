@@ -8,6 +8,7 @@ from nicegui import Event, ui
 
 
 class ConnectionStatus(Enum):
+    """Connection status of the Teltonika router."""
     ETHER = 'ether'
     WIFI = 'wifi'
     MOBILE = 'mobile'
