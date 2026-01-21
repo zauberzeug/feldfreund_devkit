@@ -43,4 +43,4 @@ docs-serve:
 
 ## docs-deploy	Deploy documentation to GitHub Pages.
 docs-deploy:
-	uv run --active mkdocs gh-deploy --force
+	uv run --active mkdocs gh-deploy --force && rm -rf site
