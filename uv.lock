@@ -602,6 +602,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "autopep8" },
+    { name = "livesync" },
     { name = "mypy" },
     { name = "poetry-dynamic-versioning" },
     { name = "pre-commit" },
@@ -645,6 +646,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "autopep8", specifier = ">=2.3.2,<3.0.0" },
+    { name = "livesync", specifier = ">=0.3.4,<1.0.0" },
     { name = "mypy", specifier = ">=1.18.2,<2.0.0" },
     { name = "poetry-dynamic-versioning", specifier = ">=1.8.0,<2.0.0" },
     { name = "pre-commit", specifier = ">=4.3.0,<5.0.0" },
@@ -1134,6 +1136,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/e4/36/ecc106dd448a112455a8585db0994886b0439bbf808215249a89302dd626/line_profiler-4.2.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6767d8b922a7368b6917a47c164c3d96d48b82109ad961ef518e78800947cef4", size = 718497, upload-time = "2024-12-03T17:11:48.961Z" },
     { url = "https://files.pythonhosted.org/packages/8a/61/6293341fbcc6c5b4469f49bd94f37fea5d2efc8cce441809012346a5b7d0/line_profiler-4.2.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:3137672a769717be4da3a6e006c3bd7b66ad4a341ba89ee749ef96c158a15b22", size = 1701191, upload-time = "2024-12-03T17:11:50.41Z" },
     { url = "https://files.pythonhosted.org/packages/23/9c/ab8a94c30c082caca87bc0db78efe91372e45d35a700ef07ffe78ed10cda/line_profiler-4.2.0-cp313-cp313-win_amd64.whl", hash = "sha256:727e970d358616a1a33d51d696efec932a5ef7730785df62658bd7e74aa58951", size = 128232, upload-time = "2024-12-03T17:11:51.741Z" },
+]
+
+[[package]]
+name = "livesync"
+version = "0.3.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pathspec" },
+    { name = "watchfiles" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bf/d6/fed2ee6f4b1ec828c8c5c4775d3d4384599dc4bc349416a67d3ba2ef312d/LiveSync-0.3.4.tar.gz", hash = "sha256:1748c4b2ce7820a6307b0e984a2d7844d74fa8f4a0c4d8f0e6b9a05a3aea34bb", size = 7223, upload-time = "2024-07-04T16:14:30.348Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/fe/c5bfc498121735833ad21bb1b65ad52daf913c9a18b71d672c71c38074c0/LiveSync-0.3.4-py3-none-any.whl", hash = "sha256:aa6d529fc281a82b6640171f566b6c20b3d29edc3fb51cf5e1bbd5f2b13b448b", size = 9111, upload-time = "2024-07-04T16:14:28.852Z" },
 ]
 
 [[package]]
