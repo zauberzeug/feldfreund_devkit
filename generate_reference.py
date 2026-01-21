@@ -1,4 +1,3 @@
-import dataclasses
 import importlib
 import inspect
 import logging
@@ -18,16 +17,17 @@ def extract_events(filepath: str) -> dict[str, str]:
     events_: dict[str, str] = {}
     for i, line in enumerate(lines):
         if re.search(r'= Event(\[.*?\])?\(\)$', line):
-            event_name_ = line.strip().split()[0].removeprefix('self.')
-            event_doc_ = lines[i+1].split('"""')[1]
+            event_name_ = line.strip().split()[0].removeprefix('self.').rstrip(':')
+            event_doc_ = lines[i + 1].split('"""')[1]
             events_[event_name_] = event_doc_
     return events_
 
 
-for path in sorted(Path('.').rglob('__init__.py')):
+for path in sorted(Path('feldfreund_devkit').rglob('__init__.py')):
     identifier = str(path.parent).replace('/', '.')
-    if identifier in ['feldfreund_devkit',]:
+    if identifier == 'feldfreund_devkit':
         continue
+
     try:
         module = importlib.import_module(identifier)
     except Exception:
@@ -38,23 +38,27 @@ for path in sorted(Path('.').rglob('__init__.py')):
     found_something = False
     for name in getattr(module, '__all__', dir(module)):
         if name.startswith('_'):
-            continue  # skip private fields
+            continue
         cls = getattr(module, name)
         if isinstance(cls, ModuleType):
-            continue  # skip sub-modules
-        if dataclasses.is_dataclass(cls):
-            continue  # skip dataclasses
+            continue
+        if not inspect.isclass(cls):
+            continue
         if not cls.__doc__:
-            continue  # skip classes without docstring
+            continue
         events = extract_events(inspect.getfile(cls))
+        if cls.__name__ != name:
+            cls_module = cls.__module__
+            doc_identifier = f'{cls_module}.{cls.__name__}'
+        else:
+            doc_identifier = f'{identifier}.{name}'
         with mkdocs_gen_files.open(Path('reference', doc_path), 'a') as fd:
-            print(f'::: {identifier}.{name}', file=fd)
-            print('    options:', file=fd)
-            print('      filters:', file=fd)
-            print('        - "!^_[^_]"', file=fd)
-            for event_name in events:
-                print(f'        - "!{event_name}"', file=fd)
+            print(f'::: {doc_identifier}', file=fd)
             if events:
+                print('    options:', file=fd)
+                print('      filters:', file=fd)
+                for event_name in events:
+                    print(f'        - "!{event_name}"', file=fd)
                 print('### Events', file=fd)
                 print('Name | Description', file=fd)
                 print('- | -', file=fd)

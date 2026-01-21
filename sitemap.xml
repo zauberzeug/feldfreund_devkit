@@ -2,57 +2,50 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://docs.feldfreund.de/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
-    </url>
-    <url>
-         <loc>https://docs.feldfreund.de/contributing/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/getting_started/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/troubleshooting/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/reference/SUMMARY/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/reference/feldfreund_devkit/api/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.feldfreund.de/reference/feldfreund_devkit/config/</loc>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/reference/feldfreund_devkit/hardware/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/reference/feldfreund_devkit/navigation/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.feldfreund.de/reference/feldfreund_devkit/interface/components/</loc>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/tutorials/imu_calibration/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/tutorials/odrive_calibration/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
     </url>
     <url>
          <loc>https://docs.feldfreund.de/tutorials/tutorials/</loc>
-         <lastmod>2025-12-17</lastmod>
-         <changefreq>daily</changefreq>
+         <lastmod>2026-01-21</lastmod>
     </url>
 </urlset>
