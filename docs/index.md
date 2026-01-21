@@ -1,18 +1,13 @@
 # About
 
-**Zauberzeug Field Friend** is an autonomous, mobile, and AI-driven agricultural robot developed by [Zauberzeug GmbH](https://zauberzeug.com).
-The robot is specifically designed for autonomous actions, combining lightness, flexibility, and robustness
-to efficiently handle a variety of outdoor tasks.
-Equipped with advanced sensor technologies and camera systems,
-the Field Friend can precisely determine its position, follow crop lines and detect various kinds of plants.
-With it's modular design, the Field Friend can be extended with various tools and sensors to fit the specific needs of the use case.
+The **Feldfreund DevKit** is an open-source platform for autonomous outdoor robotics developed by [Zauberzeug GmbH](https://zauberzeug.com).
+Built on [RoSys](https://rosys.io), an all-Python robot system framework with built-in simulation, hardware abstraction, and a real-time web interface via [NiceGUI](https://nicegui.io/).
+Time-critical and safety-critical behavior runs on the microcontroller via [Lizard](https://lizard.dev), a domain-specific language for embedded hardware control.
+
+Our agricultural weeding robot [Feldfreund](https://zauberzeug.com/feldfreund) is based on this platform and is intended to advance organic and regenerative agriculture.
 
 ## Features
 
-- The Open Source software encourages you to modify and enhance the behavior and adapt it to your specific needs.
-- The Modular Design allows equipping with tools from Zauberzeug as well as third-party solutions or your own developments.
-- Advanced Sensing and Autonomy-Algorithms allows autonomous navigation and obstacle avoidance.
-- Full control via web interface remote and locally via WiFi.
-- Manual steering with touch-joystick and keyboard or App.
-- A combined camera/motor calibration for real world coordinate system (unit: meters)
-- ...
+- **Open Source** — modify and enhance the software to fit your specific needs.
+- **Modular Design** — equip with tools from Zauberzeug, third-party solutions, or custom developments.
+- **ROS2 Support** — a [ROS2 implementation](https://github.com/zauberzeug/feldfreund_devkit_ros) is available.
