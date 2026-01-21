@@ -1,6 +1,6 @@
 # About
 
-The **Feldfreund DevKit** is an open-source platform for autonomous outdoor robotics developed by [Zauberzeug GmbH](https://zauberzeug.com).
+The **Feldfreund Dev Kit** is an open-source platform for autonomous outdoor robotics developed by [Zauberzeug GmbH](https://zauberzeug.com).
 Built on [RoSys](https://rosys.io), an all-Python robot system framework with built-in simulation, hardware abstraction, and a real-time web interface via [NiceGUI](https://nicegui.io/).
 Time-critical and safety-critical behavior runs on the microcontroller via [Lizard](https://lizard.dev), a domain-specific language for embedded hardware control.
 
