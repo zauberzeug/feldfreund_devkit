@@ -171,4 +171,3 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, Safety
 
 class FlashlightSimulation(Flashlight, rosys.hardware.ModuleSimulation):
     """Simulated flashlight for testing."""
-    ...
