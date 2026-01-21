@@ -150,12 +150,12 @@ class TracksSimulation(WheelsSimulation):
 
     @property
     def angular_acceleration(self) -> float:
-        """Calculate angular acceleration from linear acceleration using differential drive kinematics."""
+        """Calculated angular acceleration from linear acceleration using differential drive kinematics."""
         return 2 * self.linear_acceleration / self.width
 
     @property
     def angular_deceleration(self) -> float:
-        """Calculate angular deceleration from linear deceleration using differential drive kinematics."""
+        """Calculated angular deceleration from linear deceleration using differential drive kinematics."""
         return 2 * self.linear_deceleration / self.width
 
     async def drive(self, linear: float, angular: float) -> None:

@@ -51,7 +51,7 @@ plugins:
             show_signature_annotations: true
             merge_init_into_class: true
             separate_signature: true
-            docstring_section_style: list
+            docstring_section_style: table
             filters:
               - "!^_[^_]"
 watch:
