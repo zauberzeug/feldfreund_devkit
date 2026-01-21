@@ -1,4 +1,5 @@
 from feldfreund_devkit.config import (
+    BluetoothConfiguration,
     BumperConfiguration,
     CameraConfiguration,
     CircleSightPositions,
@@ -11,7 +12,7 @@ from feldfreund_devkit.config import (
 
 config = FeldfreundConfiguration(
     robot_id='Example',
-    bluetooth_name='example',
+    bluetooth=BluetoothConfiguration(name='example', pin_code=123456),
     bumper=BumperConfiguration(pin_front_top=21, pin_front_bottom=35, pin_back=18),
     camera=CameraConfiguration(width=1280, height=720, fps=10),
     circle_sight_positions=CircleSightPositions(right='-1', left='-2', front='-4', back='-3'),

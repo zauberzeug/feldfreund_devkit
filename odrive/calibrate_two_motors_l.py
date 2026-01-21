@@ -3,19 +3,20 @@ import inspect
 import sys
 import time
 
-import odrive.enums as enums  # noqa: PLR0402
+import odrive.enums as enums  # noqa: PLR0402 type: ignore[import]
 
 import odrive
 
-odrv0 = odrive.find_any()
+odrv0 = odrive.find_any()  # type: ignore[attr-defined]
 
 
-def assert_equal(a, b):
+def assert_equal(a, b):  # type: ignore[no-untyped-def]
     try:
         assert a == b
     except AssertionError:
-        frame = inspect.currentframe().f_back
-        line = inspect.stack()[1].code_context[0].strip()
+        frame = inspect.currentframe().f_back  # type: ignore[union-attr]
+        assert frame is not None
+        line = inspect.stack()[1].code_context[0].strip()  # type: ignore[index]
         arguments = tuple(line.replace('assert_equal(', '').replace(')', '').split(', '))
         actual_value = eval(arguments[0], frame.f_globals, frame.f_locals)  # pylint: disable=eval-used
         print(f'  > {arguments[0]} == {actual_value} != {arguments[1]}')
@@ -82,7 +83,7 @@ except Exception:
     pass
 finally:
     time.sleep(1.0)
-    odrv0 = odrive.find_any()
+    odrv0 = odrive.find_any()  # type: ignore[attr-defined]
 
 
 print('- Calibration axis 0...')

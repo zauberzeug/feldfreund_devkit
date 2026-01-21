@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 
 from .battery_configuration import BatteryControlConfiguration, BmsConfiguration
+from .bluetooth_configuration import BluetoothConfiguration
 from .bumper_configuration import BumperConfiguration
 from .camera_configuration import CameraConfiguration, CircleSightPositions, CropConfiguration
 from .can_configuration import CanConfiguration
@@ -36,6 +37,7 @@ def config_from_id(robot_id: str, *, config_dir: str = 'config') -> FeldfreundCo
 
 __all__ = [
     'BatteryControlConfiguration',
+    'BluetoothConfiguration',
     'BmsConfiguration',
     'BumperConfiguration',
     'CameraConfiguration',
