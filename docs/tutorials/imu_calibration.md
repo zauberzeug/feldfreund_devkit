@@ -30,7 +30,7 @@ print(f'imu=Imu(offset_rotation=Rotation.from_euler({complete_correction.roll:.6
 Steps:
 
 1. Find the correct base orientation of your IMU.
-   If your Field Friend has the standard configuration, you can use this as a starting point:
+   If your Feldfreund has the standard configuration, you can use this as a starting point:
    `Imu(offset_rotation=Rotation.from_euler(-1.570796, -0.000000, 1.570796))`
 2. Roll and pitch your robot manually to check if the configuration is correct and the axes are correctly rotated.
 3. Place your robot on a level surface and check the IMU's current values on the [development page](http://192.168.42.2/dev)

@@ -1,6 +1,6 @@
 <img src="https://github.com/zauberzeug/feldfreund_devkit/raw/main/assets/feldfreund.webp"  alt="Feldfreund rendering" width="40%" align="right" />
 
-# Feldfreund DevKit
+# Feldfreund Dev Kit
 
 This is the source code of the [Feldfreund Dev Kit](https://zauberzeug.com/products/field-friend-dev-kit) for autonomous outdoor robotics made by [Zauberzeug](https://zauberzeug.com/).
 The software is based on [RoSys](https://rosys.io) and [NiceGUI](https://nicegui.io/).

@@ -5,7 +5,7 @@ from rosys.geometry import Point3d, Pose
 
 @dataclass(slots=True, kw_only=True)
 class GnssConfiguration:
-    """Configuration for the GNSS of the Field Friend robot.
+    """Configuration for the GNSS of the Feldfreund robot.
 
     X, Y, Z are the position of the main GNSS antenna.
     The yaw is the direction to the auxiliary antenna.

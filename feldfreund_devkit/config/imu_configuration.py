@@ -5,7 +5,7 @@ from rosys.geometry import Rotation
 
 @dataclass(slots=True, kw_only=True)
 class ImuConfiguration:
-    """Configuration for the IMU of the Field Friend robot.
+    """Configuration for the IMU of the Feldfreund robot.
 
     Defaults:
         name: 'imu'

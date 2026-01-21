@@ -8,7 +8,7 @@ from ..config import TracksConfiguration
 
 
 class TracksHardware(Wheels, ModuleHardware):
-    """Expands the RoSys wheels hardware to control the field friend's tracked wheels with dual motors."""
+    """Expands the RoSys wheels hardware to control the Feldfreund's tracked wheels with dual motors."""
     MAX_VALID_LINEAR_VELOCITY = 3.0
     MAX_VALID_ANGULAR_VELOCITY = 3.5
     ERROR_FLAG_VERSION = 6

@@ -162,7 +162,7 @@ class RobotLocator(rosys.persistence.Persistable):
             return
         if not np.isfinite(gnss_measurement.heading_std_dev):
             # normally we would only handle the position if no heading is available,
-            # but the field friend needs the rtk accuracy to function properly
+            # but the Feldfreund needs the rtk accuracy to function properly
             return
         pose, r_xy, r_theta = self._get_local_pose_and_uncertainty(gnss_measurement)
         if self._auto_tilt_correction and isinstance(self._imu, Imu) and not self._ignore_imu and self._imu.last_measurement is not None:

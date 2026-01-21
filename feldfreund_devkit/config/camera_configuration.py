@@ -6,7 +6,7 @@ from rosys.geometry import Rectangle
 
 @dataclass(kw_only=True)
 class CropConfiguration:
-    """Configuration for the cropping of the camera of the Field Friend robot."""
+    """Configuration for the cropping of the camera of the Feldfreund robot."""
     left: int
     right: int
     up: int
@@ -31,7 +31,7 @@ class CircleSightPositions:
 
 @dataclass(kw_only=True)
 class CameraConfiguration:
-    """Configuration for the camera of the Field Friend robot.
+    """Configuration for the camera of the Feldfreund robot.
 
     Defaults:
         camera_type: 'CalibratableUsbCamera'
