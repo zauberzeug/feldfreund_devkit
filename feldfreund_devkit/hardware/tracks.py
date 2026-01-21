@@ -137,13 +137,9 @@ class TracksHardware(Wheels, ModuleHardware):
 
 
 class TracksSimulation(WheelsSimulation):
-    def __init__(self, width: float = 0.5, *, linear_acceleration: float = 2.0, linear_deceleration: float = 0.5) -> None:
-        """Simulate differential drive wheels with acceleration and deceleration handling.
+    """Simulated tracks with acceleration and deceleration handling."""
 
-        :param width: The distance between the wheels in meters.
-        :param linear_acceleration: The maximum linear acceleration rate in m/s².
-        :param linear_deceleration: The maximum linear deceleration rate in m/s².
-        """
+    def __init__(self, width: float = 0.5, *, linear_acceleration: float = 2.0, linear_deceleration: float = 0.5) -> None:
         super().__init__(width)
 
         self.linear_acceleration: float = linear_acceleration

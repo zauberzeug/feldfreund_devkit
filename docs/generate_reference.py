@@ -47,8 +47,13 @@ for path in sorted(Path('feldfreund_devkit').rglob('__init__.py')):
         if not cls.__doc__:
             continue
         events = extract_events(inspect.getfile(cls))
+        if cls.__name__ != name:
+            cls_module = cls.__module__
+            doc_identifier = f'{cls_module}.{cls.__name__}'
+        else:
+            doc_identifier = f'{identifier}.{name}'
         with mkdocs_gen_files.open(Path('reference', doc_path), 'a') as fd:
-            print(f'::: {identifier}.{name}', file=fd)
+            print(f'::: {doc_identifier}', file=fd)
             if events:
                 print('    options:', file=fd)
                 print('      filters:', file=fd)

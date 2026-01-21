@@ -2,13 +2,9 @@ from nicegui import ui
 
 
 class ConfirmDialog(ui.dialog):
-    def __init__(self, text: str = 'Are you sure?', *, delay: float = 3.0) -> None:
-        """
-        A dialog that asks for confirmation.
+    """A dialog that asks for confirmation with a delayed yes button."""
 
-        :param text: The text to display in the dialog.
-        :param delay: The delay in seconds before the yes button is enabled.
-        """
+    def __init__(self, text: str = 'Are you sure?', *, delay: float = 3.0) -> None:
         super().__init__()
         self.delay = delay
         with self, ui.card():

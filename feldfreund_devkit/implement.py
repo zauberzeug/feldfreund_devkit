@@ -9,10 +9,11 @@ from .config import ImplementConfiguration
 
 
 class ImplementException(Exception):
-    pass
+    """Raised when an implement operation fails."""
 
 
 class Implement(rosys.persistence.Persistable):
+    """Base class for robot implements like weeding tools or cameras."""
 
     def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
@@ -87,6 +88,8 @@ class Implement(rosys.persistence.Persistable):
 
 
 class ImplementDummy(Implement):
+    """A no-op implement for testing or when no implement is attached."""
+
     def __init__(self) -> None:
         super().__init__(ImplementConfiguration(lizard_name='None', display_name='None', work_radius=0.0))
 

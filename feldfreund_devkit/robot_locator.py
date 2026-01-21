@@ -12,6 +12,8 @@ from .config import GnssConfiguration
 
 
 class RobotLocator(rosys.persistence.Persistable):
+    """Extended Kalman filter for robot pose estimation using odometry, GNSS, and IMU."""
+
     R_ODOM_LINEAR = 0.1
     R_ODOM_ANGULAR = 0.097
     R_IMU_ANGULAR = 0.01

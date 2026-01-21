@@ -7,7 +7,7 @@ from rosys.geometry import Point, Pose, Spline
 
 @dataclass(slots=True, kw_only=True)
 class DriveSegment(PathSegment):
-    # TODO: move methods to rosys.driving.PathSegment
+    """A path segment with implement usage and stop behavior configuration."""
     use_implement: bool = False
     stop_at_end: bool = True
 
