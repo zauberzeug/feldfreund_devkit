@@ -56,3 +56,4 @@ plugins:
               - "!^_[^_]"
 watch:
   - feldfreund_devkit
+  - docs
