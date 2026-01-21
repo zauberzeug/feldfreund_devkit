@@ -1,4 +1,4 @@
-.PHONY: help sync install-ci mypy pylint pre-commit
+.PHONY: help sync install-ci mypy pylint pre-commit docs-serve docs-deploy
 
 default: help
 
@@ -36,3 +36,11 @@ pre-commit:
 
 ## check		Run all code checks (mypy, pre-commit, pylint).
 check: mypy pre-commit pylint
+
+## docs-serve	Serve documentation locally.
+docs-serve:
+	uv run --active mkdocs serve
+
+## docs-deploy	Deploy documentation to GitHub Pages.
+docs-deploy:
+	uv run --active mkdocs gh-deploy --force
