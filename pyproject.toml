@@ -31,6 +31,21 @@ test = [
 types = [
     "types-psutil>=7.1.3.20251211",
 ]
+docs = [
+    "black",
+    "click (<8.3.0)",
+    "mdx-footnotes2",
+    "mdx-include",
+    "mkdocs (>=1.6.1)",
+    "mkdocs-gen-files",
+    "mkdocs-literate-nav",
+    "mkdocs-macros-plugin",
+    "mkdocs-material",
+    "mkdocs-pymdownx-material-extras",
+    "mkdocs-section-index",
+    "mkdocstrings-python",
+    "toml",
+]
 
 [build-system]
 requires = [
