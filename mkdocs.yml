@@ -2,13 +2,11 @@ site_name: Feldfreund Dev Kit Documentation
 site_url: https://docs.feldfreund.de/
 nav:
   - index.md
-  - getting_started.md
   - Tutorials:
       - tutorials/tutorials.md
       - tutorials/imu_calibration.md
       - tutorials/odrive_calibration.md
   # - Module Reference: reference/
-  - contributing.md
   - troubleshooting.md
 repo_url: https://github.com/zauberzeug/feldfreund_devkit
 edit_uri: edit/main/docs/

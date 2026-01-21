@@ -1,51 +1,26 @@
 # Troubleshooting
 
-This section provides guidance for diagnosing and resolving issues during operation. Begin by checking the robot’s logs for warnings or errors.
+This section provides guidance for diagnosing and resolving issues during operation.
+If your issue is not listed here, you can also check the [RoSys documentation](https://rosys.io/troubleshooting/).
 
-Live logs can be viewed using `docker.sh l rosys`, and archived logs are stored on the robot inside the `~/.rosys` directory. If further detail is required, enable debug-level logging on the [RoSys Logging Page](https://rosys.io/reference/rosys/analysis/#rosys.analysis.logging_page.LoggingPage) that is available at [/logging](http://localhost/logging).
+## Logs
 
-## Asyncio Warning
+Check the logs for warnings or errors. Archived logs are stored in the `~/.rosys` directory.
 
-While running RoSys you may see warnings similar to this one:
-
-```
-2021-10-31 15:08:04.040 [WARNING] asyncio: Executing <Task pending name='Task-255' coro=<handle_event() running at /usr/local/lib/python3.9/site-packages/justpy/justpy.py:344> wait_for=<_GatheringFuture pending cb=[<TaskWakeupMethWrapper object at 0x7f7001f8e0>()] created at /usr/local/lib/python3.9/asyncio/tasks.py:705> created at /usr/local/lib/python3.9/site-packages/justpy/justpy.py:261> took 0.238 seconds
-```
-
-This means some coroutine is clogging the event loop for too long.
-In the above example it is a whopping 238 ms in which no other actor can do anything.
-This is an eternity when machine communication is expected to happen about every 10 ms.
-The warning also provides a (not so readable) hint where the time is consumed.
-
-The example above is one of the more frequent scenarios.
-It means some code inside a user interaction event handler (e.g. `handle_event()` in `justpy.py`) is blocking.
-Try to figure out which UI event code is responsible by commenting out parts of your logic and try to reproduce the warning systematically.
-
-## CairoSVG on Mac
-
-If [CairoSVG](https://cairosvg.org/) was installed via [Homebrew](https://brew.sh/), python sometimes can't find the correct path to run CairoSVG.
-This will create a symbolic link to make the library accessible.
-
-```bash
-sudo mkdir -p /usr/local/lib && sudo ln -sf /opt/homebrew/lib/libcairo.2.dylib /usr/local/lib/libcairo.2.dylib
-```
-
-You can test it with this command:
-
-```python
-python3 -c "import cairocffi; import cairosvg; print('Cairo packages successfully imported!')"
-```
-
-## Missing Linux dependencies when running locally
-
-In case your Linux system is missing dependencies, look at the first lines of the provided [Dockerfile](https://github.com/zauberzeug/feldfreund/blob/main/Dockerfile) to find them.
+For more detail, enable debug-level logging on the [RoSys Logging Page](https://rosys.io/reference/rosys/analysis/#rosys.analysis.logging_page.LoggingPage) available at [/logging](http://localhost:8080/logging).
 
 ## Permission denied directly after startup
 
 If you get the `[Errno 13] Permission denied` error message right after you started `main.py`, your system is probably blocking the default port 80.
-Try setting a custom port in your `.env`-file, like this
+Set a custom port via environment variable:
+
+```bash
+PORT=8080 uv run ./main.py
+```
+
+Or add it to a `.env` file:
 
 ```
-ROBOT_ID=U4
+ROBOT_ID=my_robot
 PORT=8080
 ```

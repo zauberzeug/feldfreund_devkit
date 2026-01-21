@@ -6,6 +6,10 @@ Time-critical and safety-critical behavior runs on the microcontroller via [Liza
 
 Our agricultural weeding robot [Feldfreund](https://zauberzeug.com/feldfreund) is based on this platform and is intended to advance organic and regenerative agriculture.
 
+**This documentation is currently work in progress while we try to expand this library.**
+
+Stay tuned and please [report any issues on Github](https://github.com/zauberzeug/feldfreund_devkit/issues).
+
 ## Features
 
 - **Open Source** — modify and enhance the software to fit your specific needs.

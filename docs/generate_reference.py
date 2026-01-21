@@ -25,6 +25,8 @@ def extract_events(filepath: str) -> dict[str, str]:
 
 
 for path in sorted(Path('.').rglob('__init__.py')):
+    if any(part.startswith('.') for part in path.parts):
+        continue
     identifier = str(path.parent).replace('/', '.')
     if identifier in ['feldfreund_devkit',]:
         continue
