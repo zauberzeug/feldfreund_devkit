@@ -688,6 +688,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="StraightLineNavigation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes &amp; Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -701,39 +718,6 @@
   
     <nav class="md-nav" aria-label="WaypointNavigation">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#feldfreund_devkit.navigation.WaypointNavigation.current_segment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        current_segment
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#feldfreund_devkit.navigation.WaypointNavigation.has_waypoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        has_waypoints
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#feldfreund_devkit.navigation.WaypointNavigation.path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        path
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#feldfreund_devkit.navigation.WaypointNavigation._drive_along_segment" class="md-nav__link">
@@ -784,6 +768,17 @@
     <span class="md-ellipsis">
       
         prepare
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attributes-properties_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes &amp; Properties
       
     </span>
   </a>
@@ -893,6 +888,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="StraightLineNavigation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#attributes-properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes &amp; Properties
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -906,39 +918,6 @@
   
     <nav class="md-nav" aria-label="WaypointNavigation">
       <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#feldfreund_devkit.navigation.WaypointNavigation.current_segment" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        current_segment
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#feldfreund_devkit.navigation.WaypointNavigation.has_waypoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        has_waypoints
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#feldfreund_devkit.navigation.WaypointNavigation.path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        path
-      
-    </span>
-  </a>
-  
-</li>
         
           <li class="md-nav__item">
   <a href="#feldfreund_devkit.navigation.WaypointNavigation._drive_along_segment" class="md-nav__link">
@@ -989,6 +968,17 @@
     <span class="md-ellipsis">
       
         prepare
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#attributes-properties_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Attributes &amp; Properties
       
     </span>
   </a>
@@ -1126,7 +1116,34 @@
 
     </div>
 
-</div>
+</div><h3 id="attributes-properties">Attributes &amp; Properties<a class="headerlink" href="#attributes-properties" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>current_segment</code></td>
+<td><code>feldfreund_devkit.navigation.drive_segment.DriveSegment | None</code></td>
+<td>Returns the current segment to drive along or None if there are no waypoints left.</td>
+</tr>
+<tr>
+<td><code>has_waypoints</code></td>
+<td><code>bool</code></td>
+<td>Returns True as long as there are waypoints to drive to.</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td><code>list</code></td>
+<td>Returns the whole planned path.</td>
+</tr>
+</tbody>
+</table>
+
 
 <div class="doc doc-object doc-class">
 
@@ -1169,78 +1186,6 @@
 
 
 
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="feldfreund_devkit.navigation.WaypointNavigation.current_segment" class="doc doc-heading">
-            <span class="doc doc-object-name doc-attribute-name">current_segment</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#feldfreund_devkit.navigation.WaypointNavigation.current_segment" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="n">current_segment</span><span class="p">:</span> <span class="n">DriveSegment</span> <span class="o">|</span> <span class="kc">None</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Returns the current segment to drive along or None if there are no waypoints left.</p>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="feldfreund_devkit.navigation.WaypointNavigation.has_waypoints" class="doc doc-heading">
-            <span class="doc doc-object-name doc-attribute-name">has_waypoints</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#feldfreund_devkit.navigation.WaypointNavigation.has_waypoints" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="n">has_waypoints</span><span class="p">:</span> <span class="nb">bool</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Returns True as long as there are waypoints to drive to.</p>
-
-    </div>
-
-</div>
-
-<div class="doc doc-object doc-attribute">
-
-
-
-<h3 id="feldfreund_devkit.navigation.WaypointNavigation.path" class="doc doc-heading">
-            <span class="doc doc-object-name doc-attribute-name">path</span>
-
-
-  <span class="doc doc-labels">
-      <small class="doc doc-label doc-label-property"><code>property</code></small>
-  </span>
-
-<a href="#feldfreund_devkit.navigation.WaypointNavigation.path" class="headerlink" title="Permanent link">&para;</a></h3>
-<div class="doc-signature highlight"><pre><span></span><code><span class="n">path</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">DriveSegment</span><span class="p">]</span>
-</code></pre></div>
-
-    <div class="doc doc-contents ">
-
-        <p>Returns the whole planned path.</p>
-
-    </div>
-
-</div>
 
 
 
@@ -1374,7 +1319,34 @@
 
     </div>
 
-</div><h3 id="events">Events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h3>
+</div><h3 id="attributes-properties_1">Attributes &amp; Properties<a class="headerlink" href="#attributes-properties_1" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>current_segment</code></td>
+<td><code>feldfreund_devkit.navigation.drive_segment.DriveSegment | None</code></td>
+<td>Returns the current segment to drive along or None if there are no waypoints left.</td>
+</tr>
+<tr>
+<td><code>has_waypoints</code></td>
+<td><code>bool</code></td>
+<td>Returns True as long as there are waypoints to drive to.</td>
+</tr>
+<tr>
+<td><code>path</code></td>
+<td><code>list</code></td>
+<td>Returns the whole planned path.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="events">Events<a class="headerlink" href="#events" title="Permanent link">&para;</a></h3>
 <table>
 <thead>
 <tr>
@@ -1384,19 +1356,19 @@
 </thead>
 <tbody>
 <tr>
-<td>PATH_GENERATED</td>
+<td><code>PATH_GENERATED</code></td>
 <td>a new path has been generated(argument: <code>list[DriveSegment]</code>)</td>
 </tr>
 <tr>
-<td>SEGMENT_STARTED</td>
+<td><code>SEGMENT_STARTED</code></td>
 <td>a waypoint has been reached</td>
 </tr>
 <tr>
-<td>SEGMENT_COMPLETED</td>
+<td><code>SEGMENT_COMPLETED</code></td>
 <td>a waypoint has been reached</td>
 </tr>
 <tr>
-<td>PATH_COMPLETED</td>
+<td><code>PATH_COMPLETED</code></td>
 <td>the entire path with all its waypoints has been completed</td>
 </tr>
 </tbody>
