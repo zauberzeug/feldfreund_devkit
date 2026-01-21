@@ -2,6 +2,7 @@ site_name: Feldfreund Dev Kit Documentation
 site_url: https://docs.feldfreund.de/
 nav:
   - index.md
+  - getting_started.md
   - Tutorials:
       - tutorials/tutorials.md
       - tutorials/imu_calibration.md
