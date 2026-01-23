@@ -53,6 +53,8 @@ from .implement import Implement
 
 
 class Feldfreund(Robot):
+    """Base class representing a Feldfreund robot with all its hardware modules."""
+
     def __init__(self, config: FeldfreundConfiguration, *,
                  bms: Bms,
                  bumper: Bumper | None,
@@ -89,6 +91,8 @@ class Feldfreund(Robot):
 
 
 class FeldfreundHardware(Feldfreund, RobotHardware):
+    """Hardware implementation of a Feldfreund robot with real hardware modules."""
+
     def __init__(self, config: FeldfreundConfiguration, **kwargs) -> None:
         communication = SerialCommunication()
         robot_brain = RobotBrain(communication,
@@ -208,6 +212,8 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
 
 
 class FeldfreundSimulation(Feldfreund, RobotSimulation):
+    """Simulated Feldfreund robot for testing and development."""
+
     def __init__(self, config: FeldfreundConfiguration, *, use_acceleration: bool = False, **kwargs) -> None:
         wheels = TracksSimulation(config.wheels.width) if use_acceleration \
             else WheelsSimulation(config.wheels.width)

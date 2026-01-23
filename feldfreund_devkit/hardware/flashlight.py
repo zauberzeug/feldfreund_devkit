@@ -9,6 +9,8 @@ from .safety import SafetyMixin
 
 
 class Flashlight(rosys.hardware.Module, abc.ABC):
+    """Base class for flashlight modules with on/off and duty cycle control."""
+
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
         self._duty_cycle: float = 1.0
@@ -52,6 +54,8 @@ class Flashlight(rosys.hardware.Module, abc.ABC):
 
 
 class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin):
+    """Flashlight hardware implementation using PWM outputs."""
+
     def __init__(self, config: FlashlightConfiguration,
                  robot_brain: rosys.hardware.RobotBrain, *,
                  expander: rosys.hardware.ExpanderHardware | None) -> None:
@@ -115,6 +119,8 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
 
 
 class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin):
+    """Flashlight hardware implementation using a MOSFET switch."""
+
     UPDATE_INTERVAL = 5.0
 
     def __init__(self, config: FlashlightMosfetConfiguration,
@@ -164,4 +170,4 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, Safety
 
 
 class FlashlightSimulation(Flashlight, rosys.hardware.ModuleSimulation):
-    ...
+    """Simulated flashlight for testing."""

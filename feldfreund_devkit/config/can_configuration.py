@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True, kw_only=True)
 class CanConfiguration:
-    """Configuration for the can of the Field Friend robot.
+    """Configuration for the can of the Feldfreund robot.
 
     Defaults:
         name: 'can'

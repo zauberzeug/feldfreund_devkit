@@ -8,7 +8,7 @@ from ..config import TracksConfiguration
 
 
 class TracksHardware(Wheels, ModuleHardware):
-    """Expands the RoSys wheels hardware to control the field friend's tracked wheels with dual motors."""
+    """Expands the RoSys wheels hardware to control the Feldfreund's tracked wheels with dual motors."""
     MAX_VALID_LINEAR_VELOCITY = 3.0
     MAX_VALID_ANGULAR_VELOCITY = 3.5
     ERROR_FLAG_VERSION = 6
@@ -137,13 +137,9 @@ class TracksHardware(Wheels, ModuleHardware):
 
 
 class TracksSimulation(WheelsSimulation):
-    def __init__(self, width: float = 0.5, *, linear_acceleration: float = 2.0, linear_deceleration: float = 0.5) -> None:
-        """Simulate differential drive wheels with acceleration and deceleration handling.
+    """Simulated tracks with acceleration and deceleration handling."""
 
-        :param width: The distance between the wheels in meters.
-        :param linear_acceleration: The maximum linear acceleration rate in m/s².
-        :param linear_deceleration: The maximum linear deceleration rate in m/s².
-        """
+    def __init__(self, width: float = 0.5, *, linear_acceleration: float = 2.0, linear_deceleration: float = 0.5) -> None:
         super().__init__(width)
 
         self.linear_acceleration: float = linear_acceleration
@@ -154,12 +150,12 @@ class TracksSimulation(WheelsSimulation):
 
     @property
     def angular_acceleration(self) -> float:
-        """Calculate angular acceleration from linear acceleration using differential drive kinematics."""
+        """Calculated angular acceleration from linear acceleration using differential drive kinematics."""
         return 2 * self.linear_acceleration / self.width
 
     @property
     def angular_deceleration(self) -> float:
-        """Calculate angular deceleration from linear deceleration using differential drive kinematics."""
+        """Calculated angular deceleration from linear deceleration using differential drive kinematics."""
         return 2 * self.linear_deceleration / self.width
 
     async def drive(self, linear: float, angular: float) -> None:

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True, kw_only=True)
 class BumperConfiguration:
-    """Configuration for the bumper of the Field Friend robot.
+    """Configuration for the bumper of the Feldfreund robot.
 
     Defaults:
         name: 'bumper'
