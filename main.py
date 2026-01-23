@@ -22,22 +22,22 @@ class System(feldfreund_devkit.System):
         self.automator = Automator(self.steerer, on_interrupt=self.feldfreund.stop, notify=False)
         self.automator.default_automation = self.navigation.start
 
-        @ui.page('/')
-        def ui_content() -> None:
-            keyboard_control(self.steerer)
-            with ui.scene():
-                robot_object(self.shape, self.odometer)
-            with ui.card():
-                ui.label('hold SHIFT to steer with the keyboard arrow keys or use the automation controls')
-                with ui.row():
-                    self.navigation.settings_ui()
-                with ui.row():
-                    automation_controls(self.automator)
-
 
 def startup() -> None:
     config = config_from_id('example')
-    System(config).persistent()
+    system = System(config).persistent()
+
+    @ui.page('/')
+    def ui_content() -> None:
+        keyboard_control(system.steerer)
+        with ui.scene():
+            robot_object(system.shape, system.odometer)
+        with ui.card():
+            ui.label('hold SHIFT to steer with the keyboard arrow keys or use the automation controls')
+            with ui.row():
+                system.navigation.settings_ui()
+            with ui.row():
+                automation_controls(system.automator)
 
 
 app.on_startup(startup)
