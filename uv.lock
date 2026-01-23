@@ -640,7 +640,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "nicegui", specifier = ">=3.2.0,<4.0.0" },
     { name = "psutil" },
-    { name = "rosys", git = "https://github.com/zauberzeug/rosys.git?rev=7f3954faeef1b3152096f32ff07e97f5c50c379c" },
+    { name = "rosys", git = "https://github.com/zauberzeug/rosys.git?rev=bf941eb56ba2cc3254fa3b5c6c35cd54f173277a" },
 ]
 
 [package.metadata.requires-dev]
@@ -1645,7 +1645,7 @@ wheels = [
 
 [[package]]
 name = "nicegui"
-version = "3.5.0"
+version = "3.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1670,9 +1670,9 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/09/ace5c379c1bcd4e454fe01e32f14e4649456b5f60efb5f73c5737e8cd208/nicegui-3.5.0.tar.gz", hash = "sha256:de802505d76ac3235088b19a32dba0f15cf51caf0d5b0fa6e196bfa0bc247af6", size = 21177233, upload-time = "2026-01-08T09:18:26.646Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/de/82d966c6c84fc95847ceb9eb439eaf7087eb07bdc30c19903d6390de0901/nicegui-3.6.1.tar.gz", hash = "sha256:40f56f18f23023d03a15c217d62c0bf801e0c874745c7b5995c890ef01af3dfb", size = 21202754, upload-time = "2026-01-21T16:41:06.202Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e6/24/ff7ebfc2da4336687ba86813f96791dbd42e6d23a15301105d8353cc4652/nicegui-3.5.0-py3-none-any.whl", hash = "sha256:27d1659bbeeb543c96a9dad0c4da586896becbfec117bf8ed122a6e5b696340c", size = 21839035, upload-time = "2026-01-08T09:18:23.953Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/18/19539da813ab65c9d9fa08236fa891cddb5dfc55031fefaf475f50cd0aa6/nicegui-3.6.1-py3-none-any.whl", hash = "sha256:41c9ae11422ed3ac76f3d054dac600449e437a230c2a692d62cde847337f1548", size = 21865440, upload-time = "2026-01-21T16:41:02.926Z" },
 ]
 
 [[package]]
@@ -2431,8 +2431,8 @@ wheels = [
 
 [[package]]
 name = "rosys"
-version = "0.32.0.post4.dev0+7f3954fa"
-source = { git = "https://github.com/zauberzeug/rosys.git?rev=7f3954faeef1b3152096f32ff07e97f5c50c379c#7f3954faeef1b3152096f32ff07e97f5c50c379c" }
+version = "0.32.0.post5.dev0+bf941eb5"
+source = { git = "https://github.com/zauberzeug/rosys.git?rev=bf941eb56ba2cc3254fa3b5c6c35cd54f173277a#bf941eb56ba2cc3254fa3b5c6c35cd54f173277a" }
 dependencies = [
     { name = "aiohttp" },
     { name = "cairosvg" },
