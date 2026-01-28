@@ -18,6 +18,8 @@ class Implement(rosys.persistence.Persistable):
         super().__init__()
         self._config = config
         self._frame = self._config.offset.as_frame('implement')
+        # NOTE: default behaviour is non-continuous work; subclasses can override
+        self._supports_continuous_work: bool = False
 
     @property
     def name(self) -> str:
@@ -32,6 +34,12 @@ class Implement(rosys.persistence.Persistable):
         return self._config.offset
 
     @property
+    def supports_continuous_work(self) -> bool:
+        """Whether this implement can work while the robot is moving continuously.
+        """
+        return self._supports_continuous_work
+
+    @property
     @abstractmethod
     def modules(self) -> list[rosys.hardware.Module]:
         ...
@@ -39,6 +47,15 @@ class Implement(rosys.persistence.Persistable):
     @abstractmethod
     async def stop(self) -> None:
         ...
+
+    @track
+    async def get_speed_hint(self) -> float | None:
+        """Optional speed hint for continuous operation in m/s.
+
+        If provided, waypoint navigation may use this as the linear speed
+        limit while the implement works continuously along a path.
+        """
+        return None
 
     @track
     async def activate(self) -> bool:
