@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True, kw_only=True)
 class EstopConfiguration:
-    """Configuration for the estop of the Field Friend robot.
+    """Configuration for the estop of the Feldfreund robot.
 
     Defaults:
         name: 'estop'

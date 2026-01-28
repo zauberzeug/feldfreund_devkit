@@ -2,6 +2,8 @@ from nicegui.elements.mixins.value_element import ValueElement
 
 
 class StatusBulb(ValueElement):
+    """A circular LED-style indicator that changes color based on value."""
+
     def __init__(self, value: bool = False) -> None:
         super().__init__(value=value, on_value_change=self.on_change, tag='span')
         self.style('height: 15px; width: 15px; margin: auto; border-radius: 50%')

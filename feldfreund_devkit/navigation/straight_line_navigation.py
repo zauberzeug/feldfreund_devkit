@@ -7,6 +7,7 @@ from .waypoint_navigation import DriveSegment, WaypointNavigation
 
 
 class StraightLineNavigation(WaypointNavigation):
+    """Navigation that drives a straight line for a given length."""
     LENGTH: float = 2.0
 
     def __init__(self, **kwargs) -> None:

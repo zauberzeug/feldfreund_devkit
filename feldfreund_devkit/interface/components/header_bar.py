@@ -5,6 +5,8 @@ from ...hardware import TeltonikaRouter
 
 
 class HeaderBar:
+    """Navigation header with logo, page links, and status indicators."""
+
     def __init__(self, pages: dict[str, str] | None = None, *,
                  estop: EStop | None = None,
                  bms: Bms | None = None,
