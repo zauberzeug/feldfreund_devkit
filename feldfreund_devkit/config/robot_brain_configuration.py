@@ -5,6 +5,9 @@ from dataclasses import dataclass
 class RobotBrainConfiguration:
     """Configuration for the robot brain of the Feldfreund robot.
 
+    There are different versions of the Robot Brain's electronics.
+    Make sure to configure the correct parameters for your Robot Brain.
+
     Defaults:
         enable_esp_on_startup: False
         nand: False
