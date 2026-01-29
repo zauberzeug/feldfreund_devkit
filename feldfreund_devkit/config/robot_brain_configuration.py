@@ -22,5 +22,5 @@ class RobotBrainConfiguration:
         if self.nand:
             params.append('--nand')
         if self.swap_pins:
-            params.append('--swap_pins')
+            params.append('--swap')
         return params
