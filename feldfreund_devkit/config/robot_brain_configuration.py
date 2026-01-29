@@ -8,6 +8,9 @@ class RobotBrainConfiguration:
     There are different versions of the Robot Brain's electronics.
     Make sure to configure the correct parameters for your Robot Brain.
 
+    Also have a look the documentation of the espresso.py script.
+    https://github.com/zauberzeug/lizard/blob/main/espresso.py
+
     Defaults:
         enable_esp_on_startup: False
         nand: False
@@ -15,7 +18,6 @@ class RobotBrainConfiguration:
     """
     name: str
     enable_esp_on_startup: bool = False
-    # https://github.com/zauberzeug/lizard/blob/main/espresso.py
     nand: bool = False
     swap_pins: bool = False
 
