@@ -24,6 +24,7 @@ dev = [
     "autopep8 (>=2.3.2, <3.0.0)",
     "poetry-dynamic-versioning (>=1.8.0, <2.0.0)",
     "livesync (>=0.3.4, <1.0.0)",
+    "odrive (==0.6.9.post0)",
 ]
 test = [
     "pytest (>=8.3.4, <9.0.0)",
