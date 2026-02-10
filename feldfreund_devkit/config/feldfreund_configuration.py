@@ -18,6 +18,7 @@ from .tracks_configuration import TracksConfiguration, create_drive_parameters
 
 @dataclass(kw_only=True)
 class FeldfreundConfiguration:
+    """Main configuration for a Feldfreund robot combining all module configurations."""
     robot_id: str
     battery_control: BatteryControlConfiguration = field(default_factory=BatteryControlConfiguration)
     bluetooth: BluetoothConfiguration = field(default_factory=BluetoothConfiguration)

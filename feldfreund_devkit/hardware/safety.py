@@ -6,6 +6,11 @@ from feldfreund_devkit.hardware.tracks import TracksHardware
 
 
 class SafetyMixin(ABC):
+    """Mixin for modules that integrate with the safety system.
+
+    Implement `enable_code` and `disable_code` to return Lizard code snippets
+    that get injected into the safety module's `enable()` and `disable()` functions.
+    """
 
     @property
     @abstractmethod
@@ -19,7 +24,11 @@ class SafetyMixin(ABC):
 
 
 class Safety(ABC):
-    """The safety module is a simple example for a representation of real or simulated robot hardware."""
+    """Coordinates safety behavior across wheels, estop, bumper, and registered modules.
+
+    Modules implementing `SafetyMixin` can be registered via `add_module()` to have their
+    enable/disable code automatically called when the safety state changes.
+    """
 
     def __init__(self, *,
                  wheels: rosys.hardware.Wheels,
@@ -32,11 +41,21 @@ class Safety(ABC):
         self.modules = modules or []
 
     def add_module(self, module: SafetyMixin) -> None:
+        """Register a module to be enabled/disabled with the safety system."""
         self.modules.append(module)
 
 
 class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
-    """This module implements safety hardware."""
+    """Generates Lizard code for hardware safety with automatic enable/disable behavior.
+
+    The generated code creates `enable()` and `disable()` functions that control
+    wheels and all registered `SafetyMixin` modules. State transitions:
+
+    - E-stop or bumper triggered → `disable()` called
+    - E-stop and bumper released while disabled → `enable()` called
+    - No messages for 1s → wheels stop
+    - No messages for 20s → full disable (watchdog)
+    """
 
     def __init__(self, robot_brain: rosys.hardware.RobotBrain, **kwargs) -> None:
         Safety.__init__(self, **kwargs)
@@ -109,4 +128,4 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
 
 
 class SafetySimulation(Safety, rosys.hardware.ModuleSimulation):
-    ...
+    """Simulated safety module for testing."""

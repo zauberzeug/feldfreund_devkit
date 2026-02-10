@@ -1,0 +1,59 @@
+site_name: Feldfreund Dev Kit Documentation
+site_url: https://docs.feldfreund.de/
+nav:
+  - index.md
+  - getting_started.md
+  - Tutorials:
+      - tutorials/tutorials.md
+      - tutorials/imu_calibration.md
+      - tutorials/odrive_calibration.md
+  - Module Reference: reference/
+  - troubleshooting.md
+repo_url: https://github.com/zauberzeug/feldfreund_devkit
+edit_uri: edit/main/docs/
+theme:
+  name: material
+  font:
+    text: Source Sans Pro
+  features:
+    - content.code.annotate
+extra_css:
+  - stylesheets/extra.css
+markdown_extensions:
+  - toc:
+      permalink: True
+  - admonition
+  - def_list
+  - mdx_include:
+      base_path: docs
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - attr_list
+  - footnotes
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - docs/generate_reference.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - section-index
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_root_heading: true
+            show_root_full_path: false
+            show_source: false
+            show_signature_annotations: true
+            merge_init_into_class: true
+            separate_signature: true
+            docstring_section_style: table
+            filters:
+              - "!^_[^_]"
+watch:
+  - feldfreund_devkit
+  - docs

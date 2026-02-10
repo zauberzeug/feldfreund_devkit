@@ -7,6 +7,8 @@ from nicegui import Event, ui
 
 
 class LogMonitor(rosys.persistence.Persistable):
+    """Persisted log display for notifications with timestamps."""
+
     MAX_LINES = 100
 
     def __init__(self, *, max_lines: int = MAX_LINES) -> None:

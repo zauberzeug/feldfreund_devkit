@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass(slots=True, kw_only=True)
 class BatteryControlConfiguration:
-    """Configuration for the battery control of the Field Friend robot.
+    """Configuration for the battery control of the Feldfreund robot.
 
     Defaults:
         name: 'battery_control'
@@ -19,7 +19,7 @@ class BatteryControlConfiguration:
 
 @dataclass(slots=True, kw_only=True)
 class BmsConfiguration:
-    """Configuration for the bms of the Field Friend robot.
+    """Configuration for the bms of the Feldfreund robot.
 
     Defaults:
         name: 'bms'

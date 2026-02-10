@@ -1,0 +1,40 @@
+name: Publish release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - v**
+
+jobs:
+  docs:
+    name: Build and publish docs
+    runs-on: ubuntu-latest
+    needs: pypi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Install dependencies
+        run: uv sync --group docs
+      - name: Build docs
+        run: mkdocs build -v
+      - name: Deploy gh-pages
+        uses: JamesIves/github-pages-deploy-action@v4.7.3
+        with:
+          folder: site
+      # TODO: restructure in another PR
+      # - name: set version
+      #   run: |
+      #     VERSION=${{ env.VERSION }}
+      # - name: Create GitHub release entry
+      #   uses: softprops/action-gh-release@v2
+      #   id: create_release
+      #   with:
+      #     draft: false
+      #     prerelease: false
+      #     name: ${{ env.VERSION }}
+      #     tag_name: ${{ env.VERSION }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ github.token }}

@@ -20,7 +20,7 @@ config = FeldfreundConfiguration(
     gnss=GnssConfiguration(),
     implement=None,
     imu=None,
-    robot_brain=RobotBrainConfiguration(name='rbexample', flash_params=['orin', 'v05', 'nand']),
+    robot_brain=RobotBrainConfiguration(name='rbexample', nand=True),
     wheels=TracksConfiguration(is_left_reversed=True,
                                is_right_reversed=False,
                                left_back_can_address=0x000,
