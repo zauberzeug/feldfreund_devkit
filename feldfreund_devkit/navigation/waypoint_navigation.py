@@ -21,10 +21,10 @@ class WaypointNavigation(rosys.persistence.Persistable):
     LINEAR_SPEED_LIMIT: float = 0.13
 
     def __init__(
-        self, *, implement: Implement, driver: Driver, pose_provider: PoseProvider, name: str = "Waypoint Navigation"
+        self, *, implement: Implement, driver: Driver, pose_provider: PoseProvider, name: str = 'Waypoint Navigation'
     ) -> None:
         super().__init__()
-        self.log = logging.getLogger("feldfreund.navigation")
+        self.log = logging.getLogger('feldfreund.navigation')
         self.implement = implement
         self.driver = driver
         self.pose_provider = pose_provider
@@ -68,14 +68,14 @@ class WaypointNavigation(rosys.persistence.Persistable):
         Returns true if all preparations were successful, otherwise false."""
         self._upcoming_path = self.generate_path()
         if not self._upcoming_path:
-            self.log.error("Path generation failed")
+            self.log.error('Path generation failed')
             return False
         self.PATH_GENERATED.emit(self._upcoming_path)
         return True
 
     @abstractmethod
     def generate_path(self) -> list[DriveSegment]:
-        raise NotImplementedError("Subclasses must implement this method")
+        raise NotImplementedError('Subclasses must implement this method')
 
     @track
     async def start(self) -> None:
@@ -85,13 +85,13 @@ class WaypointNavigation(rosys.persistence.Persistable):
             #     rosys.notify('GNSS not available or reference too far away', 'warning')
             #     await rosys.sleep(3)
             if not await self.prepare():
-                self.log.error("Preparation failed")
+                self.log.error('Preparation failed')
                 return
             if not await self.implement.activate():
-                self.log.error("Implement activation failed")
+                self.log.error('Implement activation failed')
                 return
-            rosys.notify("Automation started")
-            self.log.debug("Navigation started")
+            rosys.notify('Automation started')
+            self.log.debug('Navigation started')
 
             assert self.current_segment is not None
             self.SEGMENT_STARTED.emit(self.current_segment)
@@ -99,28 +99,28 @@ class WaypointNavigation(rosys.persistence.Persistable):
                 await self._run()
                 await rosys.sleep(0.1)
             await self._run()
-            rosys.notify("Automation finished", "positive")
+            rosys.notify('Automation finished', 'positive')
             self.PATH_COMPLETED.emit()
         except Exception as e:  # pylint: disable=broad-exception-caught
-            rosys.notify("Automation failed", "negative")
-            self.log.exception("Navigation failed: %s", e)
+            rosys.notify('Automation failed', 'negative')
+            self.log.exception('Navigation failed: %s', e)
         finally:
             await self.implement.deactivate()
             await self.finish()
             await self.driver.wheels.stop()
 
     async def _run(self) -> None:
-        continuous = getattr(self.implement, "supports_continuous_work", False)
+        continuous = getattr(self.implement, 'supports_continuous_work', False)
         if continuous:
-            self.log.info("Using continuous mode")
+            self.log.info('Using continuous mode')
             # implement should run in continuous mode
             await self._run_continuous()
             return
 
-        self.log.info("Using non-continuous mode")
+        self.log.info('Using non-continuous mode')
         if not await self._get_valid_implement_target():
             # no weed is detected
-            self.log.debug("No move target found, continuing...")
+            self.log.debug('No move target found, continuing...')
             await rosys.automation.parallelize(
                 self._drive_along_segment(linear_speed_limit=self.linear_speed_limit),
                 self._block_until_implement_has_target(),
@@ -134,7 +134,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
             # robot is in working area
             implement_target = await self._get_valid_implement_target()
             if not implement_target:
-                self.log.debug("Implement has no target anymore. Possibly overshot, continuing...")
+                self.log.debug('Implement has no target anymore. Possibly overshot, continuing...')
                 return
             if not await self._follow_segment_until(implement_target):
                 return
@@ -143,6 +143,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
             await self.implement.start_workflow()
             await self.implement.stop_workflow()
 
+    @track
     async def _run_continuous(self) -> None:
         if not self.has_waypoints:
             # nothing to drive to
@@ -166,14 +167,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
             return
 
         # Implement has a target: get speed hint and follow segment until implement reached target
-
-        # get speed_hint from implement
-        target_speed = await self.implement.get_speed_hint() or self.linear_speed_limit
-        self.log.info("Apporaching using target speed: %s", target_speed)
-
-        reached = await self._follow_segment_continuous(implement_target, adjusted_linear_speed_limit=target_speed)
-        if not reached:
-            return
+        await rosys.automation.parallelize( self._follow_segment_continuous(implement_target), self._monitor_speed(), return_when_first_completed=True)
 
         # let implement work on target, but don't stop.
         await self.implement.start_workflow()
@@ -182,9 +176,16 @@ class WaypointNavigation(rosys.persistence.Persistable):
         return
 
     @track
+    async def _monitor_speed(self) -> None:
+        while True:
+            target_speed = await self.implement.get_speed_hint() or self.linear_speed_limit
+            self.driver.parameters.linear_speed_limit = target_speed
+            await rosys.sleep(0.1)
+
+    @track
     async def finish(self) -> None:
         """Executed after the navigation is done"""
-        self.log.debug("Navigation finished")
+        self.log.debug('Navigation finished')
         gc.collect()  # NOTE: auto garbage collection is deactivated to avoid hiccups from Global Interpreter Lock (GIL) so we collect here to reduce memory pressure
 
     @track
@@ -198,6 +199,23 @@ class WaypointNavigation(rosys.persistence.Persistable):
             await self.driver.drive_spline(
                 segment.spline, flip_hook=segment.backward, throttle_at_end=stop_at_end, stop_at_end=stop_at_end
             )
+        self._upcoming_path.pop(0)
+        self.SEGMENT_COMPLETED.emit(segment)
+        if self.has_waypoints:
+            assert self.current_segment is not None
+            self.SEGMENT_STARTED.emit(self.current_segment)#
+
+    @track
+    async def _drive_along_segment_speed_variable(self, *, linear_speed_limit: float = 0.3) -> None:
+        """Drive the robot to the next waypoint of the navigation"""
+        segment = self.current_segment
+        if segment is None:
+            return
+        stop_at_end = segment.stop_at_end or len(self._upcoming_path) == 1
+        self.driver.parameters.linear_speed_limit = linear_speed_limit
+        await self.driver.drive_spline(
+            segment.spline, flip_hook=segment.backward, throttle_at_end=stop_at_end, stop_at_end=stop_at_end
+        )
         self._upcoming_path.pop(0)
         self.SEGMENT_COMPLETED.emit(segment)
         if self.has_waypoints:
@@ -236,8 +254,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         work_x_corrected_pose = self._target_pose_on_current_segment(target)
         target_t = spline.closest_point(work_x_corrected_pose.x, work_x_corrected_pose.y, t_min=-0.2, t_max=1.2)
         target_spline = sub_spline(spline, current_t, target_t)
-        with self.driver.parameters.set(linear_speed_limit=adjusted_linear_speed_limit, throttle_at_end_distance=0.2):
-            await self.driver.drive_spline(target_spline, throttle_at_end=True, stop_at_end=False)
+        await self.driver.drive_spline(target_spline, throttle_at_end=False, stop_at_end=False)
         return True
 
     @track
@@ -259,7 +276,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         linear_speed_limit = adjusted_linear_speed_limit or self.linear_speed_limit
         if abs(distance_to_target) < self.driver.parameters.minimum_drive_distance:
             # TODO: quickfix for weeds behind the robot
-            self.log.debug("Target close, working with out advancing... (%.6f m)", distance_to_target)
+            self.log.debug('Target close, working with out advancing... (%.6f m)', distance_to_target)
             return True
         if target_t < current_t or target_t > 1.0:
             # TODO: we need a sturdy function to advance a certain distance on a spline, because this method is off by a tiny amount. That's why +0.00003
@@ -272,11 +289,11 @@ class WaypointNavigation(rosys.persistence.Persistable):
                 if advance_spline.estimated_length() > self.driver.parameters.minimum_drive_distance:
                     break
                 advance_distance += 0.00001
-            self.log.debug("Target behind robot, continue for %.6f meters", advance_distance)
+            self.log.debug('Target behind robot, continue for %.6f meters', advance_distance)
             with self.driver.parameters.set(linear_speed_limit=linear_speed_limit):
                 await self.driver.drive_spline(advance_spline, throttle_at_end=False, stop_at_end=False)
             return False
-        self.log.debug("Driving to %s from target %s", work_x_corrected_pose, target)
+        self.log.debug('Driving to %s from target %s', work_x_corrected_pose, target)
         target_spline = sub_spline(spline, current_t, target_t)
         with self.driver.parameters.set(linear_speed_limit=linear_speed_limit):
             await self.driver.drive_spline(target_spline)
@@ -297,35 +314,35 @@ class WaypointNavigation(rosys.persistence.Persistable):
             return None
         t = self.current_segment.spline.closest_point(implement_target.x, implement_target.y)
         if t in (0.0, 1.0):
-            self.log.debug("Target is on segment end, continuing...")
+            self.log.debug('Target is on segment end, continuing...')
             return None
         work_x_corrected_pose = self._target_pose_on_current_segment(implement_target)
         distance_to_target = self.pose_provider.pose.distance(work_x_corrected_pose)
         t = self.current_segment.spline.closest_point(work_x_corrected_pose.x, work_x_corrected_pose.y)
         if t in (0.0, 1.0) and abs(distance_to_target) > self.driver.parameters.minimum_drive_distance:
             # TODO: quickfix for weeds behind the robot
-            self.log.debug("WorkX corrected target is on segment end, continuing...")
+            self.log.debug('WorkX corrected target is on segment end, continuing...')
             return None
         return implement_target
 
     def backup_to_dict(self) -> dict[str, Any]:
         return {
-            "linear_speed_limit": self.linear_speed_limit,
+            'linear_speed_limit': self.linear_speed_limit,
         }
 
     def restore_from_dict(self, data: dict[str, Any]) -> None:
-        self.linear_speed_limit = data.get("linear_speed_limit", self.linear_speed_limit)
+        self.linear_speed_limit = data.get('linear_speed_limit', self.linear_speed_limit)
 
     def settings_ui(self) -> None:
         ui.number(
-            "Linear Speed",
+            'Linear Speed',
             step=0.01,
             min=self.driver.parameters.throttle_at_end_min_speed,
             max=self.driver.parameters.linear_speed_limit,
-            format="%.2f",
-            suffix="m/s",
+            format='%.2f',
+            suffix='m/s',
             on_change=self.request_backup,
-        ).props("dense outlined").classes("w-24").bind_value(self, "linear_speed_limit").tooltip(
+        ).props('dense outlined').classes('w-24').bind_value(self, 'linear_speed_limit').tooltip(
             f"Forward speed limit between {self.driver.parameters.throttle_at_end_min_speed} and {self.driver.parameters.linear_speed_limit} m/s (default: {self.LINEAR_SPEED_LIMIT:.2f})"
         )
 
