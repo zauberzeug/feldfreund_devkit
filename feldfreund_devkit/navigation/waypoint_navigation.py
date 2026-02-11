@@ -112,12 +112,12 @@ class WaypointNavigation(rosys.persistence.Persistable):
     async def _run(self) -> None:
         continuous = getattr(self.implement, 'supports_continuous_work', False)
         if continuous:
-            self.log.info('Using continuous mode')
+            self.log.debug('Using continuous mode in navigation')
             # implement should run in continuous mode
             await self._run_continuous()
             return
 
-        self.log.info('Using non-continuous mode')
+        self.log.info('Using NON-continuous mode in navigation')
         if not await self._get_valid_implement_target():
             # no weed is detected
             self.log.debug('No move target found, continuing...')
@@ -156,7 +156,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
 
         # get next target from implement
         implement_target = await self._get_valid_implement_target()
-        self.log.debug("Implement target: %s", implement_target)
+        self.log.debug('Implement target: %s', implement_target)
         # nothing detected: drive along segment until implement has a target
         if implement_target is None:
             await rosys.automation.parallelize(
@@ -203,7 +203,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         self.SEGMENT_COMPLETED.emit(segment)
         if self.has_waypoints:
             assert self.current_segment is not None
-            self.SEGMENT_STARTED.emit(self.current_segment)#
+            self.SEGMENT_STARTED.emit(self.current_segment)
 
     @track
     async def _drive_along_segment_speed_variable(self, *, linear_speed_limit: float = 0.3) -> None:
@@ -243,7 +243,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
             break
         return path_segments[start_index:]
 
-    async def _follow_segment_continuous(self, target: Point, adjusted_linear_speed_limit: float | None = None) -> bool:
+    async def _follow_segment_continuous(self, target: Point) -> bool:
         current_segment = self.current_segment
         if current_segment is None:
             return False
@@ -258,7 +258,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         return True
 
     @track
-    async def _follow_segment_until(self, target: Point, adjusted_linear_speed_limit: float | None = None) -> bool:
+    async def _follow_segment_until(self, target: Point) -> bool:
         """Drives to a target point along the current spline.
 
         :param target: The target point to drive to
@@ -273,7 +273,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         work_x_corrected_pose = self._target_pose_on_current_segment(target)
         distance_to_target = current_pose.distance(work_x_corrected_pose)
         target_t = spline.closest_point(work_x_corrected_pose.x, work_x_corrected_pose.y, t_min=-0.2, t_max=1.2)
-        linear_speed_limit = adjusted_linear_speed_limit or self.linear_speed_limit
+        linear_speed_limit = self.linear_speed_limit
         if abs(distance_to_target) < self.driver.parameters.minimum_drive_distance:
             # TODO: quickfix for weeds behind the robot
             self.log.debug('Target close, working with out advancing... (%.6f m)', distance_to_target)
