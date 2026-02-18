@@ -67,6 +67,9 @@ style = "pep440"
 [tool.uv]
 default-groups = ["dev", "test"]
 
+[tool.uv.sources]
+rosys = { path = "../rosys", editable = true }
+
 [tool.mypy]
 python_version = "3.12"
 install_types = false

@@ -17,7 +17,7 @@ sync:
 
 ## install-ci	Install all dependencies for CI testing.
 install-ci:
-	uv sync
+	uv sync --no-sources
 
 ## mypy		Run mypy type checks.
 mypy:
