@@ -677,7 +677,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "nicegui", specifier = ">=3.2.0,<4.0.0" },
     { name = "psutil" },
-    { name = "rosys", git = "https://github.com/zauberzeug/rosys.git?rev=233011a5b88bb91d976e5d167c11a868379c0558" },
+    { name = "rosys", editable = "../rosys" },
 ]
 
 [package.metadata.requires-dev]
@@ -1741,7 +1741,7 @@ wheels = [
 
 [[package]]
 name = "nicegui"
-version = "3.6.1"
+version = "3.7.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -1766,9 +1766,9 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/59/de/82d966c6c84fc95847ceb9eb439eaf7087eb07bdc30c19903d6390de0901/nicegui-3.6.1.tar.gz", hash = "sha256:40f56f18f23023d03a15c217d62c0bf801e0c874745c7b5995c890ef01af3dfb", size = 21202754, upload-time = "2026-01-21T16:41:06.202Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f7/76/0fe2a54f0ba6141747fc1413ffd1657dd809bf5c8105f6832628d9b5f86e/nicegui-3.7.1.tar.gz", hash = "sha256:dc6ef68083ce15d92848e91908eb5313962dc0cd8a3350536b18c425ad5d5ca5", size = 21343701, upload-time = "2026-02-05T14:39:21.818Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1c/18/19539da813ab65c9d9fa08236fa891cddb5dfc55031fefaf475f50cd0aa6/nicegui-3.6.1-py3-none-any.whl", hash = "sha256:41c9ae11422ed3ac76f3d054dac600449e437a230c2a692d62cde847337f1548", size = 21865440, upload-time = "2026-01-21T16:41:02.926Z" },
+    { url = "https://files.pythonhosted.org/packages/13/a8/91f47b20368bdfb4c818416df0d5cbd867a07364d05cff56d095d248b81e/nicegui-3.7.1-py3-none-any.whl", hash = "sha256:202c39b415eb6aa08cc74b29cadc8b9357c5ba1bf67840c989437caf111c54b4", size = 22008333, upload-time = "2026-02-05T14:39:17.209Z" },
 ]
 
 [[package]]
@@ -2634,8 +2634,8 @@ wheels = [
 
 [[package]]
 name = "rosys"
-version = "0.32.0.post6.dev0+233011a5"
-source = { git = "https://github.com/zauberzeug/rosys.git?rev=233011a5b88bb91d976e5d167c11a868379c0558#233011a5b88bb91d976e5d167c11a868379c0558" }
+version = "0.32.0.post8.dev0+4935c2e3"
+source = { editable = "../rosys" }
 dependencies = [
     { name = "aiohttp" },
     { name = "cairosvg" },
@@ -2671,6 +2671,44 @@ dependencies = [
     { name = "uvicorn" },
     { name = "uvloop" },
     { name = "yappi" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiohttp", specifier = ">=3.13.3" },
+    { name = "cairosvg", specifier = ">=2.7.0,<3.0.0" },
+    { name = "coloredlogs", specifier = ">=15.0.1,<16.0.0" },
+    { name = "dataclasses-json", specifier = ">=0.5.7,<0.6.0" },
+    { name = "fonttools", specifier = ">=4.60.2,<5.0.0" },
+    { name = "httpx", specifier = ">=0.25.0" },
+    { name = "humanize", specifier = ">=4.0.0,<5.0.0" },
+    { name = "idna", specifier = ">=3.7" },
+    { name = "ifaddr", specifier = ">=0.2.0,<0.3.0" },
+    { name = "imgsize", specifier = ">=2.1,<3.0" },
+    { name = "line-profiler", specifier = ">=4.1.3,<5.0.0" },
+    { name = "marshmallow", specifier = ">=3.26.2,<4.0.0" },
+    { name = "matplotlib", specifier = ">=3.7.2,<4.0.0" },
+    { name = "networkx", specifier = ">=2.6.2,<3.0.0" },
+    { name = "nicegui", specifier = ">=3.7.1,<4.0.0" },
+    { name = "numpy", specifier = "<3.0.0" },
+    { name = "objgraph", specifier = ">=3.6.1,<4.0.0" },
+    { name = "opencv-contrib-python", specifier = ">=4.12.0.88,<4.13.0.0" },
+    { name = "pillow", specifier = ">=11.3.0" },
+    { name = "psutil", specifier = ">=5.9.0,<6.0.0" },
+    { name = "pyloot", specifier = ">=0.1.0,<0.2.0" },
+    { name = "pyquaternion", specifier = ">=0.9.9,<0.10.0" },
+    { name = "pyserial", specifier = ">=3.5,<4.0" },
+    { name = "pyturbojpeg", specifier = ">=1.8.2,<2.0.0" },
+    { name = "pyudev", specifier = ">=0.21.0" },
+    { name = "requests", specifier = ">=2.32.4" },
+    { name = "scipy", specifier = ">=1.7.2,<2.0.0" },
+    { name = "starlette", specifier = ">=0.49.1" },
+    { name = "suntime", specifier = ">=1.2.5,<2.0.0" },
+    { name = "tabulate", specifier = ">=0.8.9,<0.9.0" },
+    { name = "urllib3", specifier = ">=2.6.3" },
+    { name = "uvicorn", specifier = "!=0.29.0" },
+    { name = "uvloop", specifier = ">=0.17.0" },
+    { name = "yappi", specifier = ">=1.6.0,<2.0.0" },
 ]
 
 [[package]]
