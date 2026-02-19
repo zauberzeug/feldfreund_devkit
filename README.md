@@ -23,8 +23,9 @@ source .venv/bin/activate # to activate your virtual environment
 2. install dependencies:
 
 ```bash
-make sync # or directly:
 uv sync
+# or this if you don't want to install RoSys as an editable dependency from ../rosys
+uv sync --no-sources
 ```
 
 3. start your project:

@@ -6,6 +6,9 @@ on:
     tags:
       - v**
 
+env:
+  UV_NO_SOURCES: true
+
 jobs:
   docs:
     name: Build and publish docs

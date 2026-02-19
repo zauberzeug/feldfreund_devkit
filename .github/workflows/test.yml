@@ -2,6 +2,9 @@ name: Run Tests
 
 on: [push]
 
+env:
+  UV_NO_SOURCES: true
+
 jobs:
   code-checks:
     strategy:
