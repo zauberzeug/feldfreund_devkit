@@ -47,7 +47,7 @@ async def test_straight_line_backward(devkit_system):
     assert devkit_system.current_navigation.current_segment.backward is True
     assert devkit_system.current_navigation.current_segment.use_implement is False
     await forward(until=lambda: devkit_system.automator.is_stopped)
-    assert devkit_system.robot_locator.pose.point.x == pytest.approx(-1.0, abs=0.005)
+    assert devkit_system.robot_locator.pose.point.x == pytest.approx(-1.0, abs=0.0015)
 
 
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
