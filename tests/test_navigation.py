@@ -36,6 +36,20 @@ async def test_straight_line_different_headings(devkit_system, heading_degrees: 
     assert angle(direction, heading) == pytest.approx(0, abs=0.1)
 
 
+async def test_straight_line_backward(devkit_system):
+    assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
+    devkit_system.current_navigation.length = 1.0
+    devkit_system.current_navigation.linear_speed_limit = 0.13
+    devkit_system.current_navigation.backward = True
+    devkit_system.automator.start()
+    await forward(until=lambda: devkit_system.automator.is_running)
+    assert devkit_system.current_navigation.current_segment is not None
+    assert devkit_system.current_navigation.current_segment.backward is True
+    assert devkit_system.current_navigation.current_segment.use_implement is False
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+    assert devkit_system.robot_locator.pose.point.x == pytest.approx(-1.0, abs=0.005)
+
+
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
 async def test_deceleration_different_distances(devkit_system_with_acceleration, distance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
