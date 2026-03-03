@@ -13,11 +13,16 @@ class StraightLineNavigation(WaypointNavigation):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs, name='Straight Line')
         self.length = self.LENGTH
+        self.backward = False
 
     def generate_path(self) -> list[DriveSegment]:
         last_pose = self.pose_provider.pose
-        target_pose = last_pose.transform_pose(Pose(x=self.length))
-        segment = DriveSegment.from_poses(last_pose, target_pose, use_implement=True)
+        x = -self.length if self.backward else self.length
+        target_pose = last_pose.transform_pose(Pose(x=x))
+        segment = DriveSegment.from_poses(last_pose,
+                                          target_pose,
+                                          use_implement=not self.backward,
+                                          backward=self.backward)
         return [segment]
 
     def settings_ui(self) -> None:
@@ -27,6 +32,9 @@ class StraightLineNavigation(WaypointNavigation):
             .classes('w-24') \
             .bind_value(self, 'length') \
             .tooltip('Length to drive in meters')
+        ui.checkbox('Backward') \
+            .bind_value(self, 'backward') \
+            .tooltip('The robot will drive backwards if enabled')
 
     def backup_to_dict(self) -> dict[str, Any]:
         return super().backup_to_dict() | {
