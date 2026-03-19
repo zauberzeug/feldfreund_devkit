@@ -20,28 +20,22 @@ class CameraProvider:
 
     def __init__(self, config: CameraConfiguration | None, *, robot_locator: RobotLocator) -> None:
         self.log = logging.getLogger('feldfreund.camera_provider')
-        self.main: rosys.vision.CalibratableCamera | None = None
-        self.front: rosys.vision.CalibratableCamera | None = None
-        self.back: rosys.vision.CalibratableCamera | None = None
-        self.left: rosys.vision.CalibratableCamera | None = None
-        self.right: rosys.vision.CalibratableCamera | None = None
+        self.main = self._setup(config.main, robot_locator) if config and config.main else None
+        self.front = self._setup(config.front, robot_locator) if config and config.front else None
+        self.back = self._setup(config.back, robot_locator) if config and config.back else None
+        self.left = self._setup(config.left, robot_locator) if config and config.left else None
+        self.right = self._setup(config.right, robot_locator) if config and config.right else None
 
-        if config is None:
-            return
+        if config is not None:
+            rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
+            rosys.on_shutdown(self.shutdown)
 
-        for role in ('main', 'front', 'back', 'left', 'right'):
-            slot: CameraSlotConfig | None = getattr(config, role, None)
-            if slot is None:
-                continue
-            camera = self._create_camera(slot)
-            setattr(self, role, camera)
-
-            if slot.calibration is not None:
-                camera.calibration = slot.calibration
-                camera.calibration.extrinsics.in_frame(robot_locator.pose_frame)
-
-        rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
-        rosys.on_shutdown(self.shutdown)
+    def _setup(self, slot: CameraSlotConfig, robot_locator: RobotLocator) -> rosys.vision.CalibratableCamera:
+        camera = self._create_camera(slot)
+        if slot.calibration is not None:
+            camera.calibration = slot.calibration
+            camera.calibration.extrinsics.in_frame(robot_locator.pose_frame)
+        return camera
 
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         if rosys.is_simulation():
@@ -91,8 +85,10 @@ class CameraProvider:
 
     @property
     def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
-        return {role: cam for role in ('main', 'front', 'back', 'left', 'right')
-                if (cam := getattr(self, role)) is not None}
+        return {name: cam for name, cam in [
+            ('main', self.main), ('front', self.front), ('back', self.back),
+            ('left', self.left), ('right', self.right),
+        ] if cam is not None}
 
     @property
     def first_connected_camera(self) -> rosys.vision.CalibratableCamera | None:
