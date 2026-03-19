@@ -35,10 +35,10 @@ class CameraProvider:
         """Required by rosys CalibratableCameraProvider protocol."""
         return {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right) if cam is not None}
 
-    def _setup(self, slot: CameraSlotConfig, robot_locator: RobotLocator) -> rosys.vision.CalibratableCamera:
-        camera = self._create_camera(slot)
-        if slot.calibration is not None:
-            camera.calibration = slot.calibration
+    def _setup(self, slot_config: CameraSlotConfig, robot_locator: RobotLocator) -> rosys.vision.CalibratableCamera:
+        camera = self._create_camera(slot_config)
+        if slot_config.calibration is not None:
+            camera.calibration = slot_config.calibration
             camera.calibration.extrinsics.in_frame(robot_locator.pose_frame)
         return camera
 
