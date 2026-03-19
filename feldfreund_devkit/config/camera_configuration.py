@@ -30,14 +30,12 @@ class CameraSlotConfig:
 @dataclass(kw_only=True)
 class UsbCameraConfig(CameraSlotConfig):
     """Configuration for a USB camera."""
-    type: Literal['usb'] = 'usb'
     auto_exposure: bool = True
 
 
 @dataclass(kw_only=True)
 class RtspCameraConfig(CameraSlotConfig):
     """Configuration for an RTSP camera."""
-    type: Literal['rtsp'] = 'rtsp'
     codec: Literal['h264', 'h265'] = 'h265'
     substream: int = 0
 
@@ -45,7 +43,6 @@ class RtspCameraConfig(CameraSlotConfig):
 @dataclass(kw_only=True)
 class MjpegCameraConfig(CameraSlotConfig):
     """Configuration for an MJPEG camera."""
-    type: Literal['mjpeg'] = 'mjpeg'
     username: str = 'root'
     password: str = 'zauberzg!'
 
