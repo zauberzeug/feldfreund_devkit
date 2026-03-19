@@ -30,6 +30,11 @@ class CameraProvider:
             rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
             rosys.on_shutdown(self.shutdown)
 
+    @property
+    def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
+        """Required by rosys CalibratableCameraProvider protocol."""
+        return {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right) if cam is not None}
+
     def _setup(self, slot: CameraSlotConfig, robot_locator: RobotLocator) -> rosys.vision.CalibratableCamera:
         camera = self._create_camera(slot)
         if slot.calibration is not None:
@@ -82,11 +87,6 @@ class CameraProvider:
             camera.rotation_angle = slot.rotation
 
         return camera
-
-    @property
-    def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
-        """Required by rosys CalibratableCameraProvider protocol."""
-        return {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right) if cam is not None}
 
     async def update_device_list(self) -> None:
         for camera in self.cameras.values():
