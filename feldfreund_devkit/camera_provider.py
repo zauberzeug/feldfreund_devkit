@@ -85,14 +85,8 @@ class CameraProvider:
 
     @property
     def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
-        return {name: cam for name, cam in [
-            ('main', self.main), ('front', self.front), ('back', self.back),
-            ('left', self.left), ('right', self.right),
-        ] if cam is not None}
-
-    @property
-    def first_connected_camera(self) -> rosys.vision.CalibratableCamera | None:
-        return next((camera for camera in self.cameras.values() if camera.is_connected), None)
+        """Required by rosys CalibratableCameraProvider protocol."""
+        return {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right) if cam is not None}
 
     async def update_device_list(self) -> None:
         for camera in self.cameras.values():
