@@ -43,9 +43,7 @@ class TestSystem(System):
     def set_robot_pose(self, pose: Pose):
         # pylint: disable=protected-access
         assert isinstance(self.feldfreund.wheels, WheelsSimulation)
-        self.robot_locator._x[0, 0] = pose.x
-        self.robot_locator._x[1, 0] = pose.y
-        self.robot_locator._x[2, 0] = pose.yaw
+        self.robot_locator._reset(x=pose.x, y=pose.y, yaw=pose.yaw)
         self.feldfreund.wheels.pose.x = pose.x
         self.feldfreund.wheels.pose.y = pose.y
         self.feldfreund.wheels.pose.yaw = pose.yaw
