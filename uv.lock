@@ -2634,7 +2634,7 @@ wheels = [
 
 [[package]]
 name = "rosys"
-version = "0.32.0.post17.dev0+c933acc0"
+version = "0.32.0.post22.dev0+b476f083"
 source = { editable = "../rosys" }
 dependencies = [
     { name = "aiohttp" },
