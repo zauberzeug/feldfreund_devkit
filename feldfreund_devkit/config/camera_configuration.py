@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Literal
 
-from rosys.geometry import Rectangle
+import rosys.vision
 
 
 @dataclass(kw_only=True)
@@ -14,54 +16,45 @@ class CropConfiguration:
 
 
 @dataclass(kw_only=True)
-class CircleSightPositions:
-    """Configuration for the positions of the 4 cameras.
+class CameraSlotConfig:
+    """Base configuration shared by all camera types."""
+    camera_id: str
+    width: int
+    height: int
+    fps: int = 10
+    rotation: int = 0
+    crop: CropConfiguration | None = None
+    calibration: rosys.vision.Calibration | None = None
 
-    Defaults:
-        right = '-1'
-        back = '-2'
-        front = '-3'
-        left = '-4'
-    """
-    right: str = '-1'
-    back: str = '-2'
-    front: str = '-3'
-    left: str = '-4'
+
+@dataclass(kw_only=True)
+class UsbCameraConfig(CameraSlotConfig):
+    """Configuration for a USB camera."""
+    type: Literal['usb'] = 'usb'
+    auto_exposure: bool = True
+
+
+@dataclass(kw_only=True)
+class RtspCameraConfig(CameraSlotConfig):
+    """Configuration for an RTSP camera."""
+    type: Literal['rtsp'] = 'rtsp'
+    codec: Literal['h264', 'h265'] = 'h265'
+    substream: int = 0
+
+
+@dataclass(kw_only=True)
+class MjpegCameraConfig(CameraSlotConfig):
+    """Configuration for an MJPEG camera."""
+    type: Literal['mjpeg'] = 'mjpeg'
+    username: str = 'root'
+    password: str = 'zauberzg!'
 
 
 @dataclass(kw_only=True)
 class CameraConfiguration:
-    """Configuration for the camera of the Feldfreund robot.
-
-    Defaults:
-        camera_type: 'CalibratableUsbCamera'
-        auto_exposure: True
-        rotation: 0
-        fps: 10
-        crop: None
-    """
-    width: int
-    height: int
-    camera_type: Literal['CalibratableUsbCamera'] = 'CalibratableUsbCamera'
-    auto_exposure: bool = True
-    rotation: int = 0
-    fps: int = 10
-    crop: CropConfiguration | None = None
-
-    @property
-    def crop_rectangle(self) -> Rectangle | None:
-        """Get a rectangle based on the crop values (left, right, up, down) of the config"""
-        if self.crop is None:
-            return None
-        new_width = self.width - (self.crop.left + self.crop.right)
-        new_height = self.height - (self.crop.up + self.crop.down)
-        return Rectangle(x=self.crop.left, y=self.crop.up, width=new_width, height=new_height)
-
-    @property
-    def parameters(self) -> dict:
-        return {
-            'width': self.width,
-            'height': self.height,
-            'auto_exposure': self.auto_exposure,
-            'fps': self.fps,
-        }
+    """Container of named camera slots for a Feldfreund robot."""
+    main: CameraSlotConfig | None = None
+    front: CameraSlotConfig | None = None
+    back: CameraSlotConfig | None = None
+    left: CameraSlotConfig | None = None
+    right: CameraSlotConfig | None = None
