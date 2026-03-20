@@ -43,6 +43,13 @@ class CameraProvider:
         """Required by rosys CalibratableCameraProvider protocol."""
         return {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right) if cam is not None}
 
+    @property
+    def circle_sight_cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
+        """Non-None front/back/left/right cameras keyed by direction name."""
+        return {name: cam for name, cam in [
+            ('front', self.front), ('back', self.back), ('left', self.left), ('right', self.right),
+        ] if cam is not None}
+
     def _setup(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         camera = self._create_camera(slot_config)
         if slot_config.calibration is not None:
