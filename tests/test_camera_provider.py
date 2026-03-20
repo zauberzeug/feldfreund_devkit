@@ -32,6 +32,7 @@ async def test_slots_assigned(robot_locator):
     config = CameraConfiguration(
         main=UsbCameraConfig(camera_id='usb-0', width=1280, height=720),
         front=MjpegCameraConfig(camera_id='mac-1', width=640, height=480),
+        back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
@@ -44,6 +45,7 @@ async def test_simulation_creates_simulated_cameras(robot_locator):
     config = CameraConfiguration(
         main=UsbCameraConfig(camera_id='usb-0', width=1280, height=720),
         front=RtspCameraConfig(camera_id='rtsp-1', ip='192.168.1.1', width=640, height=480),
+        back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert isinstance(provider.main, SimulatedCalibratableCamera)
@@ -56,6 +58,8 @@ async def test_calibration_applied(robot_locator):
     )
     config = CameraConfiguration(
         main=UsbCameraConfig(camera_id='usb-0', width=1280, height=720, calibration=calibration),
+        front=None,
+        back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
@@ -69,6 +73,8 @@ async def test_crop_applied(robot_locator):
             camera_id='usb-0', width=1280, height=720,
             crop=CropConfiguration(left=100, right=100, up=50, down=50),
         ),
+        front=None,
+        back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
@@ -82,6 +88,8 @@ async def test_crop_applied(robot_locator):
 async def test_rotation_applied(robot_locator):
     config = CameraConfiguration(
         main=UsbCameraConfig(camera_id='usb-0', width=1280, height=720, rotation=90),
+        front=None,
+        back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
@@ -91,6 +99,8 @@ async def test_rotation_applied(robot_locator):
 async def test_cameras_connect_on_update(robot_locator):
     config = CameraConfiguration(
         main=UsbCameraConfig(camera_id='usb-0', width=1280, height=720),
+        front=None,
+        back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
