@@ -47,8 +47,9 @@ class CameraProvider:
     def set_frame_provider(self, frame_provider: FrameProvider) -> None:
         """Link all calibrated cameras to the given frame provider."""
         for camera in self.cameras.values():
-            if camera.calibration is not None:
-                camera.calibration.extrinsics.in_frame(frame_provider.frame)
+            if camera.calibration is None:
+                continue
+            camera.calibration.extrinsics.in_frame(frame_provider.frame)
 
     def _setup(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         camera = self._create_camera(slot_config)
