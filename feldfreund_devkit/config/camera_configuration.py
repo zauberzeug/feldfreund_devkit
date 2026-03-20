@@ -36,6 +36,7 @@ class UsbCameraConfig(CameraSlotConfig):
 @dataclass(kw_only=True)
 class RtspCameraConfig(CameraSlotConfig):
     """Configuration for an RTSP camera."""
+    ip: str
     codec: Literal['h264', 'h265'] = 'h265'
     substream: int = 0
 
