@@ -17,28 +17,36 @@ class CameraProvider:
 
     RECONNECT_INTERVAL = 10
 
-    def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider) -> None:
+    def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider | None = None) -> None:
         self.log = logging.getLogger('feldfreund.camera_provider')
-        self.main = self._setup(config.main, frame_provider) if config and config.main else None
-        self.front = self._setup(config.front, frame_provider) if config and config.front else None
-        self.back = self._setup(config.back, frame_provider) if config and config.back else None
-        self.left = self._setup(config.left, frame_provider) if config and config.left else None
-        self.right = self._setup(config.right, frame_provider) if config and config.right else None
+        self.main = self._setup(config.main) if config and config.main else None
+        self.front = self._setup(config.front) if config and config.front else None
+        self.back = self._setup(config.back) if config and config.back else None
+        self.left = self._setup(config.left) if config and config.left else None
+        self.right = self._setup(config.right) if config and config.right else None
+
+        if frame_provider is not None:
+            self.set_frame_provider(frame_provider)
 
         if config is not None:
             rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
             rosys.on_shutdown(self.shutdown)
+
+    def set_frame_provider(self, frame_provider: FrameProvider) -> None:
+        """Link all calibrated cameras to the given frame provider."""
+        for camera in self.cameras.values():
+            if camera.calibration is not None:
+                camera.calibration.extrinsics.in_frame(frame_provider.frame)
 
     @property
     def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
         """Required by rosys CalibratableCameraProvider protocol."""
         return {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right) if cam is not None}
 
-    def _setup(self, slot_config: CameraSlotConfig, frame_provider: FrameProvider) -> rosys.vision.CalibratableCamera:
+    def _setup(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         camera = self._create_camera(slot_config)
         if slot_config.calibration is not None:
             camera.calibration = slot_config.calibration
-            camera.calibration.extrinsics.in_frame(frame_provider.frame)
         return camera
 
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
