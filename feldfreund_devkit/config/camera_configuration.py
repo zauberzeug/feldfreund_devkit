@@ -51,8 +51,8 @@ class MjpegCameraConfig(CameraSlotConfig):
 @dataclass(kw_only=True)
 class CameraConfiguration:
     """Container of named camera slots for a Feldfreund robot."""
-    main: CameraSlotConfig | None = None
-    front: CameraSlotConfig | None = None
-    back: CameraSlotConfig | None = None
+    main: CameraSlotConfig | None
+    front: CameraSlotConfig | None
+    back: CameraSlotConfig | None
     left: CameraSlotConfig | None = None
     right: CameraSlotConfig | None = None
