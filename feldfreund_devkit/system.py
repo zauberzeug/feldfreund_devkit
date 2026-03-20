@@ -8,6 +8,7 @@ from nicegui import Event
 from rosys.driving import Odometer
 from rosys.geometry import GeoPoint, GeoReference
 
+from .camera_provider import CameraProvider
 from .config import FeldfreundConfiguration
 from .feldfreund import FeldfreundHardware, FeldfreundSimulation
 from .hardware import TeltonikaRouter
@@ -36,6 +37,7 @@ class System(rosys.persistence.Persistable):
             self.teltonika_router = self._setup_teltonika_router()
             rosys.on_repeat(self.log_status, 60 * 5)
         self.odometer = Odometer(self.feldfreund.wheels)
+        self.camera_provider = CameraProvider(config.cameras, frame_provider=self.odometer)
         self.update_gnss_reference(reference=GeoReference(GeoPoint.from_degrees(51.983204032849706, 7.434321368936861)))
 
     @property

@@ -1,67 +1,118 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Literal
 
-from rosys.geometry import Rectangle
+import rosys.vision
+from rosys.geometry import Pose3d, Rotation
 
 
-@dataclass(kw_only=True)
+def create_calibration(*, fx: float,
+                       fy: float,
+                       cx: float,
+                       cy: float,
+                       distortion: list[float],
+                       width: int,
+                       height: int,
+                       x: float,
+                       y: float,
+                       z: float,
+                       roll: float,
+                       pitch: float,
+                       yaw: float) -> rosys.vision.Calibration:
+    """Helper function to create a camera calibration from intrinsic and extrinsic parameters."""
+    intrinsics = rosys.vision.Intrinsics(matrix=_create_camera_matrix(fx=fx, fy=fy, cx=cx, cy=cy),
+                                         distortion=distortion,
+                                         size=rosys.vision.ImageSize(width=width, height=height))
+    extrinsics = Pose3d(x=x, y=y, z=z, rotation=Rotation.from_euler(roll=roll, pitch=pitch, yaw=yaw))
+    return rosys.vision.Calibration(intrinsics=intrinsics, extrinsics=extrinsics)
+
+
+def _create_camera_matrix(*, fx: float, fy: float, cx: float, cy: float) -> list[list[float]]:
+    """Helper function to create a camera matrix from focal lengths and principal point."""
+    return [
+        [fx, 0.0, cx],
+        [0.0, fy, cy],
+        [0.0, 0.0, 1.0],
+    ]
+
+
+@dataclass(slots=True, kw_only=True)
 class CropConfiguration:
-    """Configuration for the cropping of the camera of the Feldfreund robot."""
+    """Configuration for the cropping of a camera image.
+
+    All values are in pixels.
+    """
     left: int
     right: int
     up: int
     down: int
 
 
-@dataclass(kw_only=True)
-class CircleSightPositions:
-    """Configuration for the positions of the 4 cameras.
+@dataclass(slots=True, kw_only=True)
+class CameraSlotConfig:
+    """Base configuration shared by all camera types.
 
     Defaults:
-        right = '-1'
-        back = '-2'
-        front = '-3'
-        left = '-4'
-    """
-    right: str = '-1'
-    back: str = '-2'
-    front: str = '-3'
-    left: str = '-4'
-
-
-@dataclass(kw_only=True)
-class CameraConfiguration:
-    """Configuration for the camera of the Feldfreund robot.
-
-    Defaults:
-        camera_type: 'CalibratableUsbCamera'
-        auto_exposure: True
-        rotation: 0
         fps: 10
+        rotation: 0
         crop: None
+        calibration: None
     """
+    camera_id: str
     width: int
     height: int
-    camera_type: Literal['CalibratableUsbCamera'] = 'CalibratableUsbCamera'
-    auto_exposure: bool = True
-    rotation: int = 0
     fps: int = 10
+    rotation: int = 0
     crop: CropConfiguration | None = None
+    calibration: rosys.vision.Calibration | None = None
 
-    @property
-    def crop_rectangle(self) -> Rectangle | None:
-        """Get a rectangle based on the crop values (left, right, up, down) of the config"""
-        if self.crop is None:
-            return None
-        new_width = self.width - (self.crop.left + self.crop.right)
-        new_height = self.height - (self.crop.up + self.crop.down)
-        return Rectangle(x=self.crop.left, y=self.crop.up, width=new_width, height=new_height)
 
-    @property
-    def parameters(self) -> dict:
-        return {
-            'width': self.width,
-            'height': self.height,
-            'auto_exposure': self.auto_exposure,
-            'fps': self.fps,
-        }
+@dataclass(slots=True, kw_only=True)
+class UsbCameraConfig(CameraSlotConfig):
+    """Configuration for a USB camera.
+
+    Defaults:
+        auto_exposure: True
+    """
+    auto_exposure: bool = True
+
+
+@dataclass(slots=True, kw_only=True)
+class RtspCameraConfig(CameraSlotConfig):
+    """Configuration for an RTSP camera.
+
+    Defaults:
+        codec: 'h265'
+        substream: 0
+    """
+    ip: str
+    codec: Literal['h264', 'h265'] = 'h265'
+    substream: int = 0
+
+
+@dataclass(slots=True, kw_only=True)
+class MjpegCameraConfig(CameraSlotConfig):
+    """Configuration for an MJPEG camera.
+
+    Defaults:
+        username: 'root'
+        password: 'zauberzg!'
+    """
+    username: str = 'root'
+    password: str = 'zauberzg!'
+
+
+@dataclass(slots=True, kw_only=True)
+class CameraConfiguration:
+    """Container of named camera slots for a Feldfreund robot.
+
+    Defaults:
+        left: None
+        right: None
+    """
+    main: CameraSlotConfig | None
+    front: CameraSlotConfig | None
+    back: CameraSlotConfig | None
+    left: CameraSlotConfig | None = None
+    right: CameraSlotConfig | None = None

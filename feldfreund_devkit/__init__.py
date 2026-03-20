@@ -1,4 +1,5 @@
 from . import log_configuration
+from .camera_provider import CameraProvider
 from .feldfreund import Feldfreund, FeldfreundHardware, FeldfreundSimulation
 from .implement import Implement, ImplementDummy, ImplementException
 from .robot_locator import RobotLocator
@@ -7,6 +8,7 @@ from .target_locator import TargetLocator
 from .version import __version__
 
 __all__ = [
+    'CameraProvider',
     'Feldfreund',
     'FeldfreundHardware',
     'FeldfreundSimulation',

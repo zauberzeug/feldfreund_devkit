@@ -5,7 +5,7 @@ from rosys.driving import DriveParameters
 from .battery_configuration import BatteryControlConfiguration, BmsConfiguration
 from .bluetooth_configuration import BluetoothConfiguration
 from .bumper_configuration import BumperConfiguration
-from .camera_configuration import CameraConfiguration, CircleSightPositions
+from .camera_configuration import CameraConfiguration
 from .can_configuration import CanConfiguration
 from .estop_configuration import EstopConfiguration
 from .flashlight_configuration import FlashlightConfiguration, FlashlightMosfetConfiguration
@@ -25,8 +25,7 @@ class FeldfreundConfiguration:
     bms: BmsConfiguration = field(default_factory=BmsConfiguration)
     bumper: BumperConfiguration | None = None
     can: CanConfiguration = field(default_factory=CanConfiguration)
-    camera: CameraConfiguration | None = None
-    circle_sight_positions: CircleSightPositions | None
+    cameras: CameraConfiguration | None = None
     driver: DriveParameters = field(default_factory=create_drive_parameters)
     estop: EstopConfiguration = field(default_factory=EstopConfiguration)
     flashlight: FlashlightConfiguration | FlashlightMosfetConfiguration | None = None
