@@ -63,6 +63,7 @@ class CameraProvider:
                 width=slot.width,
                 height=slot.height,
                 fps=slot.fps,
+                color='#cccccc'
             )
         elif isinstance(slot, UsbCameraConfig):
             camera_class = type('CalibratableCamera', (rosys.vision.CalibratableCamera, rosys.vision.UsbCamera), {})

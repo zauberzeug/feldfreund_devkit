@@ -4,6 +4,37 @@ from dataclasses import dataclass
 from typing import Literal
 
 import rosys.vision
+from rosys.geometry import Pose3d, Rotation
+
+
+def create_calibration(*, fx: float,
+                       fy: float,
+                       cx: float,
+                       cy: float,
+                       distortion: list[float],
+                       width: int,
+                       height: int,
+                       x: float,
+                       y: float,
+                       z: float,
+                       roll: float,
+                       pitch: float,
+                       yaw: float) -> rosys.vision.Calibration:
+    """Helper function to create a camera calibration from intrinsic and extrinsic parameters."""
+    intrinsics = rosys.vision.Intrinsics(matrix=_create_camera_matrix(fx=fx, fy=fy, cx=cx, cy=cy),
+                                         distortion=distortion,
+                                         size=rosys.vision.ImageSize(width=width, height=height))
+    extrinsics = Pose3d(x=x, y=y, z=z, rotation=Rotation.from_euler(roll=roll, pitch=pitch, yaw=yaw))
+    return rosys.vision.Calibration(intrinsics=intrinsics, extrinsics=extrinsics)
+
+
+def _create_camera_matrix(*, fx: float, fy: float, cx: float, cy: float) -> list[list[float]]:
+    """Helper function to create a camera matrix from focal lengths and principal point."""
+    return [
+        [fx, 0.0, cx],
+        [0.0, fy, cy],
+        [0.0, 0.0, 1.0],
+    ]
 
 
 @dataclass(slots=True, kw_only=True)

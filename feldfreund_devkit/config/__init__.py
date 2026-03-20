@@ -12,6 +12,7 @@ from .camera_configuration import (
     MjpegCameraConfig,
     RtspCameraConfig,
     UsbCameraConfig,
+    create_calibration,
 )
 from .can_configuration import CanConfiguration
 from .estop_configuration import EstopConfiguration
@@ -65,5 +66,6 @@ __all__ = [
     'UsbCameraConfig',
     'config_from_file',
     'config_from_id',
+    'create_calibration',
     'create_drive_parameters',
 ]
