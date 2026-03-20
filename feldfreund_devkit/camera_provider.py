@@ -44,14 +44,13 @@ class CameraProvider:
 
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         if rosys.is_simulation():
-            return rosys.vision.SimulatedCalibratableCamera(
+            camera = rosys.vision.SimulatedCalibratableCamera(
                 id=slot.camera_id,
                 width=slot.width,
                 height=slot.height,
                 fps=slot.fps,
             )
-
-        if isinstance(slot, UsbCameraConfig):
+        elif isinstance(slot, UsbCameraConfig):
             camera_class = type('CalibratableCamera', (rosys.vision.CalibratableCamera, rosys.vision.UsbCamera), {})
             camera = camera_class(
                 id=slot.camera_id,
