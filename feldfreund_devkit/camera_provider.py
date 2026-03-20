@@ -32,12 +32,6 @@ class CameraProvider:
             rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
             rosys.on_shutdown(self.shutdown)
 
-    def set_frame_provider(self, frame_provider: FrameProvider) -> None:
-        """Link all calibrated cameras to the given frame provider."""
-        for camera in self.cameras.values():
-            if camera.calibration is not None:
-                camera.calibration.extrinsics.in_frame(frame_provider.frame)
-
     @property
     def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
         """Required by rosys CalibratableCameraProvider protocol."""
@@ -49,6 +43,12 @@ class CameraProvider:
         return {name: cam for name, cam in [
             ('front', self.front), ('back', self.back), ('left', self.left), ('right', self.right),
         ] if cam is not None}
+
+    def set_frame_provider(self, frame_provider: FrameProvider) -> None:
+        """Link all calibrated cameras to the given frame provider."""
+        for camera in self.cameras.values():
+            if camera.calibration is not None:
+                camera.calibration.extrinsics.in_frame(frame_provider.frame)
 
     def _setup(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         camera = self._create_camera(slot_config)
