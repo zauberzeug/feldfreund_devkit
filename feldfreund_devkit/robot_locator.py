@@ -33,7 +33,7 @@ class RobotLocator(rosys.persistence.Persistable):
         self._imu = imu
         self._gnss_config = gnss_config
 
-        self.pose_frame = Pose3d().as_frame('feldfreund.robot_locator')
+        self.frame = Pose3d().as_frame('feldfreund.robot_locator')
 
         state_size = 3
         self._x = np.zeros((state_size, 1))
@@ -207,9 +207,9 @@ class RobotLocator(rosys.persistence.Persistable):
         self._update_frame()
 
     def _update_frame(self) -> None:
-        self.pose_frame.x = self._x[0, 0]
-        self.pose_frame.y = self._x[1, 0]
-        self.pose_frame.rotation = Rotation.from_euler(0, 0, self._x[2, 0])
+        self.frame.x = self._x[0, 0]
+        self.frame.y = self._x[1, 0]
+        self.frame.rotation = Rotation.from_euler(0, 0, self._x[2, 0])
 
     async def reset(self, *, gnss_timeout: float = 2.0) -> None:
         reset_pose = Pose(x=0.0, y=0.0, yaw=0.0)
