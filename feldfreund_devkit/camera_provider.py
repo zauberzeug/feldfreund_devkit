@@ -90,6 +90,7 @@ class CameraProvider:
                 id=slot.camera_id,
                 username=slot.username,
                 password=slot.password,
+                ip=slot.ip,
                 fps=slot.fps,
             )
         else:
