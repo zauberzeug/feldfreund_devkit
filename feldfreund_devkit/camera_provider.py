@@ -1,7 +1,7 @@
 import logging
 
 import rosys
-from rosys.geometry import FrameProvider, Rectangle
+from rosys.geometry import FrameProvider
 
 from .config import (
     CameraConfiguration,
@@ -95,13 +95,6 @@ class CameraProvider:
             )
         else:
             raise ValueError(f'Unknown camera slot type: {type(slot)}')
-
-        if slot.crop is not None:
-            new_width = slot.width - (slot.crop.left + slot.crop.right)
-            new_height = slot.height - (slot.crop.up + slot.crop.down)
-            camera.crop = Rectangle(x=slot.crop.left, y=slot.crop.up, width=new_width, height=new_height)
-        if slot.rotation != 0:
-            camera.rotation_angle = slot.rotation
 
         return camera
 
