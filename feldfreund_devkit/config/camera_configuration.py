@@ -99,6 +99,7 @@ class MjpegCameraConfig(CameraSlotConfig):
         username: 'root'
         password: 'zauberzg!'
     """
+    ip: str = '192.168.42.3'
     username: str = 'root'
     password: str = 'zauberzg!'
 
