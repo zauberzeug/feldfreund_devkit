@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-import rosys.vision
 from rosys.geometry import Pose3d, Rotation
+from rosys.vision import Calibration, ImageRotation, ImageSize, Intrinsics
 
 
 def create_calibration(*, fx: float,
@@ -19,13 +19,13 @@ def create_calibration(*, fx: float,
                        z: float,
                        roll: float,
                        pitch: float,
-                       yaw: float) -> rosys.vision.Calibration:
+                       yaw: float) -> Calibration:
     """Helper function to create a camera calibration from intrinsic and extrinsic parameters."""
-    intrinsics = rosys.vision.Intrinsics(matrix=_create_camera_matrix(fx=fx, fy=fy, cx=cx, cy=cy),
-                                         distortion=distortion,
-                                         size=rosys.vision.ImageSize(width=width, height=height))
+    intrinsics = Intrinsics(matrix=_create_camera_matrix(fx=fx, fy=fy, cx=cx, cy=cy),
+                            distortion=distortion,
+                            size=ImageSize(width=width, height=height))
     extrinsics = Pose3d(x=x, y=y, z=z, rotation=Rotation.from_euler(roll=roll, pitch=pitch, yaw=yaw))
-    return rosys.vision.Calibration(intrinsics=intrinsics, extrinsics=extrinsics)
+    return Calibration(intrinsics=intrinsics, extrinsics=extrinsics)
 
 
 def _create_camera_matrix(*, fx: float, fy: float, cx: float, cy: float) -> list[list[float]]:
@@ -55,7 +55,7 @@ class CameraSlotConfig:
 
     Defaults:
         fps: 10
-        rotation: 0
+        rotation: ImageRotation.NONE
         crop: None
         calibration: None
     """
@@ -63,9 +63,9 @@ class CameraSlotConfig:
     width: int
     height: int
     fps: int = 10
-    rotation: int = 0
+    rotation: ImageRotation = ImageRotation.NONE
     crop: CropConfiguration | None = None
-    calibration: rosys.vision.Calibration | None = None
+    calibration: Calibration | None = None
 
 
 @dataclass(slots=True, kw_only=True)
