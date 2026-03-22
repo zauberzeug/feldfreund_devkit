@@ -19,6 +19,7 @@ class CameraProvider:
 
     def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider | None = None) -> None:
         self.log = logging.getLogger('feldfreund.camera_provider')
+        self._config = config
         self.main = self._setup(config.main) if config and config.main else None
         self.front = self._setup(config.front) if config and config.front else None
         self.back = self._setup(config.back) if config and config.back else None
@@ -31,6 +32,26 @@ class CameraProvider:
         if config is not None:
             rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
             rosys.on_shutdown(self.shutdown)
+
+    @property
+    def main_config(self) -> CameraSlotConfig | None:
+        return self._config.main if self._config else None
+
+    @property
+    def front_config(self) -> CameraSlotConfig | None:
+        return self._config.front if self._config else None
+
+    @property
+    def back_config(self) -> CameraSlotConfig | None:
+        return self._config.back if self._config else None
+
+    @property
+    def left_config(self) -> CameraSlotConfig | None:
+        return self._config.left if self._config else None
+
+    @property
+    def right_config(self) -> CameraSlotConfig | None:
+        return self._config.right if self._config else None
 
     @property
     def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:

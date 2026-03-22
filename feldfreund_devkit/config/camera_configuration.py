@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from rosys.geometry import Pose3d, Rotation
+from rosys.geometry import Pose3d, Rectangle, Rotation
 from rosys.vision import Calibration, ImageRotation, ImageSize, Intrinsics
 
 
@@ -38,18 +38,6 @@ def _create_camera_matrix(*, fx: float, fy: float, cx: float, cy: float) -> list
 
 
 @dataclass(slots=True, kw_only=True)
-class CropConfiguration:
-    """Configuration for the cropping of a camera image.
-
-    All values are in pixels.
-    """
-    left: int
-    right: int
-    up: int
-    down: int
-
-
-@dataclass(slots=True, kw_only=True)
 class CameraSlotConfig:
     """Base configuration shared by all camera types.
 
@@ -64,7 +52,7 @@ class CameraSlotConfig:
     height: int
     fps: int = 10
     rotation: ImageRotation = ImageRotation.NONE
-    crop: CropConfiguration | None = None
+    crop: Rectangle | None = None
     calibration: Calibration | None = None
 
 

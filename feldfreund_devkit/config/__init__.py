@@ -8,7 +8,6 @@ from .bumper_configuration import BumperConfiguration
 from .camera_configuration import (
     CameraConfiguration,
     CameraSlotConfig,
-    CropConfiguration,
     MjpegCameraConfig,
     RtspCameraConfig,
     UsbCameraConfig,
@@ -51,7 +50,6 @@ __all__ = [
     'CameraConfiguration',
     'CameraSlotConfig',
     'CanConfiguration',
-    'CropConfiguration',
     'EstopConfiguration',
     'FeldfreundConfiguration',
     'FlashlightConfiguration',

@@ -1,13 +1,13 @@
 import pytest
 import rosys
+from rosys.geometry import Rectangle
 from rosys.hardware import WheelsSimulation
 from rosys.testing import forward
-from rosys.vision import Calibration, Intrinsics, SimulatedCalibratableCamera
+from rosys.vision import Calibration, ImageRotation, Intrinsics, SimulatedCalibratableCamera
 
 from feldfreund_devkit.camera_provider import CameraProvider
 from feldfreund_devkit.config import (
     CameraConfiguration,
-    CropConfiguration,
     MjpegCameraConfig,
     RtspCameraConfig,
     UsbCameraConfig,
@@ -67,33 +67,29 @@ async def test_calibration_applied(robot_locator):
     assert provider.main.calibration.extrinsics.frame_id == robot_locator.frame.id
 
 
-async def test_crop_applied(robot_locator):
+async def test_crop_config_accessible(robot_locator):
+    crop = Rectangle(x=100, y=50, width=1080, height=620)
     config = CameraConfiguration(
-        main=UsbCameraConfig(
-            camera_id='usb-0', width=1280, height=720,
-            crop=CropConfiguration(left=100, right=100, up=50, down=50),
-        ),
+        main=UsbCameraConfig(camera_id='usb-0', width=1280, height=720, crop=crop),
         front=None,
         back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
-    assert provider.main.crop is not None
-    assert provider.main.crop.x == 100
-    assert provider.main.crop.y == 50
-    assert provider.main.crop.width == 1080
-    assert provider.main.crop.height == 620
+    assert provider.main_config is not None
+    assert provider.main_config.crop == crop
 
 
-async def test_rotation_applied(robot_locator):
+async def test_rotation_config_accessible(robot_locator):
     config = CameraConfiguration(
-        main=UsbCameraConfig(camera_id='usb-0', width=1280, height=720, rotation=90),
+        main=UsbCameraConfig(camera_id='usb-0', width=1280, height=720, rotation=ImageRotation.RIGHT),
         front=None,
         back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
-    assert provider.main.rotation_angle == 90
+    assert provider.main_config is not None
+    assert provider.main_config.rotation == ImageRotation.RIGHT
 
 
 async def test_cameras_connect_on_update(robot_locator):
