@@ -224,8 +224,20 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         imu = ImuSimulation(wheels=wheels)
         safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)
         # NOTE: quick fix for https://github.com/zauberzeug/feldfreund/issues/348
-        gnss = GnssSimulation(wheels=wheels, lat_std_dev=1e-10, lon_std_dev=1e-10, heading_std_dev=1e-10) if rosys.is_test \
-            else GnssSimulation(wheels=wheels, lat_std_dev=0.008, lon_std_dev=0.008, heading_std_dev=0.01, interval=0.1, latency=0.1)
+        gnss: GnssSimulation | None = None
+        if config.gnss is not None:
+            if rosys.is_test:
+                gnss = GnssSimulation(wheels=wheels,
+                                      lat_std_dev=1e-10,
+                                      lon_std_dev=1e-10,
+                                      heading_std_dev=1e-10)
+            else:
+                gnss = GnssSimulation(wheels=wheels,
+                                      lat_std_dev=0.008,
+                                      lon_std_dev=0.008,
+                                      heading_std_dev=0.01,
+                                      interval=0.1,
+                                      latency=0.1)
         modules = [wheels, flashlight, bumper, imu, bms, estop, safety]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
