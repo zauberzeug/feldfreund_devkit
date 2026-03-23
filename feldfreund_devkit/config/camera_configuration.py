@@ -41,19 +41,37 @@ def _create_camera_matrix(*, fx: float, fy: float, cx: float, cy: float) -> list
 class CameraSlotConfig:
     """Base configuration shared by all camera types.
 
+    ``width`` and ``height`` are derived properties: they come from
+    ``calibration.intrinsics.size`` when a calibration is provided,
+    otherwise from ``image_size``.  At least one of the two must be set.
+
     Defaults:
         fps: 10
         rotation: ImageRotation.NONE
         crop: None
         calibration: None
+        image_size: None
     """
     camera_id: str
-    width: int
-    height: int
     fps: int = 10
     rotation: ImageRotation = ImageRotation.NONE
     crop: Rectangle | None = None
     calibration: Calibration | None = None
+    image_size: ImageSize | None = None
+
+    @property
+    def width(self) -> int:
+        if self.calibration is not None:
+            return self.calibration.intrinsics.size.width
+        assert self.image_size is not None, 'either calibration or image_size must be provided'
+        return self.image_size.width
+
+    @property
+    def height(self) -> int:
+        if self.calibration is not None:
+            return self.calibration.intrinsics.size.height
+        assert self.image_size is not None, 'either calibration or image_size must be provided'
+        return self.image_size.height
 
 
 @dataclass(slots=True, kw_only=True)
