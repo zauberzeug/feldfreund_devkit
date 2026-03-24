@@ -292,7 +292,10 @@ class TeltonikaRouter:
         return _ui
 
     def developer_ui(self) -> ui.refreshable:
-        from feldfreund_devkit.interface.components.confirm_dialog import ConfirmDialog
+        # avoid circular import: header_bar → hardware
+        from feldfreund_devkit.interface.components.confirm_dialog import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
+            ConfirmDialog,
+        )
         reboot_dialog = ConfirmDialog('Really reboot the router?')
 
         @ui.refreshable
