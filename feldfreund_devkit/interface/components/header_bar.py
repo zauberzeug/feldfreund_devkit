@@ -31,7 +31,7 @@ class HeaderBar:
                     for title, url in self._pages.items():
                         ui.link(title, url).classes('text-white text-lg !no-underline')
                 if self.teltonika_router:
-                    self.teltonika_router.status()
+                    self.teltonika_router.status_icon()
                 if self.bms:
                     self.battery_status(self.bms, page=self.bms_url)
 
