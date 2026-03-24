@@ -7,8 +7,6 @@ import httpx
 import rosys
 from nicegui import Event, ui
 
-from feldfreund_devkit.interface.components.confirm_dialog import ConfirmDialog as confirm_dialog
-
 
 class ConnectionStatus(Enum):
     """Connection status of the Teltonika router."""
@@ -294,7 +292,8 @@ class TeltonikaRouter:
         return _ui
 
     def developer_ui(self) -> ui.refreshable:
-        reboot_dialog = confirm_dialog('Really reboot the router?')
+        from feldfreund_devkit.interface.components.confirm_dialog import ConfirmDialog
+        reboot_dialog = ConfirmDialog('Really reboot the router?')
 
         @ui.refreshable
         def _ui() -> None:
