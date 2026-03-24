@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from dataclasses import dataclass
 from enum import Enum
@@ -5,6 +6,8 @@ from enum import Enum
 import httpx
 import rosys
 from nicegui import Event, ui
+
+from feldfreund_devkit.interface.components.confirm_dialog import ConfirmDialog as confirm_dialog
 
 
 class ConnectionStatus(Enum):
@@ -50,7 +53,6 @@ class TeltonikaRouter:
 
     def __init__(self, url: str, admin_password: str) -> None:
         self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
-        self.log.setLevel(logging.DEBUG)
         self._url = url
         self._admin_password = admin_password
 
@@ -61,6 +63,8 @@ class TeltonikaRouter:
         self._client = httpx.AsyncClient(headers={'Content-Type': 'application/json'}, timeout=20.0)
         self._auth_token: str = ''
         self._token_time: float = 0.0
+        self._token_lock = asyncio.Lock()
+        self._connection_failures: int = 0
 
         self.CONNECTION_CHANGED: Event[ConnectionStatus] = Event()
         """Emitted when the connection status changes."""
@@ -85,14 +89,19 @@ class TeltonikaRouter:
     def wifi_info(self) -> WifiInfo | None:
         return self._wifi_info
 
+    async def _ensure_token(self) -> bool:
+        """Refresh the auth token if expired. Returns True if a valid token is available."""
+        async with self._token_lock:
+            if rosys.time() - self._token_time > 4 * 60:
+                await self._get_token()
+        return bool(self._auth_token)
+
     async def _get(self, endpoint: str) -> dict | list | None:
         """Perform an authenticated GET request, refreshing the token if needed.
 
         Returns the parsed JSON ``data`` value on success, or ``None`` on failure.
         """
-        if rosys.time() - self._token_time > 4 * 60:
-            await self._get_token()
-        if not self._auth_token:
+        if not await self._ensure_token():
             return None
         try:
             response = await self._client.get(
@@ -108,7 +117,12 @@ class TeltonikaRouter:
     async def _check_connection(self) -> None:
         data = await self._get('failover/status')
         if data is None or not isinstance(data, dict):
+            self._connection_failures += 1
+            if self._connection_failures >= 3 and self._connection_status != ConnectionStatus.DISCONNECTED:
+                self._connection_status = ConnectionStatus.DISCONNECTED
+                self.CONNECTION_CHANGED.emit(self._connection_status)
             return
+        self._connection_failures = 0
         self.log.debug('Raw failover/status response: %s', data)
         up_connection = 'disconnected'
         for key, value in data.items():
@@ -128,8 +142,7 @@ class TeltonikaRouter:
             self.CONNECTION_CHANGED.emit(self._connection_status)
 
     async def _poll_info(self) -> None:
-        await self._poll_modem_status()
-        await self._poll_wifi_info()
+        await asyncio.gather(self._poll_modem_status(), self._poll_wifi_info())
 
     async def _poll_modem_status(self) -> None:
         data = await self._get('modems/status')
@@ -218,9 +231,7 @@ class TeltonikaRouter:
 
         Returns ``True`` on success, ``False`` on failure.
         """
-        if rosys.time() - self._token_time > 4 * 60:
-            await self._get_token()
-        if not self._auth_token:
+        if not await self._ensure_token():
             return False
         try:
             response = await self._client.post(
@@ -270,6 +281,8 @@ class TeltonikaRouter:
         return _ui
 
     def developer_ui(self) -> ui.refreshable:
+        reboot_dialog = confirm_dialog('Really reboot the router?')
+
         @ui.refreshable
         def _ui() -> None:
             ui.label('Teltonika RUT901').classes('text-bold')
@@ -318,6 +331,8 @@ class TeltonikaRouter:
                 ui.label(_val(w.sta_signal, 'dBm') if w else '-')
 
             async def handle_reboot() -> None:
+                if not await reboot_dialog:
+                    return
                 if await self.reboot():
                     ui.notify('Router reboot initiated', type='positive')
                 else:
