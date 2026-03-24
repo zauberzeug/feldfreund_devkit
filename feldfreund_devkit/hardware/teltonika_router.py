@@ -226,7 +226,7 @@ class TeltonikaRouter:
         self._token_time = rosys.time()
         self.log.debug('Authentication successful')
 
-    async def _post(self, endpoint: str) -> bool:
+    async def _post(self, endpoint: str, *, json: dict | None = None) -> bool:
         """Perform an authenticated POST request, refreshing the token if needed.
 
         Returns ``True`` on success, ``False`` on failure.
@@ -237,6 +237,7 @@ class TeltonikaRouter:
             response = await self._client.post(
                 f'{self._url}/{endpoint}',
                 headers={'Authorization': f'Bearer {self._auth_token}'},
+                json=json,
             )
             response.raise_for_status()
             return True
@@ -285,50 +286,51 @@ class TeltonikaRouter:
 
         @ui.refreshable
         def _ui() -> None:
-            ui.label('Teltonika RUT901').classes('text-bold')
+            device = self._device_info
+            title = device.model if device and device.model else 'Teltonika Router'
+            ui.label(title).classes('text-bold')
 
             def _val(value: object, unit: str = '') -> str:
                 return f'{value} {unit}'.strip() if value is not None else '-'
 
-            m = self._modem_status
-            w = self._wifi_info
-            d = self._device_info
+            modem = self._modem_status
+            wifi = self._wifi_info
             with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
                 ui.label('Connection:').tooltip('Active failover interface type')
-                ui.label(self._connection_status.value)
+                ui.label(self._connection_status.value.upper())
                 ui.label('Firmware:').tooltip('RutOS firmware version')
-                ui.label(_val(d.firmware_version) if d else '-')
+                ui.label(_val(device.firmware_version) if device else '-')
                 ui.label('Serial:').tooltip('Router serial number')
-                ui.label(_val(d.serial) if d else '-')
+                ui.label(_val(device.serial) if device else '-')
             ui.separator()
             ui.label('Mobile').classes('font-bold')
             with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
                 ui.label('Operator:').tooltip('Mobile network operator')
-                ui.label(_val(m.operator) if m else '-')
+                ui.label(_val(modem.operator) if modem else '-')
                 ui.label('Network:').tooltip('Connection type (LTE, 3G, No service)')
-                ui.label(_val(m.network_type) if m else '-')
+                ui.label(_val(modem.network_type) if modem else '-')
                 ui.label('RSSI:').tooltip('Total received power incl. noise (-50 great, -90 weak, -110 dead)')
-                ui.label(_val(m.rssi, 'dBm') if m else '-')
+                ui.label(_val(modem.rssi, 'dBm') if modem else '-')
                 ui.label('RSRP:').tooltip('Reference signal power (-80 great, -100 weak, -120 dead)')
-                ui.label(_val(m.rsrp, 'dBm') if m else '-')
+                ui.label(_val(modem.rsrp, 'dBm') if modem else '-')
                 ui.label('SINR:').tooltip('Signal-to-noise ratio (>20 great, >0 usable, <0 unusable)')
-                ui.label(_val(m.sinr, 'dB') if m else '-')
+                ui.label(_val(modem.sinr, 'dB') if modem else '-')
                 ui.label('RSRQ:').tooltip('Signal quality factoring cell load (-5 great, -10 ok, -15 poor)')
-                ui.label(_val(m.rsrq, 'dB') if m else '-')
+                ui.label(_val(modem.rsrq, 'dB') if modem else '-')
             ui.separator()
             ui.label('AP').classes('font-bold')
             with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
                 ui.label('SSID:').tooltip('Broadcast WiFi network name')
-                ui.label(_val(w.ap_ssid) if w else '-')
+                ui.label(_val(wifi.ap_ssid) if wifi else '-')
                 ui.label('Clients:').tooltip('Number of connected WiFi clients')
-                ui.label(_val(w.ap_clients) if w else '-')
+                ui.label(_val(wifi.ap_clients) if wifi else '-')
             ui.separator()
             ui.label('Multi AP').classes('font-bold')
             with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
                 ui.label('SSID:').tooltip('Upstream WiFi network the router connects to')
-                ui.label(_val(w.sta_ssid) if w else '-')
+                ui.label(_val(wifi.sta_ssid) if wifi else '-')
                 ui.label('Signal:').tooltip('Upstream WiFi signal strength (-30 great, -67 ok, -80 weak, -90 unusable)')
-                ui.label(_val(w.sta_signal, 'dBm') if w else '-')
+                ui.label(_val(wifi.sta_signal, 'dBm') if wifi else '-')
 
             async def handle_reboot() -> None:
                 if not await reboot_dialog:
