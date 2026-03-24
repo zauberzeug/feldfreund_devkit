@@ -107,7 +107,7 @@ class TeltonikaRouter:
 
     async def _check_connection(self) -> None:
         data = await self._get('failover/status')
-        if data is None:
+        if data is None or not isinstance(data, dict):
             return
         self.log.debug('Raw failover/status response: %s', data)
         up_connection = 'disconnected'
@@ -154,7 +154,7 @@ class TeltonikaRouter:
 
     async def _poll_device_info(self) -> None:
         data = await self._get('system/device/status')
-        if data is None:
+        if data is None or not isinstance(data, dict):
             return
         self.log.debug('Raw system/device/status response: %s', data)
         static = data.get('static', {})
