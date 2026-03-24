@@ -14,6 +14,7 @@ from .gnss_configuration import GnssConfiguration
 from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
 from .robot_brain_configuration import RobotBrainConfiguration
+from .robot_footprint import RobotFootprint
 from .tracks_configuration import TracksConfiguration, create_drive_parameters
 
 
@@ -52,6 +53,7 @@ __all__ = [
     'ImplementConfiguration',
     'ImuConfiguration',
     'RobotBrainConfiguration',
+    'RobotFootprint',
     'TracksConfiguration',
     'config_from_file',
     'config_from_id',
