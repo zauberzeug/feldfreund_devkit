@@ -261,15 +261,14 @@ class TeltonikaRouter:
             size = 'lg' if cs == ConnectionStatus.MOBILE else 'sm'
             parts = [f'Connection: {cs.value}']
             if self._modem_status and cs == ConnectionStatus.MOBILE:
-                m = self._modem_status
-                if m.operator:
-                    parts.append(f'Operator: {m.operator}')
-                if m.network_type:
-                    parts.append(f'Network: {m.network_type}')
-                if m.rssi is not None:
-                    parts.append(f'RSSI: {m.rssi} dBm')
-                if m.rsrp is not None:
-                    parts.append(f'RSRP: {m.rsrp} dBm')
+                if self._modem_status.operator:
+                    parts.append(f'Operator: {self._modem_status.operator}')
+                if self._modem_status.network_type:
+                    parts.append(f'Network: {self._modem_status.network_type}')
+                if self._modem_status.rssi is not None:
+                    parts.append(f'RSSI: {self._modem_status.rssi} dBm')
+                if self._modem_status.rsrp is not None:
+                    parts.append(f'RSRP: {self._modem_status.rsrp} dBm')
             if self._wifi_info and cs == ConnectionStatus.WIFI:
                 if self._wifi_info.sta_ssid:
                     parts.append(f'WiFi: {self._wifi_info.sta_ssid}')
@@ -293,8 +292,6 @@ class TeltonikaRouter:
             def _val(value: object, unit: str = '') -> str:
                 return f'{value} {unit}'.strip() if value is not None else '-'
 
-            modem = self._modem_status
-            wifi = self._wifi_info
             with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
                 ui.label('Connection:').tooltip('Active failover interface type')
                 ui.label(self._connection_status.value.upper())
@@ -306,31 +303,31 @@ class TeltonikaRouter:
             ui.label('Mobile').classes('font-bold')
             with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
                 ui.label('Operator:').tooltip('Mobile network operator')
-                ui.label(_val(modem.operator) if modem else '-')
+                ui.label(_val(self._modem_status.operator) if self._modem_status else '-')
                 ui.label('Network:').tooltip('Connection type (LTE, 3G, No service)')
-                ui.label(_val(modem.network_type) if modem else '-')
+                ui.label(_val(self._modem_status.network_type) if self._modem_status else '-')
                 ui.label('RSSI:').tooltip('Total received power incl. noise (-50 great, -90 weak, -110 dead)')
-                ui.label(_val(modem.rssi, 'dBm') if modem else '-')
+                ui.label(_val(self._modem_status.rssi, 'dBm') if self._modem_status else '-')
                 ui.label('RSRP:').tooltip('Reference signal power (-80 great, -100 weak, -120 dead)')
-                ui.label(_val(modem.rsrp, 'dBm') if modem else '-')
+                ui.label(_val(self._modem_status.rsrp, 'dBm') if self._modem_status else '-')
                 ui.label('SINR:').tooltip('Signal-to-noise ratio (>20 great, >0 usable, <0 unusable)')
-                ui.label(_val(modem.sinr, 'dB') if modem else '-')
+                ui.label(_val(self._modem_status.sinr, 'dB') if self._modem_status else '-')
                 ui.label('RSRQ:').tooltip('Signal quality factoring cell load (-5 great, -10 ok, -15 poor)')
-                ui.label(_val(modem.rsrq, 'dB') if modem else '-')
+                ui.label(_val(self._modem_status.rsrq, 'dB') if self._modem_status else '-')
             ui.separator()
             ui.label('AP').classes('font-bold')
             with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
                 ui.label('SSID:').tooltip('Broadcast WiFi network name')
-                ui.label(_val(wifi.ap_ssid) if wifi else '-')
+                ui.label(_val(self._wifi_info.ap_ssid) if self._wifi_info else '-')
                 ui.label('Clients:').tooltip('Number of connected WiFi clients')
-                ui.label(_val(wifi.ap_clients) if wifi else '-')
+                ui.label(_val(self._wifi_info.ap_clients) if self._wifi_info else '-')
             ui.separator()
             ui.label('Multi AP').classes('font-bold')
             with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
                 ui.label('SSID:').tooltip('Upstream WiFi network the router connects to')
-                ui.label(_val(wifi.sta_ssid) if wifi else '-')
+                ui.label(_val(self._wifi_info.sta_ssid) if self._wifi_info else '-')
                 ui.label('Signal:').tooltip('Upstream WiFi signal strength (-30 great, -67 ok, -80 weak, -90 unusable)')
-                ui.label(_val(wifi.sta_signal, 'dBm') if wifi else '-')
+                ui.label(_val(self._wifi_info.sta_signal, 'dBm') if self._wifi_info else '-')
 
             async def handle_reboot() -> None:
                 if not await reboot_dialog:
