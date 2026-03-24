@@ -48,6 +48,10 @@ class WifiInfo:
     sta_signal: int | None = None
 
 
+WIFI_SIGNAL_GOOD = -67
+WIFI_SIGNAL_FAIR = -80
+
+
 class TeltonikaRouter:
     """Implements the API of the builtin Teltonika RUT901 router."""
 
@@ -257,7 +261,16 @@ class TeltonikaRouter:
         @ui.refreshable
         def _ui() -> None:
             cs = self._connection_status
-            icon_name = {'ether': 'cable', 'wifi': 'wifi', 'mobile': 'lte_mobiledata'}.get(cs.value, 'wifi_off')
+            if cs == ConnectionStatus.WIFI and self._wifi_info and self._wifi_info.sta_signal is not None:
+                signal = self._wifi_info.sta_signal
+                if signal >= WIFI_SIGNAL_GOOD:
+                    icon_name = 'wifi'
+                elif signal >= WIFI_SIGNAL_FAIR:
+                    icon_name = 'wifi_2_bar'
+                else:
+                    icon_name = 'wifi_1_bar'
+            else:
+                icon_name = {'ether': 'cable', 'mobile': 'lte_mobiledata'}.get(cs.value, 'wifi_off')
             size = 'lg' if cs == ConnectionStatus.MOBILE else 'sm'
             parts = [f'Connection: {cs.value}']
             if self._modem_status and cs == ConnectionStatus.MOBILE:
