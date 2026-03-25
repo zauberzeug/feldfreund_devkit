@@ -50,6 +50,7 @@ class TeltonikaRouter:
     """Implements the API of the builtin Teltonika RUT901 router."""
     WIFI_SIGNAL_GOOD = -67
     WIFI_SIGNAL_FAIR = -80
+    MAX_CONNECTION_FAILURES = 3
 
     def __init__(self, url: str, admin_password: str) -> None:
         self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
@@ -118,7 +119,7 @@ class TeltonikaRouter:
         data = await self._get('failover/status')
         if data is None or not isinstance(data, dict):
             self._connection_failures += 1
-            if self._connection_failures >= 3 and self._connection_status != ConnectionStatus.DISCONNECTED:
+            if self._connection_failures >= self.MAX_CONNECTION_FAILURES and self._connection_status != ConnectionStatus.DISCONNECTED:
                 self._connection_status = ConnectionStatus.DISCONNECTED
                 self.CONNECTION_CHANGED.emit(self._connection_status)
             return
