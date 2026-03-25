@@ -124,6 +124,8 @@ class TeltonikaRouter:
     async def _check_connection(self) -> None:
         data = await self._get('failover/status')
         if data is None or not isinstance(data, dict):
+            if not self._auth_token:
+                return
             self._connection_failures += 1
             if self._connection_failures >= self.MAX_CONNECTION_FAILURES and self._connection_status != ConnectionStatus.DISCONNECTED:
                 self._connection_status = ConnectionStatus.DISCONNECTED
