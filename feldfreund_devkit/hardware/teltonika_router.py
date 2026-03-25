@@ -286,7 +286,7 @@ class TeltonikaRouter:
         self.log.error('Router reboot failed')
         return False
 
-    def status_icon(self) -> ui.refreshable:
+    def status_icon(self) -> None:
         @ui.refreshable
         def _ui() -> None:
             cs = self._connection_status
@@ -321,9 +321,8 @@ class TeltonikaRouter:
         _ui()
         self.CONNECTION_CHANGED.subscribe(lambda _: _ui.refresh())
         self.INFO_UPDATED.subscribe(_ui.refresh)
-        return _ui
 
-    def developer_ui(self) -> ui.refreshable:
+    def developer_ui(self) -> None:
         # avoid circular import: header_bar → hardware
         from feldfreund_devkit.interface.components.confirm_dialog import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
             ConfirmDialog,
@@ -389,4 +388,3 @@ class TeltonikaRouter:
         _ui()
         self.CONNECTION_CHANGED.subscribe(lambda _: _ui.refresh())
         self.INFO_UPDATED.subscribe(_ui.refresh)
-        return _ui
