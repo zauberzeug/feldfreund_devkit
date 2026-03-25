@@ -51,6 +51,7 @@ class TeltonikaRouter:
     WIFI_SIGNAL_GOOD = -67
     WIFI_SIGNAL_FAIR = -80
     MAX_CONNECTION_FAILURES = 3
+    AUTH_RETRY_INTERVAL = 60
 
     def __init__(self, url: str, admin_password: str) -> None:
         self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
@@ -210,7 +211,7 @@ class TeltonikaRouter:
         except httpx.HTTPError:
             self.log.exception('Authentication request failed')
             self._auth_token = ''
-            self._token_time = 0.0
+            self._token_time = rosys.time() - 4 * 60 + self.AUTH_RETRY_INTERVAL
             return
         body = response.json()
         token = None
@@ -221,7 +222,7 @@ class TeltonikaRouter:
         if not token:
             self.log.error('No token found in login response: %s', list(body.keys()))
             self._auth_token = ''
-            self._token_time = 0.0
+            self._token_time = rosys.time() - 4 * 60 + self.AUTH_RETRY_INTERVAL
             return
         self._auth_token = token
         self._token_time = rosys.time()
