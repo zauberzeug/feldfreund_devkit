@@ -46,12 +46,10 @@ class WifiInfo:
     sta_signal: int | None = None
 
 
-WIFI_SIGNAL_GOOD = -67
-WIFI_SIGNAL_FAIR = -80
-
-
 class TeltonikaRouter:
     """Implements the API of the builtin Teltonika RUT901 router."""
+    WIFI_SIGNAL_GOOD = -67
+    WIFI_SIGNAL_FAIR = -80
 
     def __init__(self, url: str, admin_password: str) -> None:
         self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
@@ -261,9 +259,9 @@ class TeltonikaRouter:
             cs = self._connection_status
             if cs == ConnectionStatus.WIFI and self._wifi_info and self._wifi_info.sta_signal is not None:
                 signal = self._wifi_info.sta_signal
-                if signal >= WIFI_SIGNAL_GOOD:
+                if signal >= self.WIFI_SIGNAL_GOOD:
                     icon_name = 'wifi'
-                elif signal >= WIFI_SIGNAL_FAIR:
+                elif signal >= self.WIFI_SIGNAL_FAIR:
                     icon_name = 'wifi_2_bar'
                 else:
                     icon_name = 'wifi_1_bar'
