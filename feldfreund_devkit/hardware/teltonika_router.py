@@ -196,13 +196,22 @@ class TeltonikaRouter:
             serial=mnfinfo.get('serial'),
         )
 
+    @staticmethod
+    def _normalize_interface_list(data: dict | list) -> list[dict]:
+        """Convert a dict-keyed or list response into a flat list of interface dicts."""
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return list(data.values())
+        return []
+
     async def _poll_wifi_info(self) -> None:
         data = await self._get('wireless/interfaces/status')
         if data is None:
             self._wifi_info = None
             return
         self.log.debug('Raw wireless/interfaces/status response: %s', data)
-        interfaces = data if isinstance(data, list) else list(data.values()) if isinstance(data, dict) else []
+        interfaces = self._normalize_interface_list(data)
         ap = next((i for i in interfaces if isinstance(i, dict) and i.get('mode') == 'ap'), None)
         sta = next((i for i in interfaces if isinstance(i, dict) and i.get('mode') == 'sta'), None)
         if ap is None and sta is None:
