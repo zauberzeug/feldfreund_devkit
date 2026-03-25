@@ -11,15 +11,15 @@ class RobotFootprint:
     Each value represents the distance from the center of motion to that edge.
 
     Defaults:
-        front: 0.35
-        rear: 0.35
-        left: 0.30
-        right: 0.30
+        front: 0.5295
+        rear: 0.343
+        left: 0.33274
+        right: 0.33274
     """
-    front: float = 0.35
-    rear: float = 0.35
-    left: float = 0.30
-    right: float = 0.30
+    front: float = 0.5295
+    rear: float = 0.343
+    left: float = 0.33274
+    right: float = 0.33274
 
     def corners_at_pose(self, pose: Pose) -> list[Point]:
         """Return the 4 footprint corners at the given pose, rotated by the pose's yaw.
