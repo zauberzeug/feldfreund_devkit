@@ -319,7 +319,7 @@ class TeltonikaRouter:
             with ui.icon(icon_name, size=size):
                 ui.tooltip(' '.join(parts))
         _ui()
-        self.CONNECTION_CHANGED.subscribe(lambda _: _ui.refresh())
+        self.CONNECTION_CHANGED.subscribe(_ui.refresh)
         self.INFO_UPDATED.subscribe(_ui.refresh)
 
     def developer_ui(self) -> None:
@@ -386,5 +386,5 @@ class TeltonikaRouter:
             ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative') \
                 .props('outline')
         _ui()
-        self.CONNECTION_CHANGED.subscribe(lambda _: _ui.refresh())
+        self.CONNECTION_CHANGED.subscribe(_ui.refresh)
         self.INFO_UPDATED.subscribe(_ui.refresh)
