@@ -52,6 +52,9 @@ class TeltonikaRouter:
     WIFI_SIGNAL_FAIR = -80
     MAX_CONNECTION_FAILURES = 3
     AUTH_RETRY_INTERVAL = 60
+    FAILOVER_KEY_ETHER = 'wan'
+    FAILOVER_KEY_WIFI_PREFIXES = ('ifWan', 'wifi')
+    FAILOVER_KEYS_MOBILE = ('mob1s1a1', 'mob1s2a1')
 
     def __init__(self, url: str, admin_password: str) -> None:
         self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
@@ -141,11 +144,11 @@ class TeltonikaRouter:
                 up_connection = key
                 break
         previous = self._connection_status
-        if up_connection == 'wan':
+        if up_connection == self.FAILOVER_KEY_ETHER:
             self._connection_status = ConnectionStatus.ETHER
-        elif 'ifWan' in up_connection or 'wifi' in up_connection:
+        elif any(prefix in up_connection for prefix in self.FAILOVER_KEY_WIFI_PREFIXES):
             self._connection_status = ConnectionStatus.WIFI
-        elif up_connection in ('mob1s1a1', 'mob1s2a1'):
+        elif up_connection in self.FAILOVER_KEYS_MOBILE:
             self._connection_status = ConnectionStatus.MOBILE
         else:
             self._connection_status = ConnectionStatus.DISCONNECTED
