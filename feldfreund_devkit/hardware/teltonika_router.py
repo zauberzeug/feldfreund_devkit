@@ -144,7 +144,10 @@ class TeltonikaRouter:
             self.CONNECTION_CHANGED.emit(self._connection_status)
 
     async def _poll_info(self) -> None:
-        await asyncio.gather(self._poll_modem_status(), self._poll_wifi_info())
+        tasks = [self._poll_modem_status(), self._poll_wifi_info()]
+        if self._device_info is None:
+            tasks.append(self._poll_device_info())
+        await asyncio.gather(*tasks)
 
     async def _poll_modem_status(self) -> None:
         data = await self._get('modems/status')
