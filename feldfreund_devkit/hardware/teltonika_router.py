@@ -231,6 +231,7 @@ class TeltonikaRouter:
         if 'data' in body and isinstance(body['data'], dict):
             token = body['data'].get('token')
         if token is None:
+            # Older RutOS firmware returns the token as 'ubus_rpc_session' at the top level
             token = body.get('ubus_rpc_session')
         if not token:
             self.log.error('No token found in login response: %s', list(body.keys()))
