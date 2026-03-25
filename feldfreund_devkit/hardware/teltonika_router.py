@@ -70,6 +70,8 @@ class TeltonikaRouter:
 
         self.CONNECTION_CHANGED: Event[ConnectionStatus] = Event()
         """Emitted when the connection status changes."""
+        self.INFO_UPDATED: Event = Event()
+        """Emitted after modem, WiFi, and device info have been polled."""
 
         rosys.on_repeat(self._check_connection, 5.0)
         rosys.on_repeat(self._poll_info, 30.0)
@@ -155,6 +157,7 @@ class TeltonikaRouter:
         if self._device_info is None:
             tasks.append(self._poll_device_info())
         await asyncio.gather(*tasks)
+        self.INFO_UPDATED.emit()
 
     async def _poll_modem_status(self) -> None:
         data = await self._get('modems/status')
@@ -303,7 +306,8 @@ class TeltonikaRouter:
             with ui.icon(icon_name, size=size):
                 ui.tooltip(' '.join(parts))
         _ui()
-        ui.timer(5.0, _ui.refresh)
+        self.CONNECTION_CHANGED.subscribe(lambda _: _ui.refresh())
+        self.INFO_UPDATED.subscribe(_ui.refresh)
         return _ui
 
     def developer_ui(self) -> ui.refreshable:
@@ -370,5 +374,6 @@ class TeltonikaRouter:
             ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative') \
                 .props('outline')
         _ui()
-        ui.timer(5.0, _ui.refresh)
+        self.CONNECTION_CHANGED.subscribe(lambda _: _ui.refresh())
+        self.INFO_UPDATED.subscribe(_ui.refresh)
         return _ui
