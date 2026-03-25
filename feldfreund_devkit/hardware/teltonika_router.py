@@ -110,6 +110,11 @@ class TeltonikaRouter:
                 f'{self._url}/{endpoint}',
                 headers={'Authorization': f'Bearer {self._auth_token}'},
             )
+            if response.status_code == 401:
+                self.log.warning('GET /%s returned 401, invalidating token', endpoint)
+                self._auth_token = ''
+                self._token_time = 0.0
+                return None
             response.raise_for_status()
             return response.json().get('data')
         except httpx.HTTPError:
@@ -244,6 +249,11 @@ class TeltonikaRouter:
                 headers={'Authorization': f'Bearer {self._auth_token}'},
                 json=json,
             )
+            if response.status_code == 401:
+                self.log.warning('POST /%s returned 401, invalidating token', endpoint)
+                self._auth_token = ''
+                self._token_time = 0.0
+                return False
             response.raise_for_status()
             return True
         except httpx.HTTPError:
