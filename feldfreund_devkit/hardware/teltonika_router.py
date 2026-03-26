@@ -51,6 +51,7 @@ class TeltonikaRouter:
     WIFI_SIGNAL_GOOD = -67
     WIFI_SIGNAL_FAIR = -80
     MAX_CONNECTION_FAILURES = 3
+    TOKEN_EXPIRY_SECONDS = 4 * 60
     AUTH_RETRY_INTERVAL = 60
     FAILOVER_KEY_ETHER = 'wan'
     FAILOVER_KEY_WIFI_PREFIXES = ('ifWan', 'wifi')
@@ -99,7 +100,7 @@ class TeltonikaRouter:
     async def _ensure_token(self) -> bool:
         """Refresh the auth token if expired. Returns True if a valid token is available."""
         async with self._token_lock:
-            if rosys.time() - self._token_time > 4 * 60:
+            if rosys.time() - self._token_time > self.TOKEN_EXPIRY_SECONDS:
                 await self._get_token()
         return bool(self._auth_token)
 
@@ -236,7 +237,7 @@ class TeltonikaRouter:
         except httpx.HTTPError:
             self.log.exception('Authentication request failed')
             self._auth_token = ''
-            self._token_time = rosys.time() - 4 * 60 + self.AUTH_RETRY_INTERVAL
+            self._token_time = rosys.time() - self.TOKEN_EXPIRY_SECONDS + self.AUTH_RETRY_INTERVAL
             return
         body = response.json()
         token = None
@@ -248,7 +249,7 @@ class TeltonikaRouter:
         if not token:
             self.log.error('No token found in login response: %s', list(body.keys()))
             self._auth_token = ''
-            self._token_time = rosys.time() - 4 * 60 + self.AUTH_RETRY_INTERVAL
+            self._token_time = rosys.time() - self.TOKEN_EXPIRY_SECONDS + self.AUTH_RETRY_INTERVAL
             return
         self._auth_token = token
         self._token_time = rosys.time()
