@@ -311,12 +311,6 @@ class TeltonikaRouter:
         self.INFO_UPDATED.subscribe(_ui.refresh, unsubscribe_on_delete=True)
 
     def developer_ui(self) -> None:
-        # avoid circular import: header_bar → hardware
-        from feldfreund_devkit.interface.components.confirm_dialog import (  # noqa: PLC0415  # pylint: disable=import-outside-toplevel
-            ConfirmDialog,
-        )
-        reboot_dialog = ConfirmDialog('Really reboot the router?')
-
         @ui.refreshable
         def _ui() -> None:
             device = self._device_info
@@ -364,7 +358,9 @@ class TeltonikaRouter:
                 ui.label(_val(self._wifi_info.sta_signal, 'dBm') if self._wifi_info else '-')
 
             async def handle_reboot() -> None:
-                if not await reboot_dialog:
+                # avoid circular import: header_bar → hardware
+                from feldfreund_devkit.interface.components.confirm_dialog import ConfirmDialog  # noqa: PLC0415
+                if not await ConfirmDialog('Really reboot the router?'):
                     return
                 if await self.reboot():
                     ui.notify('Router reboot initiated', type='positive')
