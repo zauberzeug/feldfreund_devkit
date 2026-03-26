@@ -2,6 +2,7 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from enum import Enum
+from typing import Literal
 
 import httpx
 import rosys
@@ -104,28 +105,32 @@ class TeltonikaRouter:
                 await self._get_token()
         return bool(self._auth_token)
 
-    async def _get(self, endpoint: str) -> dict | list | None:
-        """Perform an authenticated GET request, refreshing the token if needed.
-
-        Returns the parsed JSON ``data`` value on success, or ``None`` on failure.
-        """
+    async def _request(self, method: Literal['GET', 'POST'], endpoint: str, *,
+                       json: dict | None = None) -> httpx.Response | None:
+        """Perform an authenticated request, refreshing the token if needed."""
         if not await self._ensure_token():
             return None
         try:
-            response = await self._client.get(
-                f'{self._url}/{endpoint}',
+            response = await self._client.request(
+                method, f'{self._url}/{endpoint}',
                 headers={'Authorization': f'Bearer {self._auth_token}'},
+                json=json,
             )
             if response.status_code == 401:
-                self.log.warning('GET /%s returned 401, invalidating token', endpoint)
+                self.log.warning('%s /%s returned 401, invalidating token', method, endpoint)
                 self._auth_token = ''
                 self._token_time = 0.0
                 return None
             response.raise_for_status()
-            return response.json().get('data')
+            return response
         except httpx.HTTPError:
-            self.log.warning('GET /%s failed', endpoint)
+            self.log.warning('%s /%s failed', method, endpoint)
             return None
+
+    async def _get(self, endpoint: str) -> dict | list | None:
+        """Perform an authenticated GET request. Returns parsed JSON ``data`` or ``None``."""
+        response = await self._request('GET', endpoint)
+        return response.json().get('data') if response else None
 
     async def _check_connection(self) -> None:
         data = await self._get('failover/status')
@@ -256,28 +261,8 @@ class TeltonikaRouter:
         self.log.debug('Authentication successful')
 
     async def _post(self, endpoint: str, *, json: dict | None = None) -> bool:
-        """Perform an authenticated POST request, refreshing the token if needed.
-
-        Returns ``True`` on success, ``False`` on failure.
-        """
-        if not await self._ensure_token():
-            return False
-        try:
-            response = await self._client.post(
-                f'{self._url}/{endpoint}',
-                headers={'Authorization': f'Bearer {self._auth_token}'},
-                json=json,
-            )
-            if response.status_code == 401:
-                self.log.warning('POST /%s returned 401, invalidating token', endpoint)
-                self._auth_token = ''
-                self._token_time = 0.0
-                return False
-            response.raise_for_status()
-            return True
-        except httpx.HTTPError:
-            self.log.warning('POST /%s failed', endpoint)
-            return False
+        """Perform an authenticated POST request. Returns ``True`` on success."""
+        return await self._request('POST', endpoint, json=json) is not None
 
     async def reboot(self) -> bool:
         """Send a reboot command to the router. Returns True on success."""
