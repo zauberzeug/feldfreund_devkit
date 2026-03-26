@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from ...hardware import TeltonikaRouter
 
 
-def _format_value(value: object, unit: str = '') -> str:
+def _format_value(value: str | int | None, unit: str = '') -> str:
     """Format a value with optional unit for display, returning '-' for None."""
     return f'{value} {unit}'.strip() if value is not None else '-'
 
