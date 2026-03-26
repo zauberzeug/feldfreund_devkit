@@ -23,7 +23,7 @@ def teltonika_status_widget(router: TeltonikaRouter) -> None:
             else:
                 icon_name = 'wifi_1_bar'
         else:
-            icon_name = {'ether': 'cable', 'mobile': 'lte_mobiledata'}.get(connection.value, 'wifi_off')
+            icon_name = {'ether': 'cable', 'mobile': 'lte_mobiledata'}.get(connection.value, 'mobiledata_off')
         size = 'lg' if connection == ConnectionStatus.MOBILE else 'sm'
         # NiceGUI tooltips don't support newlines — space-separated is the best we can do
         parts = [f'Connection: {connection.value}']
