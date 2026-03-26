@@ -125,6 +125,7 @@ class TeltonikaRouter:
         self.log.debug('Raw modems/status response: %s', data)
         modem_data = data[0] if isinstance(data, list) and data else data
         if not isinstance(modem_data, dict):
+            self.log.debug('Unexpected modem data type: %s', type(modem_data).__name__)
             self._modem_status = None
             return
         self._modem_status = ModemStatus(
