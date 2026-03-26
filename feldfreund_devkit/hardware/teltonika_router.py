@@ -99,75 +99,22 @@ class TeltonikaRouter:
     def wifi_info(self) -> WifiInfo | None:
         return self._wifi_info
 
-    async def _ensure_token(self) -> bool:
-        """Refresh the auth token if expired. Returns True if a valid token is available."""
-        async with self._token_lock:
-            if rosys.time() - self._token_time > self.TOKEN_EXPIRY_SECONDS:
-                await self._get_token()
-        return bool(self._auth_token)
-
-    async def _request(self, method: Literal['GET', 'POST'], endpoint: str, *,
-                       json: dict | None = None) -> httpx.Response | None:
-        """Perform an authenticated request, refreshing the token if needed."""
-        if not await self._ensure_token():
-            return None
-        try:
-            response = await self._client.request(
-                method, f'{self._url}/{endpoint}',
-                headers={'Authorization': f'Bearer {self._auth_token}'},
-                json=json,
-            )
-            if response.status_code == 401:
-                self.log.warning('%s /%s returned 401, invalidating token', method, endpoint)
-                async with self._token_lock:
-                    self._auth_token = ''
-                    self._token_time = 0.0
-                return None
-            response.raise_for_status()
-            return response
-        except httpx.HTTPError:
-            self.log.warning('%s /%s failed', method, endpoint)
-            return None
-
-    async def _get(self, endpoint: str) -> dict | list | None:
-        """Perform an authenticated GET request. Returns parsed JSON ``data`` or ``None``."""
-        response = await self._request('GET', endpoint)
-        return response.json().get('data') if response else None
-
-    async def _check_connection(self) -> None:
-        data = await self._get('failover/status')
-        if data is None or not isinstance(data, dict):
-            if not self._auth_token:
-                return
-            self._connection_failures += 1
-            if self._connection_failures >= self.MAX_CONNECTION_FAILURES and self._connection_status != ConnectionStatus.DISCONNECTED:
-                self._connection_status = ConnectionStatus.DISCONNECTED
-                self.CONNECTION_CHANGED.emit(self._connection_status)
-            return
-        self._connection_failures = 0
-        self.log.debug('Raw failover/status response: %s', data)
-        up_connection = 'disconnected'
-        for key, value in data.items():
-            if value.get('status') == 'online':
-                up_connection = key
-                break
-        previous = self._connection_status
-        if up_connection == self.FAILOVER_KEY_ETHER:
-            self._connection_status = ConnectionStatus.ETHER
-        elif any(prefix in up_connection for prefix in self.FAILOVER_KEY_WIFI_PREFIXES):
-            self._connection_status = ConnectionStatus.WIFI
-        elif up_connection in self.FAILOVER_KEYS_MOBILE:
-            self._connection_status = ConnectionStatus.MOBILE
-        else:
-            self._connection_status = ConnectionStatus.DISCONNECTED
-        if previous != self._connection_status:
-            self.CONNECTION_CHANGED.emit(self._connection_status)
+    async def reboot(self) -> bool:
+        """Send a reboot command to the router. Returns True on success."""
+        if await self._post('system/actions/reboot'):
+            self.log.info('Router reboot initiated')
+            return True
+        self.log.error('Router reboot failed')
+        return False
 
     async def _poll_info(self) -> None:
         tasks = [self._poll_modem_status(), self._poll_wifi_info()]
         if self._device_info is None:
             tasks.append(self._poll_device_info())
-        await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                self.log.warning('Polling task failed: %s', result)
         self.INFO_UPDATED.emit()
 
     async def _poll_modem_status(self) -> None:
@@ -204,15 +151,6 @@ class TeltonikaRouter:
             serial=mnfinfo.get('serial'),
         )
 
-    @staticmethod
-    def _normalize_interface_list(data: dict | list) -> list[dict]:
-        """Convert a dict-keyed or list response into a flat list of interface dicts."""
-        if isinstance(data, list):
-            return data
-        if isinstance(data, dict):
-            return list(data.values())
-        return []
-
     async def _poll_wifi_info(self) -> None:
         data = await self._get('wireless/interfaces/status')
         if data is None:
@@ -233,6 +171,74 @@ class TeltonikaRouter:
             sta_signal=sta.get('signal') if sta else None,
         )
 
+    async def _ensure_token(self) -> bool:
+        """Refresh the auth token if expired. Returns True if a valid token is available."""
+        async with self._token_lock:
+            if rosys.time() - self._token_time > self.TOKEN_EXPIRY_SECONDS:
+                await self._get_token()
+        return bool(self._auth_token)
+
+    async def _get(self, endpoint: str) -> dict | list | None:
+        """Perform an authenticated GET request. Returns parsed JSON ``data`` or ``None``."""
+        response = await self._request('GET', endpoint)
+        return response.json().get('data') if response else None
+
+    async def _post(self, endpoint: str, *, json: dict | None = None) -> bool:
+        """Perform an authenticated POST request. Returns ``True`` on success."""
+        return await self._request('POST', endpoint, json=json) is not None
+
+    async def _request(self, method: Literal['GET', 'POST'], endpoint: str, *,
+                       json: dict | None = None) -> httpx.Response | None:
+        """Perform an authenticated request, refreshing the token if needed."""
+        if not await self._ensure_token():
+            return None
+        try:
+            response = await self._client.request(
+                method, f'{self._url}/{endpoint}',
+                headers={'Authorization': f'Bearer {self._auth_token}'},
+                json=json,
+            )
+            if response.status_code == 401:
+                self.log.warning('%s /%s returned 401, invalidating token', method, endpoint)
+                async with self._token_lock:
+                    self._auth_token = ''
+                    self._token_time = 0.0
+                return None
+            response.raise_for_status()
+            return response
+        except httpx.HTTPError:
+            self.log.warning('%s /%s failed', method, endpoint)
+            return None
+
+    async def _check_connection(self) -> None:
+        data = await self._get('failover/status')
+        if data is None or not isinstance(data, dict):
+            if not self._auth_token:
+                return
+            self._connection_failures += 1
+            if self._connection_failures >= self.MAX_CONNECTION_FAILURES and self._connection_status != ConnectionStatus.DISCONNECTED:
+                self._connection_status = ConnectionStatus.DISCONNECTED
+                self.CONNECTION_CHANGED.emit(self._connection_status)
+            return
+        self._connection_failures = 0
+        self.log.debug('Raw failover/status response: %s', data)
+        up_connection = 'disconnected'
+        for key, value in data.items():
+            if value.get('status') == 'online':
+                up_connection = key
+                break
+        previous = self._connection_status
+        if up_connection == self.FAILOVER_KEY_ETHER:
+            self._connection_status = ConnectionStatus.ETHER
+        elif any(prefix in up_connection for prefix in self.FAILOVER_KEY_WIFI_PREFIXES):
+            self._connection_status = ConnectionStatus.WIFI
+        elif up_connection in self.FAILOVER_KEYS_MOBILE:
+            self._connection_status = ConnectionStatus.MOBILE
+        else:
+            self._connection_status = ConnectionStatus.DISCONNECTED
+        if previous != self._connection_status:
+            self.CONNECTION_CHANGED.emit(self._connection_status)
+
     async def _get_token(self) -> None:
         self.log.debug('Requesting authentication token...')
         try:
@@ -244,6 +250,9 @@ class TeltonikaRouter:
         except httpx.HTTPError:
             self.log.exception('Authentication request failed')
             self._auth_token = ''
+            # Backoff: set token_time so that _ensure_token won't retry for AUTH_RETRY_INTERVAL seconds.
+            # _ensure_token checks `now - token_time > TOKEN_EXPIRY_SECONDS`, so setting token_time to
+            # `now - TOKEN_EXPIRY_SECONDS + AUTH_RETRY_INTERVAL` makes the condition false for ~60s.
             self._token_time = rosys.time() - self.TOKEN_EXPIRY_SECONDS + self.AUTH_RETRY_INTERVAL
             return
         body = response.json()
@@ -256,23 +265,26 @@ class TeltonikaRouter:
         if not token:
             self.log.error('No token found in login response: %s', list(body.keys()))
             self._auth_token = ''
+            # Same backoff as above — avoid hammering the router on repeated login failures.
             self._token_time = rosys.time() - self.TOKEN_EXPIRY_SECONDS + self.AUTH_RETRY_INTERVAL
             return
         self._auth_token = token
         self._token_time = rosys.time()
         self.log.debug('Authentication successful')
 
-    async def _post(self, endpoint: str, *, json: dict | None = None) -> bool:
-        """Perform an authenticated POST request. Returns ``True`` on success."""
-        return await self._request('POST', endpoint, json=json) is not None
+    @staticmethod
+    def _normalize_interface_list(data: dict | list) -> list[dict]:
+        """Convert a dict-keyed or list response into a flat list of interface dicts."""
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            return list(data.values())
+        return []
 
-    async def reboot(self) -> bool:
-        """Send a reboot command to the router. Returns True on success."""
-        if await self._post('system/actions/reboot'):
-            self.log.info('Router reboot initiated')
-            return True
-        self.log.error('Router reboot failed')
-        return False
+    @staticmethod
+    def _format_value(value: object, unit: str = '') -> str:
+        """Format a value with optional unit for display, returning '-' for None."""
+        return f'{value} {unit}'.strip() if value is not None else '-'
 
     def status_icon(self) -> None:
         @ui.refreshable
@@ -305,6 +317,7 @@ class TeltonikaRouter:
                 if self._wifi_info.sta_signal is not None:
                     parts.append(f'Signal: {self._wifi_info.sta_signal} dBm')
             with ui.icon(icon_name, size=size):
+                # NiceGUI tooltips don't support newlines — space-separated is the best we can do
                 ui.tooltip(' '.join(parts))
         _ui()
         self.CONNECTION_CHANGED.subscribe(_ui.refresh, unsubscribe_on_delete=True)
@@ -313,49 +326,13 @@ class TeltonikaRouter:
     def developer_ui(self) -> None:
         @ui.refreshable
         def _ui() -> None:
-            device = self._device_info
-            title = device.model if device and device.model else 'Teltonika Router'
-            ui.label(title).classes('text-bold')
-
-            def _val(value: object, unit: str = '') -> str:
-                return f'{value} {unit}'.strip() if value is not None else '-'
-
-            with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
-                ui.label('Connection:').tooltip('Active failover interface type')
-                ui.label(self._connection_status.value.upper())
-                ui.label('Firmware:').tooltip('RutOS firmware version')
-                ui.label(_val(device.firmware_version) if device else '-')
-                ui.label('Serial:').tooltip('Router serial number')
-                ui.label(_val(device.serial) if device else '-')
+            self._device_section()
             ui.separator()
-            ui.label('Mobile').classes('font-bold')
-            with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
-                ui.label('Operator:').tooltip('Mobile network operator')
-                ui.label(_val(self._modem_status.operator) if self._modem_status else '-')
-                ui.label('Network:').tooltip('Connection type (LTE, 3G, No service)')
-                ui.label(_val(self._modem_status.network_type) if self._modem_status else '-')
-                ui.label('RSSI:').tooltip('Total received power incl. noise (-50 great, -90 weak, -110 dead)')
-                ui.label(_val(self._modem_status.rssi, 'dBm') if self._modem_status else '-')
-                ui.label('RSRP:').tooltip('Reference signal power (-80 great, -100 weak, -120 dead)')
-                ui.label(_val(self._modem_status.rsrp, 'dBm') if self._modem_status else '-')
-                ui.label('SINR:').tooltip('Signal-to-noise ratio (>20 great, >0 usable, <0 unusable)')
-                ui.label(_val(self._modem_status.sinr, 'dB') if self._modem_status else '-')
-                ui.label('RSRQ:').tooltip('Signal quality factoring cell load (-5 great, -10 ok, -15 poor)')
-                ui.label(_val(self._modem_status.rsrq, 'dB') if self._modem_status else '-')
+            self._mobile_section()
             ui.separator()
-            ui.label('AP').classes('font-bold')
-            with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
-                ui.label('SSID:').tooltip('Broadcast WiFi network name')
-                ui.label(_val(self._wifi_info.ap_ssid) if self._wifi_info else '-')
-                ui.label('Clients:').tooltip('Number of connected WiFi clients')
-                ui.label(_val(self._wifi_info.ap_clients) if self._wifi_info else '-')
+            self._ap_section()
             ui.separator()
-            ui.label('Multi AP').classes('font-bold')
-            with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
-                ui.label('SSID:').tooltip('Upstream WiFi network the router connects to')
-                ui.label(_val(self._wifi_info.sta_ssid) if self._wifi_info else '-')
-                ui.label('Signal:').tooltip('Upstream WiFi signal strength (-30 great, -67 ok, -80 weak, -90 unusable)')
-                ui.label(_val(self._wifi_info.sta_signal, 'dBm') if self._wifi_info else '-')
+            self._multi_ap_section()
 
             async def handle_reboot() -> None:
                 # avoid circular import: header_bar → hardware
@@ -372,3 +349,52 @@ class TeltonikaRouter:
         _ui()
         self.CONNECTION_CHANGED.subscribe(_ui.refresh, unsubscribe_on_delete=True)
         self.INFO_UPDATED.subscribe(_ui.refresh, unsubscribe_on_delete=True)
+
+    def _device_section(self) -> None:
+        device = self._device_info
+        title = device.model if device and device.model else 'Teltonika Router'
+        ui.label(title).classes('text-bold')
+        with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
+            ui.label('Connection:').tooltip('Active failover interface type')
+            ui.label(self._connection_status.value.upper())
+            ui.label('Firmware:').tooltip('RutOS firmware version')
+            ui.label(self._format_value(device.firmware_version) if device else '-')
+            ui.label('Serial:').tooltip('Router serial number')
+            ui.label(self._format_value(device.serial) if device else '-')
+
+    def _mobile_section(self) -> None:
+        ui.label('Mobile').classes('font-bold')
+        modem = self._modem_status
+        with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
+            ui.label('Operator:').tooltip('Mobile network operator')
+            ui.label(self._format_value(modem.operator) if modem else '-')
+            ui.label('Network:').tooltip('Connection type (LTE, 3G, No service)')
+            ui.label(self._format_value(modem.network_type) if modem else '-')
+            ui.label('RSSI:').tooltip('Total received power incl. noise (-50 great, -90 weak, -110 dead)')
+            ui.label(self._format_value(modem.rssi, 'dBm') if modem else '-')
+            ui.label('RSRP:').tooltip('Reference signal power (-80 great, -100 weak, -120 dead)')
+            ui.label(self._format_value(modem.rsrp, 'dBm') if modem else '-')
+            ui.label('SINR:').tooltip('Signal-to-noise ratio (>20 great, >0 usable, <0 unusable)')
+            ui.label(self._format_value(modem.sinr, 'dB') if modem else '-')
+            ui.label('RSRQ:').tooltip('Signal quality factoring cell load (-5 great, -10 ok, -15 poor)')
+            ui.label(self._format_value(modem.rsrq, 'dB') if modem else '-')
+            ui.label('Temperature:').tooltip('Modem module temperature')
+            ui.label(self._format_value(modem.temperature, '°C') if modem else '-')
+
+    def _ap_section(self) -> None:
+        ui.label('AP').classes('font-bold')
+        wifi = self._wifi_info
+        with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
+            ui.label('SSID:').tooltip('Broadcast WiFi network name')
+            ui.label(self._format_value(wifi.ap_ssid) if wifi else '-')
+            ui.label('Clients:').tooltip('Number of connected WiFi clients')
+            ui.label(self._format_value(wifi.ap_clients) if wifi else '-')
+
+    def _multi_ap_section(self) -> None:
+        ui.label('Multi AP').classes('font-bold')
+        wifi = self._wifi_info
+        with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
+            ui.label('SSID:').tooltip('Upstream WiFi network the router connects to')
+            ui.label(self._format_value(wifi.sta_ssid) if wifi else '-')
+            ui.label('Signal:').tooltip('Upstream WiFi signal strength (-30 great, -67 ok, -80 weak, -90 unusable)')
+            ui.label(self._format_value(wifi.sta_signal, 'dBm') if wifi else '-')
