@@ -19,6 +19,10 @@ sync:
 install-ci:
 	uv sync --no-sources
 
+## lock		Update the lock file and ignore the local rosys source.
+lock:
+	uv lock --no-sources
+
 ## mypy		Run mypy type checks.
 mypy:
 	uv run --active mypy ./feldfreund_devkit ./odrive ./config
