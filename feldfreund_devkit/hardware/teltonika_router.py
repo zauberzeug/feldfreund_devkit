@@ -81,6 +81,7 @@ class TeltonikaRouter:
         rosys.on_repeat(self._check_connection, 5.0)
         rosys.on_repeat(self._poll_info, 30.0)
         rosys.on_startup(self._poll_device_info)
+        rosys.on_shutdown(self._client.aclose)
 
     @property
     def connection_status(self) -> ConnectionStatus:
