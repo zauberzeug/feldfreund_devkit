@@ -118,8 +118,9 @@ class TeltonikaRouter:
             )
             if response.status_code == 401:
                 self.log.warning('%s /%s returned 401, invalidating token', method, endpoint)
-                self._auth_token = ''
-                self._token_time = 0.0
+                async with self._token_lock:
+                    self._auth_token = ''
+                    self._token_time = 0.0
                 return None
             response.raise_for_status()
             return response
