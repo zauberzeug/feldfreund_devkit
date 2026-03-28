@@ -28,7 +28,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         self.pose_provider = pose_provider
         self.name = name
         self._upcoming_path: list[DriveSegment] = []
-        self._prepared = False
+        self._is_prepared = False
         self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
 
         self.PATH_GENERATED = Event[list[DriveSegment]]()
@@ -63,7 +63,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
     @property
     def is_prepared(self) -> bool:
         """Returns True if the navigation has been prepared for the start of the automation."""
-        return self._prepared
+        return self._is_prepared
 
     @track
     async def prepare(self) -> bool:
@@ -94,7 +94,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
             if not await self.implement.activate():
                 self.log.error('Implement activation failed')
                 return
-            self._prepared = True
+            self._is_prepared = True
             rosys.notify('Automation started')
             self.log.debug('Navigation started')
 
@@ -137,12 +137,12 @@ class WaypointNavigation(rosys.persistence.Persistable):
     @track
     async def finish(self) -> None:
         """Executed after the navigation is done"""
-        if not self._prepared:
+        if not self._is_prepared:
             return
         self.log.debug('Navigation finished')
         await self.driver.wheels.stop()
         await self.implement.deactivate()
-        self._prepared = False
+        self._is_prepared = False
         gc.collect()  # NOTE: auto garbage collection is deactivated to avoid hiccups from Global Interpreter Lock (GIL) so we collect here to reduce memory pressure
 
     @track
