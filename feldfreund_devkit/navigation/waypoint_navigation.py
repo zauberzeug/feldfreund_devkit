@@ -70,6 +70,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         """Prepares the navigation for the start of the automation
 
         Returns true if all preparations were successful, otherwise false."""
+        self._is_prepared = True
         self._upcoming_path = self.generate_path()
         if not self._upcoming_path:
             self.log.error('Path generation failed')
@@ -94,7 +95,6 @@ class WaypointNavigation(rosys.persistence.Persistable):
             if not await self.implement.activate():
                 self.log.error('Implement activation failed')
                 return
-            self._is_prepared = True
             rosys.notify('Automation started')
             self.log.debug('Navigation started')
 
