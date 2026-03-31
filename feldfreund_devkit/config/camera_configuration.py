@@ -92,6 +92,7 @@ class RtspCameraConfig(CameraSlotConfig):
         codec: 'h265'
         substream: 0
     """
+    mac: str
     ip: str
     codec: Literal['h264', 'h265'] = 'h265'
     substream: int = 0

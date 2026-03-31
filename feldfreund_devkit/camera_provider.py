@@ -100,6 +100,7 @@ class CameraProvider:
             camera_class = type('CalibratableCamera', (rosys.vision.CalibratableCamera, rosys.vision.RtspCamera), {})
             camera = camera_class(
                 id=slot.camera_id,
+                mac=slot.mac,
                 ip=slot.ip,
                 fps=slot.fps,
                 substream=slot.substream,
