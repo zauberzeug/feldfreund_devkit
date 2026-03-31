@@ -13,6 +13,7 @@ from .gnss_configuration import GnssConfiguration
 from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
 from .robot_brain_configuration import RobotBrainConfiguration
+from .robot_footprint import RobotFootprint
 from .tracks_configuration import TracksConfiguration, create_drive_parameters
 
 
@@ -20,6 +21,7 @@ from .tracks_configuration import TracksConfiguration, create_drive_parameters
 class FeldfreundConfiguration:
     """Main configuration for a Feldfreund robot combining all module configurations."""
     robot_id: str
+    robot_footprint: RobotFootprint = field(default_factory=RobotFootprint)
     battery_control: BatteryControlConfiguration = field(default_factory=BatteryControlConfiguration)
     bluetooth: BluetoothConfiguration = field(default_factory=BluetoothConfiguration)
     bms: BmsConfiguration = field(default_factory=BmsConfiguration)

@@ -47,6 +47,7 @@ class System(rosys.persistence.Persistable):
     def _setup_teltonika_router(self) -> TeltonikaRouter | None:
         if teltonika_password := os.environ.get('TELTONIKA_PASSWORD', None):
             return TeltonikaRouter('http://192.168.42.1/api', teltonika_password)
+        self.log.warning('TELTONIKA_PASSWORD environment variable not set, skipping Teltonika router setup')
         return None
 
     def update_gnss_reference(self, *, reference: GeoReference | None = None) -> None:

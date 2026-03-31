@@ -2,6 +2,7 @@ from nicegui import ui
 from rosys.hardware import Bms, EStop
 
 from ...hardware import TeltonikaRouter
+from .teltonika_status_widget import teltonika_status_widget
 
 
 class HeaderBar:
@@ -31,7 +32,7 @@ class HeaderBar:
                     for title, url in self._pages.items():
                         ui.link(title, url).classes('text-white text-lg !no-underline')
                 if self.teltonika_router:
-                    self.teltonika_router.status()
+                    teltonika_status_widget(self.teltonika_router)
                 if self.bms:
                     self.battery_status(self.bms, page=self.bms_url)
 
