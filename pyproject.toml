@@ -7,7 +7,7 @@ readme = "README.md"
 requires-python = ">=3.11, <3.14"
 dependencies = [
     "nicegui (>= 3.2.0, <4.0.0)",
-    "rosys @ git+https://github.com/zauberzeug/rosys.git@d22a26bc03a70a5a52cb7f399bd9ebd8b4227bc8",
+    "rosys @ git+https://github.com/zauberzeug/rosys.git@722fe58d56b1508064fcfb14ac4719543c504082",
     "httpx >=0.25.0",
     "coloredlogs",
     "httpcore",
@@ -136,6 +136,7 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 asyncio_mode = "auto"
 # NOTE: changing default location of pytest_cache because the uvicorn file watcher somehow triggered too many reloads
 cache_dir = "../.pytest_cache"
