@@ -96,7 +96,7 @@ def driving(request: pytest.FixtureRequest, *, drive_distance: float = 10.0) -> 
     s = request.getfixturevalue('devkit_system')
 
     async def automation():
-        while s.driver.prediction.point.x < drive_distance:
+        while s.driver.pose.point.x < drive_distance:
             await s.driver.wheels.drive(0.2, 0)
             await rosys.sleep(0.1)
     s.automator.start(automation())
@@ -109,7 +109,7 @@ def gnss_driving(request: pytest.FixtureRequest, *, drive_distance: float = 10.0
     s = request.getfixturevalue('devkit_system')
 
     async def automation():
-        while s.driver.prediction.point.x < drive_distance:
+        while s.driver.pose.point.x < drive_distance:
             await s.driver.wheels.drive(0.2, 0)
             await rosys.sleep(0.1)
     s.automator.start(automation())
