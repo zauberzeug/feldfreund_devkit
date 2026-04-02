@@ -68,6 +68,18 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     def frame(self) -> Frame3d:
         return self._pose_frame
 
+    @property
+    def pose(self) -> Pose:
+        return self._pose
+
+    @property
+    def prediction(self) -> Pose:
+        return self.pose
+
+    @property
+    def uncertainty(self) -> tuple[float, float, float]:
+        return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
+
     def backup_to_dict(self) -> dict[str, Any]:
         return {
             'r_odom_linear': self._r_odom_linear,
@@ -81,18 +93,6 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._r_odom_angular = data.get('r_odom_angular', self.R_ODOM_ANGULAR)
         self._r_imu_angular = data.get('r_imu_angular', self.R_IMU_ANGULAR)
         self._odometry_angular_weight = data.get('odometry_angular_weight', self.ODOMETRY_ANGULAR_WEIGHT)
-
-    @property
-    def pose(self) -> Pose:
-        return self._pose
-
-    @property
-    def prediction(self) -> Pose:
-        return self.pose
-
-    @property
-    def uncertainty(self) -> tuple[float, float, float]:
-        return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
 
     async def _handle_velocity_measurement(self, velocities: list[Velocity]) -> None:
         """Implements the 'prediction' step of the Kalman filter."""
