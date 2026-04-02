@@ -5,7 +5,8 @@ import numpy as np
 import rosys
 import rosys.helpers
 from nicegui import Event, ui
-from rosys.geometry import Frame3d, FrameProvider, Pose, Pose3d, PoseProvider, Rotation, Velocity
+from rosys.driving import PoseProvider
+from rosys.geometry import Frame3d, FrameProvider, Pose, Pose3d, Rotation, Velocity
 from rosys.hardware import Gnss, GnssMeasurement, Imu, ImuMeasurement, Wheels, WheelsSimulation
 
 from .config import GnssConfiguration
