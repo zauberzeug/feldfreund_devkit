@@ -136,7 +136,7 @@ class TracksHardware(Wheels, ModuleHardware):
         ui.timer(rosys.config.ui_update_interval, _ui.refresh)
 
 
-class TracksSimulation(WheelsSimulation):
+class TracksSimulation(WheelsSimulation):  # pylint: disable=too-many-ancestors
     """Simulated tracks with acceleration and deceleration handling."""
 
     def __init__(self, width: float = 0.5, *, linear_acceleration: float = 2.0, linear_deceleration: float = 0.5) -> None:

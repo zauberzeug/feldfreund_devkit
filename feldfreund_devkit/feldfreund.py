@@ -221,18 +221,18 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         estop = EStopSimulation()
         bumper = BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
-        imu = ImuSimulation(wheels=wheels)
+        imu = ImuSimulation(pose_provider=wheels)
         safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)
         # NOTE: quick fix for https://github.com/zauberzeug/feldfreund/issues/348
         gnss: GnssSimulation | None = None
         if config.gnss is not None:
             if rosys.is_test:
-                gnss = GnssSimulation(wheels=wheels,
+                gnss = GnssSimulation(pose_provider=wheels,
                                       lat_std_dev=1e-10,
                                       lon_std_dev=1e-10,
                                       heading_std_dev=1e-10)
             else:
-                gnss = GnssSimulation(wheels=wheels,
+                gnss = GnssSimulation(pose_provider=wheels,
                                       lat_std_dev=0.008,
                                       lon_std_dev=0.008,
                                       heading_std_dev=0.01,
