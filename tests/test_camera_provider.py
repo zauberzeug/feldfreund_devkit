@@ -44,7 +44,7 @@ async def test_slots_assigned(robot_locator):
 async def test_simulation_creates_simulated_cameras(robot_locator):
     config = CameraConfiguration(
         main=UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720)),
-        front=RtspCameraConfig(camera_id='rtsp-1', ip='192.168.1.1', image_size=ImageSize(width=640, height=480)),
+        front=RtspCameraConfig(camera_id='rtsp-1', mac='aa:bb:cc:dd:ee:ff', ip='192.168.1.1', image_size=ImageSize(width=640, height=480)),
         back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
