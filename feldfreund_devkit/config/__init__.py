@@ -5,7 +5,14 @@ from pathlib import Path
 from .battery_configuration import BatteryControlConfiguration, BmsConfiguration
 from .bluetooth_configuration import BluetoothConfiguration
 from .bumper_configuration import BumperConfiguration
-from .camera_configuration import CameraConfiguration, CircleSightPositions, CropConfiguration
+from .camera_configuration import (
+    CameraConfiguration,
+    CameraSlotConfig,
+    MjpegCameraConfig,
+    RtspCameraConfig,
+    UsbCameraConfig,
+    create_calibration,
+)
 from .can_configuration import CanConfiguration
 from .estop_configuration import EstopConfiguration
 from .feldfreund_configuration import FeldfreundConfiguration
@@ -42,9 +49,8 @@ __all__ = [
     'BmsConfiguration',
     'BumperConfiguration',
     'CameraConfiguration',
+    'CameraSlotConfig',
     'CanConfiguration',
-    'CircleSightPositions',
-    'CropConfiguration',
     'EstopConfiguration',
     'FeldfreundConfiguration',
     'FlashlightConfiguration',
@@ -52,10 +58,14 @@ __all__ = [
     'GnssConfiguration',
     'ImplementConfiguration',
     'ImuConfiguration',
+    'MjpegCameraConfig',
     'RobotBrainConfiguration',
     'RobotFootprint',
+    'RtspCameraConfig',
     'TracksConfiguration',
+    'UsbCameraConfig',
     'config_from_file',
     'config_from_id',
+    'create_calibration',
     'create_drive_parameters',
 ]
