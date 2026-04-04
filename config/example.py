@@ -1,3 +1,5 @@
+from rosys.vision import ImageSize
+
 from feldfreund_devkit.config import (
     BluetoothConfiguration,
     BumperConfiguration,
@@ -16,11 +18,11 @@ config = FeldfreundConfiguration(
     bluetooth=BluetoothConfiguration(name='example', pin_code=123456),
     bumper=BumperConfiguration(pin_front_top=21, pin_front_bottom=35, pin_back=18),
     cameras=CameraConfiguration(
-        main=UsbCameraConfig(camera_id='example-usb-0', width=1280, height=720, fps=10),
-        front=MjpegCameraConfig(camera_id='example-mac-4', width=1280, height=720),
-        back=MjpegCameraConfig(camera_id='example-mac-3', width=1280, height=720),
-        right=MjpegCameraConfig(camera_id='example-mac-1', width=1280, height=720),
-        left=MjpegCameraConfig(camera_id='example-mac-2', width=1280, height=720),
+        main=UsbCameraConfig(camera_id='example-usb-0', image_size=ImageSize(width=1280, height=720), fps=10),
+        front=MjpegCameraConfig(camera_id='example-mac-4', image_size=ImageSize(width=1280, height=720)),
+        back=MjpegCameraConfig(camera_id='example-mac-3', image_size=ImageSize(width=1280, height=720)),
+        right=MjpegCameraConfig(camera_id='example-mac-1', image_size=ImageSize(width=1280, height=720)),
+        left=MjpegCameraConfig(camera_id='example-mac-2', image_size=ImageSize(width=1280, height=720)),
     ),
     flashlight=FlashlightConfiguration(),
     gnss=GnssConfiguration(),
