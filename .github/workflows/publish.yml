@@ -27,17 +27,15 @@ jobs:
         uses: JamesIves/github-pages-deploy-action@v4.7.3
         with:
           folder: site
-      # TODO: restructure in another PR
-      # - name: set version
-      #   run: |
-      #     VERSION=${{ env.VERSION }}
-      # - name: Create GitHub release entry
-      #   uses: softprops/action-gh-release@v2
-      #   id: create_release
-      #   with:
-      #     draft: false
-      #     prerelease: false
-      #     name: ${{ env.VERSION }}
-      #     tag_name: ${{ env.VERSION }}
-      #   env:
-      #     GITHUB_TOKEN: ${{ github.token }}
+      - name: Fetch milestone notes
+        run: uv run fetch_milestone.py ${GITHUB_REF_NAME#v} > release_notes.md || true
+      - name: Create GitHub release entry
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: false
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body_path: release_notes.md
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

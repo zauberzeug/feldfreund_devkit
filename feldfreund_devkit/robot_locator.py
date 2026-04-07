@@ -4,14 +4,15 @@ from typing import Any
 import numpy as np
 import rosys
 import rosys.helpers
-from nicegui import ui
-from rosys.geometry import Pose, Pose3d, Rotation, Velocity
-from rosys.hardware import Gnss, GnssMeasurement, Imu, ImuMeasurement, Wheels, WheelsSimulation
+from nicegui import Event, ui
+from rosys.driving import PoseProvider
+from rosys.geometry import Frame3d, FrameProvider, Pose, Pose3d, Rotation, Velocity
+from rosys.hardware import Gnss, GnssMeasurement, GnssSimulation, Imu, ImuMeasurement, Wheels, WheelsSimulation
 
 from .config import GnssConfiguration
 
 
-class RobotLocator(rosys.persistence.Persistable):
+class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     """Extended Kalman filter for robot pose estimation using odometry, GNSS, and IMU."""
 
     R_ODOM_LINEAR = 0.1
@@ -33,14 +34,20 @@ class RobotLocator(rosys.persistence.Persistable):
         self._imu = imu
         self._gnss_config = gnss_config
 
-        self.pose_frame = Pose3d().as_frame('feldfreund.robot_locator')
-
         state_size = 3
         self._x = np.zeros((state_size, 1))
         self._Sxx = np.zeros((state_size, state_size))
         self._pose_timestamp = rosys.time()
         # NOTE: the prediction step needs to be run once before the first GNSS update
         self._first_prediction_done = False
+
+        self._pose = Pose(x=0.0, y=0.0, yaw=0.0, time=self._pose_timestamp)
+        self.POSE_UPDATED: Event[Pose] = Event()
+        """Emitted when the pose has been updated (argument: current ``Pose``)."""
+
+        self._pose_frame = Pose3d().as_frame('feldfreund.robot_locator')
+        self.FRAME_UPDATED: Event[Frame3d] = Event()
+        """Emitted when the pose frame has been updated (argument: the new pose frame)."""
 
         self._ignore_gnss = gnss is None
         self._ignore_imu = imu is None
@@ -57,6 +64,22 @@ class RobotLocator(rosys.persistence.Persistable):
             self._gnss.NEW_MEASUREMENT.subscribe(self._handle_gnss_measurement)
         rosys.on_startup(self.reset)
 
+    @property
+    def frame(self) -> Frame3d:
+        return self._pose_frame
+
+    @property
+    def pose(self) -> Pose:
+        return self._pose
+
+    @property
+    def prediction(self) -> Pose:
+        return self.pose
+
+    @property
+    def uncertainty(self) -> tuple[float, float, float]:
+        return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
+
     def backup_to_dict(self) -> dict[str, Any]:
         return {
             'r_odom_linear': self._r_odom_linear,
@@ -70,23 +93,6 @@ class RobotLocator(rosys.persistence.Persistable):
         self._r_odom_angular = data.get('r_odom_angular', self.R_ODOM_ANGULAR)
         self._r_imu_angular = data.get('r_imu_angular', self.R_IMU_ANGULAR)
         self._odometry_angular_weight = data.get('odometry_angular_weight', self.ODOMETRY_ANGULAR_WEIGHT)
-
-    @property
-    def pose(self) -> Pose:
-        return Pose(
-            x=self._x[0, 0],
-            y=self._x[1, 0],
-            yaw=self._x[2, 0],
-            time=self._pose_timestamp,
-        )
-
-    @property
-    def prediction(self) -> Pose:
-        return self.pose
-
-    @property
-    def uncertainty(self) -> tuple[float, float, float]:
-        return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
 
     async def _handle_velocity_measurement(self, velocities: list[Velocity]) -> None:
         """Implements the 'prediction' step of the Kalman filter."""
@@ -207,21 +213,34 @@ class RobotLocator(rosys.persistence.Persistable):
         self._update_frame()
 
     def _update_frame(self) -> None:
-        self.pose_frame.x = self._x[0, 0]
-        self.pose_frame.y = self._x[1, 0]
-        self.pose_frame.rotation = Rotation.from_euler(0, 0, self._x[2, 0])
+        self._pose_frame.x = self._x[0, 0]
+        self._pose_frame.y = self._x[1, 0]
+        self._pose_frame.rotation = Rotation.from_euler(0, 0, self._x[2, 0])
+        self._pose.x = self._x[0, 0]
+        self._pose.y = self._x[1, 0]
+        self._pose.yaw = self._x[2, 0]
+        self._pose.time = self._pose_timestamp
+        self.FRAME_UPDATED.emit(self._pose_frame)
+        self.POSE_UPDATED.emit(self._pose)
 
     async def reset(self, *, gnss_timeout: float = 2.0) -> None:
-        reset_pose = Pose(x=0.0, y=0.0, yaw=0.0)
+        reset_pose = Pose(x=0.0, y=0.0, yaw=0.0, time=rosys.time())
         r_xy = 0.0
         r_theta = 0.0
         if isinstance(self._wheels, WheelsSimulation):
-            self._wheels.pose = Pose(time=rosys.time())
+            self._wheels.pose = reset_pose
         if self._gnss is not None and not self._ignore_gnss:
             try:
+                # pylint: disable=protected-access
+                if isinstance(self._gnss, GnssSimulation):
+                    last_latency = self._gnss._latency
+                    self._gnss._latency = 0.0
                 await self._gnss.NEW_MEASUREMENT.emitted(gnss_timeout)
                 assert self._gnss.last_measurement is not None
                 reset_pose, r_xy, r_theta = self._get_local_pose_and_uncertainty(self._gnss.last_measurement)
+                if isinstance(self._gnss, GnssSimulation):
+                    self._gnss._latency = last_latency
+                # pylint: enable=protected-access
             except TimeoutError:
                 self.log.error('GNSS timeout while resetting position. Activate _ignore_gnss to use zero position.')
                 return
@@ -236,6 +255,7 @@ class RobotLocator(rosys.persistence.Persistable):
         variance = np.array([r_xy, r_xy, r_theta], dtype=np.float64)**2
         self._Sxx.fill(0)
         np.fill_diagonal(self._Sxx, variance)
+        self._pose_timestamp = rosys.time()
         self._update_frame()
 
     def developer_ui(self) -> None:
