@@ -224,11 +224,11 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self.POSE_UPDATED.emit(self._pose)
 
     async def reset(self, *, gnss_timeout: float = 2.0) -> None:
-        reset_pose = Pose(x=0.0, y=0.0, yaw=0.0)
+        reset_pose = Pose(x=0.0, y=0.0, yaw=0.0, time=rosys.time())
         r_xy = 0.0
         r_theta = 0.0
         if isinstance(self._wheels, WheelsSimulation):
-            self._wheels.pose = Pose(time=rosys.time())
+            self._wheels.pose = reset_pose
         if self._gnss is not None and not self._ignore_gnss:
             try:
                 await self._gnss.NEW_MEASUREMENT.emitted(gnss_timeout)
