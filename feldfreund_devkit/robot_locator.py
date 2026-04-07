@@ -224,7 +224,6 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self.POSE_UPDATED.emit(self._pose)
 
     async def reset(self, *, gnss_timeout: float = 2.0) -> None:
-        # pylint: disable=protected-access
         reset_pose = Pose(x=0.0, y=0.0, yaw=0.0, time=rosys.time())
         r_xy = 0.0
         r_theta = 0.0
@@ -232,6 +231,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
             self._wheels.pose = reset_pose
         if self._gnss is not None and not self._ignore_gnss:
             try:
+                # pylint: disable=protected-access
                 if isinstance(self._gnss, GnssSimulation):
                     last_latency = self._gnss._latency
                     self._gnss._latency = 0.0
@@ -240,6 +240,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
                 reset_pose, r_xy, r_theta = self._get_local_pose_and_uncertainty(self._gnss.last_measurement)
                 if isinstance(self._gnss, GnssSimulation):
                     self._gnss._latency = last_latency
+                # pylint: enable=protected-access
             except TimeoutError:
                 self.log.error('GNSS timeout while resetting position. Activate _ignore_gnss to use zero position.')
                 return
