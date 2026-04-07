@@ -139,10 +139,10 @@ class WaypointNavigation(rosys.persistence.Persistable):
         """Executed after the navigation is done"""
         if not self._is_prepared:
             return
+        self._is_prepared = False
         self.log.debug('Navigation finished')
         await self.driver.wheels.stop()
         await self.implement.deactivate()
-        self._is_prepared = False
         gc.collect()  # NOTE: auto garbage collection is deactivated to avoid hiccups from Global Interpreter Lock (GIL) so we collect here to reduce memory pressure
 
     @track
