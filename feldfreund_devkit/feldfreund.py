@@ -250,7 +250,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         wheels = TracksSimulation(config.wheels.width) if use_acceleration \
             else WheelsSimulation(config.wheels.width)
         flashlight = FlashlightSimulation() if config.flashlight else None
-        headlights = HeadlightsSimulation() if config.headlights else None
+        headlights = HeadlightsSimulation(config.headlights) if config.headlights else None
         estop = EStopSimulation()
         bumper = BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)

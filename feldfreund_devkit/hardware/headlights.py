@@ -11,8 +11,9 @@ from .safety import SafetyMixin
 class Headlights(rosys.hardware.Module, abc.ABC):
     """Base class for headlights modules with on/off and duty cycle control."""
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, config: HeadlightsConfiguration, **kwargs) -> None:
         super().__init__(**kwargs)
+        self.config = config
         self._left_duty_cycle: float = self.config.left_duty_cycle
         self._right_duty_cycle: float = self.config.right_duty_cycle
         self._is_active: bool = False
@@ -94,7 +95,7 @@ class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware, SafetyMixin)
             {config.name}_right = {expander.name + "." if expander else ""}PwmOutput({config.right_pin})
             {config.name}_right.duty = {self._convert_duty_cycle_to_8_bit(config.right_duty_cycle)}
         ''')
-        super().__init__(robot_brain=robot_brain, lizard_code=lizard_code)
+        super().__init__(config, robot_brain=robot_brain, lizard_code=lizard_code)
 
     @property
     def enable_code(self) -> str:
