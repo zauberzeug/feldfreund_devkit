@@ -11,6 +11,7 @@ from .config import (
     RtspCameraConfig,
     UsbCameraConfig,
 )
+from .interface.components import status_bulb
 
 
 class CameraProvider:
@@ -146,7 +147,6 @@ class CameraProvider:
                 ui.label('Connected').classes('font-bold')
                 ui.label('Resolution').classes('font-bold')
                 ui.label('Type').classes('font-bold')
-                from .interface.components import status_bulb
                 for name, camera in slots:
                     ui.label(name)
                     if camera is None:
