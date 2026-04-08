@@ -25,7 +25,7 @@ class TestSystem(System):
         super().__init__(*args, **kwargs)
         GeoReference.update_current(GEO_REFERENCE)
         assert isinstance(self.feldfreund.gnss, GnssSimulation)
-        # NOTE: quick fix for https://github.com/zauberzeug/feldfreund/issues/348
+        # NOTE: we need low gnss noise for reliable tests
         self.feldfreund.gnss._lat_std_dev = 1e-10
         self.feldfreund.gnss._lon_std_dev = 1e-10
         self.feldfreund.gnss._heading_std_dev = 1e-10
