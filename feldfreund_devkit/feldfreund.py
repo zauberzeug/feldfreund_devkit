@@ -44,6 +44,9 @@ from .hardware import (
     FlashlightHardware,
     FlashlightHardwareMosfet,
     FlashlightSimulation,
+    Headlights,
+    HeadlightsHardware,
+    HeadlightsSimulation,
     InnotronicTracksHardware,
     ODriveTracksHardware,
     Safety,
@@ -65,6 +68,7 @@ class Feldfreund(Robot):
                  bumper: Bumper | None,
                  estop: EStop,
                  flashlight: Flashlight | None,
+                 headlights: Headlights | None,
                  imu: Imu | None,
                  safety: Safety,
                  wheels: Wheels,
@@ -76,6 +80,7 @@ class Feldfreund(Robot):
         self.bumper = bumper
         self.estop = estop
         self.flashlight = flashlight
+        self.headlights = headlights
         self.implement: Implement | None = None
         self.imu = imu
         self.safety = safety
@@ -136,6 +141,8 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                             robot_brain=robot_brain,
                                             bms=bms,
                                             expander=self.expander)
+        headlights = HeadlightsHardware(config.headlights, robot_brain,
+                                        expander=self.expander) if config.headlights else None
         bumper = BumperHardware(robot_brain,
                                 expander=self.expander if config.bumper.on_expander else None,
                                 estop=estop,
@@ -148,16 +155,19 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         self.safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
         if flashlight:
             self.safety.add_module(flashlight)
+        if headlights:
+            self.safety.add_module(headlights)
         self.status_control = StatusControlHardware(robot_brain, expander=self.expander, rdyp_pin=39, vdp_pin=39)
         gnss = GnssHardware(antenna_pose=config.gnss.pose) if config.gnss else None
         modules = [self.bluetooth, self.can, wheels, serial, self.expander, can_open_master,
-                   flashlight, bms, estop, self.battery_control, bumper, imu, self.safety, self.status_control]
+                   flashlight, headlights, bms, estop, self.battery_control, bumper, imu, self.safety, self.status_control]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
                          bms=bms,
                          bumper=bumper,
                          estop=estop,
                          flashlight=flashlight,
+                         headlights=headlights,
                          imu=imu,
                          safety=self.safety,
                          wheels=wheels,
@@ -240,6 +250,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         wheels = TracksSimulation(config.wheels.width) if use_acceleration \
             else WheelsSimulation(config.wheels.width)
         flashlight = FlashlightSimulation() if config.flashlight else None
+        headlights = HeadlightsSimulation() if config.headlights else None
         estop = EStopSimulation()
         bumper = BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
@@ -251,13 +262,14 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
                               heading_std_dev=0.01,
                               interval=0.1,
                               latency=0.1) if config.gnss else None
-        modules = [wheels, flashlight, bumper, imu, bms, estop, safety]
+        modules = [wheels, flashlight, headlights, bumper, imu, bms, estop, safety]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
                          bms=bms,
                          bumper=bumper,
                          estop=estop,
                          flashlight=flashlight,
+                         headlights=headlights,
                          imu=imu,
                          safety=safety,
                          wheels=wheels,
