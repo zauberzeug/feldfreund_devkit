@@ -78,9 +78,8 @@ class CameraProvider:
     @property
     def circle_sight_cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
         """Non-None front/back/left/right cameras keyed by direction name."""
-        return {name: cam for name, cam in [
-            ('front', self.front), ('back', self.back), ('left', self.left), ('right', self.right),
-        ] if cam is not None}
+        slots = {'front': self.front, 'back': self.back, 'left': self.left, 'right': self.right}
+        return {k: v for k, v in slots.items() if v is not None}
 
     def set_frame_provider(self, frame_provider: FrameProvider) -> None:
         """Link all calibrated cameras to the given frame provider."""
