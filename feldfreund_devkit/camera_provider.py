@@ -160,4 +160,4 @@ class CameraProvider:
                         ui.timer(5.0, lambda lbl=resolution, cam=camera: lbl.set_text(
                             f'{cam.latest_captured_image.size.width}x{cam.latest_captured_image.size.height}'
                             if cam.latest_captured_image else '—'))
-                        ui.label(type(slot_config).__name__.removesuffix('Config'))
+                        ui.label(type(slot_config).__name__.removesuffix('CameraConfig').title())
