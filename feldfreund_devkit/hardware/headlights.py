@@ -89,9 +89,9 @@ class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware, SafetyMixin)
         self.config = config
         self.expander = expander
         lizard_code = remove_indentation(f'''
-            {config.name}_left = {expander.name + "." if expander else ""}PwmOutput({config.front_pin})
+            {config.name}_left = {expander.name + "." if expander else ""}PwmOutput({config.left_pin})
             {config.name}_left.duty = {self._convert_duty_cycle_to_8_bit(config.left_duty_cycle)}
-            {config.name}_right = {expander.name + "." if expander else ""}PwmOutput({config.back_pin})
+            {config.name}_right = {expander.name + "." if expander else ""}PwmOutput({config.right_pin})
             {config.name}_right.duty = {self._convert_duty_cycle_to_8_bit(config.right_duty_cycle)}
         ''')
         super().__init__(robot_brain=robot_brain, lizard_code=lizard_code)
