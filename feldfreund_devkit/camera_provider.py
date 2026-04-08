@@ -119,16 +119,21 @@ class CameraProvider:
             )
         else:
             raise ValueError(f'Unknown camera slot type: {type(slot)}')
-
+        self.log.debug('Created %s camera %s', self._camera_config_name(slot), camera.id)
         return camera
+
+    def _camera_config_name(self, config: CameraSlotConfig) -> str:
+        """Get a human-friendly camera type name based on the config class name, e.g. 'Usb' for UsbCameraConfig."""
+        return type(config).__name__.removesuffix('CameraConfig').title()
 
     async def update_device_list(self) -> None:
         for camera in self.cameras.values():
-            if not camera.is_connected:
-                try:
-                    await camera.connect()
-                except Exception:
-                    self.log.warning('Failed to connect camera %s', camera.id, exc_info=True)
+            if camera.is_connected:
+                continue
+            try:
+                await camera.connect()
+            except Exception:
+                self.log.warning('Failed to connect camera %s', camera.id, exc_info=True)
 
     async def shutdown(self) -> None:
         for camera in self.cameras.values():
@@ -160,4 +165,4 @@ class CameraProvider:
                         ui.timer(5.0, lambda lbl=resolution, cam=camera: lbl.set_text(
                             f'{cam.latest_captured_image.size.width}x{cam.latest_captured_image.size.height}'
                             if cam.latest_captured_image else '—'))
-                        ui.label(type(slot_config).__name__.removesuffix('CameraConfig').title())
+                        ui.label(self._camera_config_name(slot_config))
