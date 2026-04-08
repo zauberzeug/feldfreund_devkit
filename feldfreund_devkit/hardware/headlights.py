@@ -31,11 +31,11 @@ class Headlights(rosys.hardware.Module, abc.ABC):
 
     async def turn_on(self) -> None:
         self._is_active = True
-        self.log.debug('Turning on flashlight')
+        self.log.debug('Turning on headlights')
 
     async def turn_off(self) -> None:
         self._is_active = False
-        self.log.debug('Turning off flashlight')
+        self.log.debug('Turning off headlights')
 
     async def set_left_duty_cycle(self, duty_cycle: float) -> None:
         """Set the duty cycle of the left headlight.
