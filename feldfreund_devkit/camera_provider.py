@@ -1,6 +1,7 @@
 import logging
 
 import rosys
+from nicegui import ui
 from rosys.geometry import FrameProvider
 
 from .config import (
@@ -134,3 +135,29 @@ class CameraProvider:
                 await camera.disconnect()
             except Exception:
                 self.log.warning('Failed to disconnect camera %s', camera.id, exc_info=True)
+
+    def developer_ui(self) -> None:
+        slots = [('main', self.main), ('front', self.front), ('back', self.back),
+                 ('left', self.left), ('right', self.right)]
+        with ui.column():
+            ui.label('Cameras').classes('text-center text-bold')
+            with ui.grid(columns='auto auto auto auto').classes('gap-x-4 gap-y-1 items-center'):
+                ui.label('Slot').classes('font-bold')
+                ui.label('Connected').classes('font-bold')
+                ui.label('Resolution').classes('font-bold')
+                ui.label('Type').classes('font-bold')
+                from .interface.components import status_bulb
+                for name, camera in slots:
+                    ui.label(name)
+                    if camera is None:
+                        status_bulb()
+                        ui.label('—').classes('text-center')
+                        ui.label('—').classes('text-center')
+                    else:
+                        slot_config: CameraSlotConfig = getattr(self, f'{name}_config')
+                        status_bulb().bind_value_from(camera, 'is_connected')
+                        resolution = ui.label('—')
+                        ui.timer(5.0, lambda lbl=resolution, cam=camera: lbl.set_text(
+                            f'{cam.latest_captured_image.size.width}x{cam.latest_captured_image.size.height}'
+                            if cam.latest_captured_image else '—'))
+                        ui.label(type(slot_config).__name__.removesuffix('Config'))
