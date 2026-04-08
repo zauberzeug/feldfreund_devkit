@@ -14,6 +14,18 @@ from .config import (
 from .interface.components import status_bulb
 
 
+class CalibratableUsbCamera(rosys.vision.CalibratableCamera, rosys.vision.UsbCamera):
+    pass
+
+
+class CalibratableRtspCamera(rosys.vision.CalibratableCamera, rosys.vision.RtspCamera):
+    pass
+
+
+class CalibratableMjpegCamera(rosys.vision.CalibratableCamera, rosys.vision.MjpegCamera):
+    pass
+
+
 class CameraProvider:
 
     def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider | None = None, reconnect_interval: int = 10) -> None:
@@ -95,8 +107,7 @@ class CameraProvider:
                 color='#cccccc',
             )
         elif isinstance(slot, UsbCameraConfig):
-            camera_class = type('CalibratableCamera', (rosys.vision.CalibratableCamera, rosys.vision.UsbCamera), {})
-            camera = camera_class(
+            camera = CalibratableUsbCamera(
                 id=slot.camera_id,
                 width=slot.width,
                 height=slot.height,
@@ -104,8 +115,7 @@ class CameraProvider:
                 auto_exposure=slot.auto_exposure,
             )
         elif isinstance(slot, RtspCameraConfig):
-            camera_class = type('CalibratableCamera', (rosys.vision.CalibratableCamera, rosys.vision.RtspCamera), {})
-            camera = camera_class(
+            camera = CalibratableRtspCamera(
                 id=slot.camera_id,
                 mac=slot.mac,
                 ip=slot.ip,
@@ -114,8 +124,7 @@ class CameraProvider:
                 avdec=slot.codec,
             )
         elif isinstance(slot, MjpegCameraConfig):
-            camera_class = type('CalibratableCamera', (rosys.vision.CalibratableCamera, rosys.vision.MjpegCamera), {})
-            camera = camera_class(
+            camera = CalibratableMjpegCamera(
                 id=slot.camera_id,
                 username=slot.username,
                 password=slot.password,
