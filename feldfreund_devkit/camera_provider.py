@@ -15,11 +15,14 @@ from .interface.components import status_bulb
 
 
 class CameraProvider:
-    """Config-driven camera provider with named role slots."""
 
-    RECONNECT_INTERVAL = 10
+    def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider | None = None, reconnect_interval: int = 10) -> None:
+        """
 
-    def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider | None = None) -> None:
+        :param config: Optional camera configuration. If None, the provider will not attempt to connect to any cameras.
+        :param frame_provider: Optional main frame to link calibrated cameras to.
+        :param reconnect_interval: Interval in seconds to attempt reconnection to cameras.
+        """
         self.log = logging.getLogger('feldfreund.camera_provider')
         self._config = config
         self.main = self._setup(config.main) if config and config.main else None
@@ -32,7 +35,7 @@ class CameraProvider:
             self.set_frame_provider(frame_provider)
 
         if config is not None:
-            rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
+            rosys.on_repeat(self.update_device_list, reconnect_interval)
             rosys.on_shutdown(self.shutdown)
 
     @property
@@ -75,12 +78,14 @@ class CameraProvider:
             camera.calibration.extrinsics.in_frame(frame_provider.frame)
 
     def _setup(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
+        """Create a camera based on the given slot configuration, and apply calibration if available."""
         camera = self._create_camera(slot_config)
         if slot_config.calibration is not None:
             camera.calibration = slot_config.calibration
         return camera
 
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
+        """Create a camera based on the given slot configuration."""
         if rosys.is_simulation():
             camera = rosys.vision.SimulatedCalibratableCamera(
                 id=slot.camera_id,
@@ -127,6 +132,7 @@ class CameraProvider:
         return type(config).__name__.removesuffix('CameraConfig').title()
 
     async def update_device_list(self) -> None:
+        """Attempt to connect to all disconnected cameras."""
         for camera in self.cameras.values():
             if camera.is_connected:
                 continue
@@ -136,6 +142,7 @@ class CameraProvider:
                 self.log.warning('Failed to connect camera %s', camera.id, exc_info=True)
 
     async def shutdown(self) -> None:
+        """Disconnect all cameras on shutdown."""
         for camera in self.cameras.values():
             try:
                 await camera.disconnect()
