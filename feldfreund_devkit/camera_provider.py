@@ -17,43 +17,15 @@ from .interface.components import status_bulb
 
 
 class CalibratableUsbCamera(rosys.vision.CalibratableCamera, rosys.vision.UsbCamera):
-
-    @classmethod
-    def from_config(cls, config: UsbCameraConfig) -> CalibratableUsbCamera:
-        return cls(
-            id=config.camera_id,
-            width=config.width,
-            height=config.height,
-            fps=config.fps,
-            auto_exposure=config.auto_exposure,
-        )
+    pass
 
 
 class CalibratableRtspCamera(rosys.vision.CalibratableCamera, rosys.vision.RtspCamera):
-
-    @classmethod
-    def from_config(cls, config: RtspCameraConfig) -> CalibratableRtspCamera:
-        return cls(
-            mac=config.mac,
-            id=config.camera_id,
-            ip=config.ip,
-            fps=config.fps,
-            substream=config.substream,
-            avdec=config.codec,
-        )
+    pass
 
 
 class CalibratableMjpegCamera(rosys.vision.CalibratableCamera, rosys.vision.MjpegCamera):
-
-    @classmethod
-    def from_config(cls, config: MjpegCameraConfig) -> CalibratableMjpegCamera:
-        return cls(
-            id=config.camera_id,
-            username=config.username,
-            password=config.password,
-            ip=config.ip,
-            fps=config.fps,
-        )
+    pass
 
 
 class CameraProvider:
@@ -136,11 +108,11 @@ class CameraProvider:
                 color='#cccccc',
             )
         elif isinstance(slot, UsbCameraConfig):
-            camera = CalibratableUsbCamera.from_config(slot)
+            camera = CalibratableUsbCamera(**slot.camera_kwargs)
         elif isinstance(slot, RtspCameraConfig):
-            camera = CalibratableRtspCamera.from_config(slot)
+            camera = CalibratableRtspCamera(**slot.camera_kwargs)
         elif isinstance(slot, MjpegCameraConfig):
-            camera = CalibratableMjpegCamera.from_config(slot)
+            camera = CalibratableMjpegCamera(**slot.camera_kwargs)
         else:
             raise ValueError(f'Unknown camera slot type: {type(slot)}')
         self.log.debug('Created %s camera %s', self._camera_config_name(slot), camera.id)
