@@ -5,6 +5,11 @@ import logging
 import rosys
 from nicegui import ui
 from rosys.geometry import FrameProvider
+from rosys.vision.mjpeg_camera.vendors import VendorType as MjpegVendorType
+from rosys.vision.mjpeg_camera.vendors import mac_to_vendor as mjpeg_mac_to_vendor
+from rosys.vision.rtsp_camera.arp_scan import find_cameras
+from rosys.vision.rtsp_camera.vendors import mac_to_vendor as rtsp_mac_to_vendor
+from rosys.vision.usb_camera.usb_camera_scanner import scan_for_connected_devices
 
 from .config import (
     CameraConfiguration,
@@ -139,6 +144,29 @@ class CameraProvider:
                 await camera.disconnect()
             except Exception:
                 self.log.warning('Failed to disconnect camera %s', camera.id, exc_info=True)
+
+    async def scan(self) -> None:
+        """Scan for all available USB, RTSP and MJPEG cameras and log the results."""
+        self.log.info('Scanning for cameras...')
+
+        usb_ids = await rosys.run.io_bound(scan_for_connected_devices)
+        for uid in sorted(usb_ids):
+            self.log.info('USB camera: %s', uid)
+
+        async for mac, ip in find_cameras():
+            rtsp_vendor = rtsp_mac_to_vendor(mac)
+            mjpeg_vendor = mjpeg_mac_to_vendor(mac)
+            types = []
+            if rtsp_vendor.name != 'OTHER':
+                types.append(f'RTSP ({rtsp_vendor.name})')
+            if mjpeg_vendor != MjpegVendorType.OTHER:
+                types.append(f'MJPEG ({mjpeg_vendor.name})')
+            if types:
+                self.log.info('Network camera: mac=%s ip=%s types=%s', mac, ip, ', '.join(types))
+            else:
+                self.log.debug('Network device: mac=%s ip=%s (unknown vendor)', mac, ip)
+
+        self.log.info('Camera scan complete')
 
     def developer_ui(self) -> None:
         slots = [('main', self.main), ('front', self.front), ('back', self.back),
