@@ -34,6 +34,8 @@ from .config import (
     FeldfreundConfiguration,
     FlashlightConfiguration,
     FlashlightMosfetConfiguration,
+    InnotronicTracksConfiguration,
+    ODriveTracksConfiguration,
 )
 from .hardware import (
     CanOpenMasterHardware,
@@ -46,6 +48,8 @@ from .hardware import (
     SafetyMixin,
     SafetySimulation,
     StatusControlHardware,
+    InnotronicTracksHardware,
+    ODriveTracksHardware,
     TracksHardware,
     TracksSimulation,
 )
@@ -109,7 +113,12 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                tx_pin=config.can.tx_pin,
                                baud=config.can.baud)
         estop = EStopHardware(robot_brain, name=config.estop.name, pins=config.estop.pins)
-        wheels = TracksHardware(config.wheels, robot_brain, estop, can=self.can)
+        if isinstance(config.wheels, ODriveTracksConfiguration):
+            wheels = ODriveTracksHardware(config.wheels, robot_brain, estop, can=self.can)
+        elif isinstance(config.wheels, InnotronicTracksConfiguration):
+            wheels = InnotronicTracksHardware(config.wheels, robot_brain, can=self.can)
+        else:
+            raise ValueError(f'Unknown tracks configuration type: {type(config.wheels)}')
         can_open_master = CanOpenMasterHardware(robot_brain, can=self.can, name='master')
         bms = BmsHardware(robot_brain,
                           expander=self.expander if config.bms.on_expander else None,

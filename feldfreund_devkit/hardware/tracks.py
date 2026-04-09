@@ -4,20 +4,45 @@ from rosys.geometry import PoseStep, Velocity
 from rosys.hardware import CanHardware, EStopHardware, ModuleHardware, RobotBrain, Wheels, WheelsSimulation
 from rosys.helpers import remove_indentation
 
-from ..config import TracksConfiguration
+from ..config import InnotronicTracksConfiguration, ODriveTracksConfiguration, TracksConfiguration
 
 
 class TracksHardware(Wheels, ModuleHardware):
-    """Expands the RoSys wheels hardware to control the Feldfreund's tracked wheels with dual motors."""
+    """Base class for Feldfreund tracked wheels."""
     MAX_VALID_LINEAR_VELOCITY = 3.0
     MAX_VALID_ANGULAR_VELOCITY = 3.5
-    ERROR_FLAG_VERSION = 6
 
     def __init__(self, config: TracksConfiguration,
                  robot_brain: RobotBrain,
+                 *, lizard_code: str,
+                 core_message_fields: list[str]) -> None:
+        self.config = config
+        super().__init__(robot_brain=robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
+
+    @property
+    def name(self) -> str:
+        return self.config.name
+
+    async def drive(self, linear: float, angular: float) -> None:
+        await super().drive(linear, angular)
+        if linear == 0.0:
+            linear = -0.0
+        if angular == 0.0:
+            angular = -0.0  # TODO: Temp fix
+        if not self.robot_brain.is_ready:
+            self.log.warning('Robot brain not ready')
+            return
+        await self.robot_brain.send(f'{self.config.name}.speed({linear}, {angular})')
+
+
+class ODriveTracksHardware(TracksHardware):
+    """Tracked wheels driven by ODrive motors (four motors: front/back, left/right)."""
+    ERROR_FLAG_VERSION = 6
+
+    def __init__(self, config: ODriveTracksConfiguration,
+                 robot_brain: RobotBrain,
                  estop: EStopHardware, *,
                  can: CanHardware) -> None:
-        self.config = config
         self._estop = estop
         self._l0_error = False
         self._r0_error = False
@@ -27,7 +52,7 @@ class TracksHardware(Wheels, ModuleHardware):
         self._r0_temperature = 0.0
         self._l1_temperature = 0.0
         self._r1_temperature = 0.0
-        m_per_tick = self.config.m_per_tick
+        m_per_tick = config.m_per_tick
         version_suffix = f', {self.ERROR_FLAG_VERSION}' if config.odrive_version == self.ERROR_FLAG_VERSION else ''
         lizard_code = remove_indentation(f'''
             l0 = ODriveMotor({can.name}, {config.left_back_can_address}{version_suffix})
@@ -44,8 +69,8 @@ class TracksHardware(Wheels, ModuleHardware):
             r1.reversed = {'true' if config.is_right_reversed else 'false'}
             {config.name} = ODriveWheels(l0, r0)
             {config.name}_front = ODriveWheels(l1, r1)
-            {config.name}.width = {self.config.width}
-            {config.name}_front.width = {self.config.width}
+            {config.name}.width = {config.width}
+            {config.name}_front.width = {config.width}
             {config.name}.shadow({config.name}_front)
         ''')
         core_message_fields = [f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3']
@@ -57,11 +82,7 @@ class TracksHardware(Wheels, ModuleHardware):
                                        'l1.motor_error_flag', 'r1.motor_error_flag'])
         else:
             self.log.warning('ODrive firmware is deprecated. Please update to benefit from the motor error detection.')
-        super().__init__(robot_brain=robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
-
-    @property
-    def name(self) -> str:
-        return self.config.name
+        super().__init__(config, robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
 
     @property
     def motor_error(self) -> bool:
@@ -69,17 +90,6 @@ class TracksHardware(Wheels, ModuleHardware):
             self.log.warning('Motor error detection is not available for this ODrive firmware version.')
             return False
         return any([self._l0_error, self._r0_error, self._l1_error, self._r1_error])
-
-    async def drive(self, linear: float, angular: float) -> None:
-        await super().drive(linear, angular)
-        if linear == 0.0:
-            linear = -0.0
-        if angular == 0.0:
-            angular = -0.0  # TODO: Temp fix
-        if not self.robot_brain.is_ready:
-            self.log.warning('Robot brain not ready')
-            return
-        await self.robot_brain.send(f'{self.config.name}.speed({linear}, {angular})')
 
     async def reset_motors(self) -> None:
         if self._estop.active:
@@ -134,6 +144,33 @@ class TracksHardware(Wheels, ModuleHardware):
                     ui.label(f'R1: {self._r1_temperature:.1f}°C')
         _ui()
         ui.timer(rosys.config.ui_update_interval, _ui.refresh)
+
+
+class InnotronicTracksHardware(TracksHardware):
+    """Tracked wheels driven by Innotronic drivers (two motors: left/right)."""
+
+    def __init__(self, config: InnotronicTracksConfiguration,
+                 robot_brain: RobotBrain, *,
+                 can: CanHardware) -> None:
+        lizard_code = remove_indentation(f'''
+            left = InnotronicMotor({can.name}, {config.left_can_address})
+            right = InnotronicMotor({can.name}, {config.right_can_address})
+            left.reversed = {'true' if config.is_left_reversed else 'false'}
+            right.reversed = {'true' if config.is_right_reversed else 'false'}
+            left.m_per_rad = {config.m_per_rad}
+            right.m_per_rad = {config.m_per_rad}
+            {config.name} = InnotronicWheels(left, right)
+            {config.name}.width = {config.width}
+        ''')
+        core_message_fields = [f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3']
+        super().__init__(config, robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
+
+    def handle_core_output(self, time: float, words: list[str]) -> None:
+        velocity = Velocity(linear=float(words.pop(0)), angular=float(words.pop(0)), time=time)
+        if abs(velocity.linear) <= self.MAX_VALID_LINEAR_VELOCITY and abs(velocity.angular) <= self.MAX_VALID_ANGULAR_VELOCITY:
+            self.VELOCITY_MEASURED.emit([velocity])
+        else:
+            self.log.error('Velocity is too high: (%s, %s)', velocity.linear, velocity.angular)
 
 
 class TracksSimulation(WheelsSimulation):  # pylint: disable=too-many-ancestors

@@ -3,7 +3,7 @@ from .flashlight import Flashlight, FlashlightHardware, FlashlightHardwareMosfet
 from .safety import Safety, SafetyHardware, SafetyMixin, SafetySimulation
 from .status_control import StatusControlHardware
 from .teltonika_router import ConnectionStatus, DeviceInfo, ModemStatus, TeltonikaRouter, WifiInfo
-from .tracks import TracksHardware, TracksSimulation
+from .tracks import InnotronicTracksHardware, ODriveTracksHardware, TracksHardware, TracksSimulation
 
 __all__ = [
     'CanOpenMasterHardware',
@@ -20,6 +20,8 @@ __all__ = [
     'SafetySimulation',
     'StatusControlHardware',
     'TeltonikaRouter',
+    'InnotronicTracksHardware',
+    'ODriveTracksHardware',
     'TracksHardware',
     'TracksSimulation',
     'WifiInfo',

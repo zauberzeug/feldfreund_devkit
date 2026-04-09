@@ -15,7 +15,12 @@ from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
 from .robot_brain_configuration import RobotBrainConfiguration
 from .robot_footprint import RobotFootprint
-from .tracks_configuration import TracksConfiguration, create_drive_parameters
+from .tracks_configuration import (
+    InnotronicTracksConfiguration,
+    ODriveTracksConfiguration,
+    TracksConfiguration,
+    create_drive_parameters,
+)
 
 
 def config_from_file(config_file: Path | str) -> FeldfreundConfiguration:
@@ -54,6 +59,8 @@ __all__ = [
     'ImuConfiguration',
     'RobotBrainConfiguration',
     'RobotFootprint',
+    'InnotronicTracksConfiguration',
+    'ODriveTracksConfiguration',
     'TracksConfiguration',
     'config_from_file',
     'config_from_id',

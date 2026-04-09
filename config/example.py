@@ -7,7 +7,7 @@ from feldfreund_devkit.config import (
     FlashlightConfiguration,
     GnssConfiguration,
     RobotBrainConfiguration,
-    TracksConfiguration,
+    ODriveTracksConfiguration,
 )
 
 config = FeldfreundConfiguration(
@@ -21,7 +21,7 @@ config = FeldfreundConfiguration(
     implement=None,
     imu=None,
     robot_brain=RobotBrainConfiguration(name='rbexample', nand=True),
-    wheels=TracksConfiguration(is_left_reversed=True,
+    wheels=ODriveTracksConfiguration(is_left_reversed=True,
                                is_right_reversed=False,
                                left_back_can_address=0x000,
                                left_front_can_address=0x100,
