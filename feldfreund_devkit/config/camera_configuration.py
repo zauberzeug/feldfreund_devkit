@@ -59,18 +59,22 @@ class CameraSlotConfig:
     calibration: Calibration | None = None
     image_size: ImageSize | None = None
 
+    def __post_init__(self) -> None:
+        if self.calibration is None and self.image_size is None:
+            raise ValueError('either calibration or image_size must be provided')
+
     @property
     def width(self) -> int:
         if self.calibration is not None:
             return self.calibration.intrinsics.size.width
-        assert self.image_size is not None, 'either calibration or image_size must be provided'
+        assert self.image_size is not None
         return self.image_size.width
 
     @property
     def height(self) -> int:
         if self.calibration is not None:
             return self.calibration.intrinsics.size.height
-        assert self.image_size is not None, 'either calibration or image_size must be provided'
+        assert self.image_size is not None
         return self.image_size.height
 
 
