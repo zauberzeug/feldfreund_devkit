@@ -165,7 +165,6 @@ class CameraProvider:
                 self.log.info('Network camera: mac=%s ip=%s types=%s', mac, ip, ', '.join(types))
             else:
                 self.log.debug('Network device: mac=%s ip=%s (unknown vendor)', mac, ip)
-
         self.log.info('Camera scan complete')
 
     def developer_ui(self) -> None:
@@ -173,7 +172,7 @@ class CameraProvider:
                  ('left', self.left), ('right', self.right)]
         with ui.column():
             ui.label('Cameras').classes('text-center text-bold')
-            with ui.grid(columns='auto auto auto auto').classes('gap-x-4 gap-y-1 items-center'):
+            with ui.grid(columns='auto auto auto auto').classes('items-center'):
                 ui.label('Slot').classes('font-bold')
                 ui.label('Connected').classes('font-bold')
                 ui.label('Resolution').classes('font-bold')
@@ -189,9 +188,10 @@ class CameraProvider:
                         status_bulb().bind_value_from(camera, 'is_connected')
                         resolution = ui.label('—')
 
-                        def update_resolution(lbl: ui.label = resolution, cam: rosys.vision.CalibratableCamera = camera) -> None:
+                        def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera = camera) -> None:
                             image = cam.latest_captured_image
-                            lbl.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
+                            label.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
 
                         ui.timer(5.0, update_resolution)
                         ui.label(self._camera_config_name(slot_config))
+            ui.button('Scan for cameras', on_click=self.scan)
