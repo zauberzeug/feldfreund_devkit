@@ -125,12 +125,6 @@ class CameraProvider:
             camera.calibration = slot_config.calibration
         return camera
 
-    _CONFIG_TO_CLASS: dict[type[CameraSlotConfig], type[rosys.vision.CalibratableCamera]] = {
-        UsbCameraConfig: CalibratableUsbCamera,
-        RtspCameraConfig: CalibratableRtspCamera,
-        MjpegCameraConfig: CalibratableMjpegCamera,
-    }
-
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         """Create a camera based on the given slot configuration."""
         if rosys.is_simulation():
@@ -141,11 +135,14 @@ class CameraProvider:
                 fps=slot.fps,
                 color='#cccccc',
             )
+        elif isinstance(slot, UsbCameraConfig):
+            camera = CalibratableUsbCamera.from_config(slot)
+        elif isinstance(slot, RtspCameraConfig):
+            camera = CalibratableRtspCamera.from_config(slot)
+        elif isinstance(slot, MjpegCameraConfig):
+            camera = CalibratableMjpegCamera.from_config(slot)
         else:
-            camera_class = self._CONFIG_TO_CLASS.get(type(slot))
-            if camera_class is None:
-                raise ValueError(f'Unknown camera slot type: {type(slot)}')
-            camera = camera_class.from_config(slot)
+            raise ValueError(f'Unknown camera slot type: {type(slot)}')
         self.log.debug('Created %s camera %s', self._camera_config_name(slot), camera.id)
         return camera
 
