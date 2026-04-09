@@ -43,6 +43,8 @@ class CameraSlotConfig:
     ``calibration.intrinsics.size`` when a calibration is provided,
     otherwise from ``image_size``.  At least one of the two must be set.
 
+    rotation and crop are only applied for display purposes and do not affect the actual captured images.
+
     Defaults:
         fps: 10
         rotation: ImageRotation.NONE
