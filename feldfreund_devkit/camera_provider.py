@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 import rosys
@@ -15,15 +17,43 @@ from .interface.components import status_bulb
 
 
 class CalibratableUsbCamera(rosys.vision.CalibratableCamera, rosys.vision.UsbCamera):
-    pass
+
+    @classmethod
+    def from_config(cls, config: UsbCameraConfig) -> CalibratableUsbCamera:
+        return cls(
+            id=config.camera_id,
+            width=config.width,
+            height=config.height,
+            fps=config.fps,
+            auto_exposure=config.auto_exposure,
+        )
 
 
 class CalibratableRtspCamera(rosys.vision.CalibratableCamera, rosys.vision.RtspCamera):
-    pass
+
+    @classmethod
+    def from_config(cls, config: RtspCameraConfig) -> CalibratableRtspCamera:
+        return cls(
+            mac=config.mac,
+            id=config.camera_id,
+            ip=config.ip,
+            fps=config.fps,
+            substream=config.substream,
+            avdec=config.codec,
+        )
 
 
 class CalibratableMjpegCamera(rosys.vision.CalibratableCamera, rosys.vision.MjpegCamera):
-    pass
+
+    @classmethod
+    def from_config(cls, config: MjpegCameraConfig) -> CalibratableMjpegCamera:
+        return cls(
+            id=config.camera_id,
+            username=config.username,
+            password=config.password,
+            ip=config.ip,
+            fps=config.fps,
+        )
 
 
 class CameraProvider:
@@ -95,6 +125,12 @@ class CameraProvider:
             camera.calibration = slot_config.calibration
         return camera
 
+    _CONFIG_TO_CLASS: dict[type[CameraSlotConfig], type[rosys.vision.CalibratableCamera]] = {
+        UsbCameraConfig: CalibratableUsbCamera,
+        RtspCameraConfig: CalibratableRtspCamera,
+        MjpegCameraConfig: CalibratableMjpegCamera,
+    }
+
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         """Create a camera based on the given slot configuration."""
         if rosys.is_simulation():
@@ -105,33 +141,11 @@ class CameraProvider:
                 fps=slot.fps,
                 color='#cccccc',
             )
-        elif isinstance(slot, UsbCameraConfig):
-            camera = CalibratableUsbCamera(
-                id=slot.camera_id,
-                width=slot.width,
-                height=slot.height,
-                fps=slot.fps,
-                auto_exposure=slot.auto_exposure,
-            )
-        elif isinstance(slot, RtspCameraConfig):
-            camera = CalibratableRtspCamera(
-                id=slot.camera_id,
-                mac=slot.mac,
-                ip=slot.ip,
-                fps=slot.fps,
-                substream=slot.substream,
-                avdec=slot.codec,
-            )
-        elif isinstance(slot, MjpegCameraConfig):
-            camera = CalibratableMjpegCamera(
-                id=slot.camera_id,
-                username=slot.username,
-                password=slot.password,
-                ip=slot.ip,
-                fps=slot.fps,
-            )
         else:
-            raise ValueError(f'Unknown camera slot type: {type(slot)}')
+            camera_class = self._CONFIG_TO_CLASS.get(type(slot))
+            if camera_class is None:
+                raise ValueError(f'Unknown camera slot type: {type(slot)}')
+            camera = camera_class.from_config(slot)
         self.log.debug('Created %s camera %s', self._camera_config_name(slot), camera.id)
         return camera
 
