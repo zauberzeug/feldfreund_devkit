@@ -35,7 +35,7 @@ def _create_camera_matrix(*, fx: float, fy: float, cx: float, cy: float) -> list
     ]
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class CameraSlotConfig:
     """Base configuration shared by all camera types.
 
@@ -80,7 +80,7 @@ class CameraSlotConfig:
         return self.image_size.height
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class UsbCameraConfig(CameraSlotConfig):
     """Configuration for a USB camera.
 
@@ -95,7 +95,7 @@ class UsbCameraConfig(CameraSlotConfig):
                 'auto_exposure': self.auto_exposure}
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class RtspCameraConfig(CameraSlotConfig):
     """Configuration for an RTSP camera.
 
@@ -114,7 +114,7 @@ class RtspCameraConfig(CameraSlotConfig):
                 'substream': self.substream, 'avdec': self.codec}
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class MjpegCameraConfig(CameraSlotConfig):
     """Configuration for an MJPEG camera.
 
@@ -132,7 +132,7 @@ class MjpegCameraConfig(CameraSlotConfig):
                 'ip': self.ip}
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(kw_only=True)
 class CameraConfiguration:
     """Container of named camera slots for a Feldfreund robot.
 
