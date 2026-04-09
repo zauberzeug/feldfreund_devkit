@@ -177,7 +177,10 @@ class CameraProvider:
                         slot_config: CameraSlotConfig = getattr(self, f'{name}_config')
                         status_bulb().bind_value_from(camera, 'is_connected')
                         resolution = ui.label('—')
-                        ui.timer(5.0, lambda lbl=resolution, cam=camera: lbl.set_text(
-                            f'{cam.latest_captured_image.size.width}x{cam.latest_captured_image.size.height}'
-                            if cam.latest_captured_image else '—'))
+
+                        def update_resolution(lbl: ui.label = resolution, cam: rosys.vision.CalibratableCamera = camera) -> None:
+                            image = cam.latest_captured_image
+                            lbl.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
+
+                        ui.timer(5.0, update_resolution)
                         ui.label(self._camera_config_name(slot_config))
