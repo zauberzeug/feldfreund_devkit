@@ -31,11 +31,11 @@ class CalibratableMjpegCamera(rosys.vision.CalibratableCamera, rosys.vision.Mjpe
 class CameraProvider:
 
     def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider | None = None, reconnect_interval: int = 10) -> None:
-        """
+        """Config-driven camera provider with named role slots (main, front, back, left, right).
 
         :param config: Optional camera configuration. If None, the provider will not attempt to connect to any cameras.
-        :param frame_provider: Optional main frame to link calibrated cameras to.
-        :param reconnect_interval: Interval in seconds to attempt reconnection to cameras.
+        :param frame_provider: Optional frame provider to link calibrated camera extrinsics to.
+        :param reconnect_interval: Interval in seconds to attempt reconnection to disconnected cameras.
         """
         self.log = logging.getLogger('feldfreund.camera_provider')
         self._config = config
