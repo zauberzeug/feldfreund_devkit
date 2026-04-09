@@ -35,12 +35,13 @@ class CalibratableMjpegCamera(rosys.vision.CalibratableCamera, rosys.vision.Mjpe
 
 class CameraProvider:
 
-    def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider | None = None, reconnect_interval: int = 10) -> None:
+    RECONNECT_INTERVAL = 10
+
+    def __init__(self, config: CameraConfiguration | None, *, frame_provider: FrameProvider | None = None) -> None:
         """Config-driven camera provider with named role slots (main, front, back, left, right).
 
         :param config: Optional camera configuration. If None, the provider will not attempt to connect to any cameras.
         :param frame_provider: Optional frame provider to link calibrated camera extrinsics to.
-        :param reconnect_interval: Interval in seconds to attempt reconnection to disconnected cameras.
         """
         self.log = logging.getLogger('feldfreund.camera_provider')
         self._config = config
@@ -54,7 +55,7 @@ class CameraProvider:
             self.set_frame_provider(frame_provider)
 
         if config is not None:
-            rosys.on_repeat(self.update_device_list, reconnect_interval)
+            rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
             rosys.on_shutdown(self.shutdown)
 
     @property
@@ -104,6 +105,7 @@ class CameraProvider:
 
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         """Create a camera based on the given slot configuration."""
+        camera: rosys.vision.CalibratableCamera
         if rosys.is_simulation():
             camera = rosys.vision.SimulatedCalibratableCamera(
                 id=slot.camera_id,
@@ -149,7 +151,7 @@ class CameraProvider:
         """Scan for all available USB, RTSP and MJPEG cameras and log the results."""
         self.log.info('Scanning for cameras...')
 
-        usb_ids = await rosys.run.io_bound(scan_for_connected_devices)
+        usb_ids = await rosys.run.io_bound(scan_for_connected_devices) or set()
         for uid in sorted(usb_ids):
             self.log.info('USB camera: %s', uid)
 
@@ -188,7 +190,9 @@ class CameraProvider:
                         status_bulb().bind_value_from(camera, 'is_connected')
                         resolution = ui.label('—')
 
-                        def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera = camera) -> None:
+                        def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera | None = camera) -> None:
+                            if cam is None:
+                                return
                             image = cam.latest_captured_image
                             label.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
 
