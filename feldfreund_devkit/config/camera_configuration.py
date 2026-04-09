@@ -64,6 +64,10 @@ class CameraSlotConfig:
             raise ValueError('either calibration or image_size must be provided')
 
     @property
+    def camera_kwargs(self) -> dict:
+        return {'id': self.camera_id, 'fps': self.fps}
+
+    @property
     def width(self) -> int:
         if self.calibration is not None:
             return self.calibration.intrinsics.size.width
@@ -89,8 +93,8 @@ class UsbCameraConfig(CameraSlotConfig):
 
     @property
     def camera_kwargs(self) -> dict:
-        return {'id': self.camera_id, 'width': self.width, 'height': self.height,
-                'fps': self.fps, 'auto_exposure': self.auto_exposure}
+        return {**super().camera_kwargs, 'width': self.width, 'height': self.height,
+                'auto_exposure': self.auto_exposure}
 
 
 @dataclass(slots=True, kw_only=True)
@@ -108,8 +112,8 @@ class RtspCameraConfig(CameraSlotConfig):
 
     @property
     def camera_kwargs(self) -> dict:
-        return {'id': self.camera_id, 'mac': self.mac, 'ip': self.ip,
-                'fps': self.fps, 'substream': self.substream, 'avdec': self.codec}
+        return {**super().camera_kwargs, 'mac': self.mac, 'ip': self.ip,
+                'substream': self.substream, 'avdec': self.codec}
 
 
 @dataclass(slots=True, kw_only=True)
@@ -126,8 +130,8 @@ class MjpegCameraConfig(CameraSlotConfig):
 
     @property
     def camera_kwargs(self) -> dict:
-        return {'id': self.camera_id, 'username': self.username, 'password': self.password,
-                'ip': self.ip, 'fps': self.fps}
+        return {**super().camera_kwargs, 'username': self.username, 'password': self.password,
+                'ip': self.ip}
 
 
 @dataclass(slots=True, kw_only=True)
