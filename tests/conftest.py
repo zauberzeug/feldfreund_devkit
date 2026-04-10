@@ -24,6 +24,12 @@ class TestSystem(System):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         GeoReference.update_current(GEO_REFERENCE)
+        assert isinstance(self.feldfreund.gnss, GnssSimulation)
+        # NOTE: we need low gnss noise for reliable tests
+        self.feldfreund.gnss._lat_std_dev = 1e-10
+        self.feldfreund.gnss._lon_std_dev = 1e-10
+        self.feldfreund.gnss._heading_std_dev = 1e-10
+        self.feldfreund.gnss._latency = 0.0
         self.robot_locator = RobotLocator(self.feldfreund.wheels,
                                           gnss=self.feldfreund.gnss,
                                           imu=self.feldfreund.imu,

@@ -6,6 +6,7 @@ from feldfreund_devkit.config import (
     FeldfreundConfiguration,
     FlashlightConfiguration,
     GnssConfiguration,
+    ImuConfiguration,
     RobotBrainConfiguration,
     TracksConfiguration,
 )
@@ -19,7 +20,7 @@ config = FeldfreundConfiguration(
     flashlight=FlashlightConfiguration(),
     gnss=GnssConfiguration(),
     implement=None,
-    imu=None,
+    imu=ImuConfiguration(),
     robot_brain=RobotBrainConfiguration(name='rbexample', nand=True),
     wheels=TracksConfiguration(is_left_reversed=True,
                                is_right_reversed=False,
