@@ -222,9 +222,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         bumper = BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
         imu = ImuSimulation(pose_provider=wheels) if config.imu else None
-        safety = SafetySimulation(wheels=wheels,
-                                  estop=estop,
-                                  bumper=bumper)
+        safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)
         gnss = GnssSimulation(pose_provider=wheels,
                               lat_std_dev=0.008,
                               lon_std_dev=0.008,
