@@ -1,4 +1,4 @@
-# pylint: disable=unused-argument
+import os
 from collections.abc import AsyncGenerator, Generator
 
 import pytest
@@ -9,6 +9,11 @@ from rosys.geometry import GeoPoint, GeoReference, Pose
 from rosys.hardware import GnssSimulation, ImuSimulation, WheelsSimulation
 from rosys.testing import forward, helpers
 
+# isort: split
+
+os.environ.setdefault('MJPEG_CAMERA_PASSWORD', 'camera-password')
+os.environ.setdefault('TELTONIKA_PASSWORD', 'teltonik-password')
+
 from feldfreund_devkit.config import config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.implement import ImplementDummy
@@ -16,6 +21,7 @@ from feldfreund_devkit.navigation import StraightLineNavigation
 from feldfreund_devkit.robot_locator import RobotLocator
 from feldfreund_devkit.system import System
 
+# pylint: disable=unused-argument
 GEO_REFERENCE = GeoReference(GeoPoint.from_degrees(lat=51.98333489813455, lon=7.434242465994318))
 ROBOT_GEO_START_POSITION = GEO_REFERENCE.origin
 
