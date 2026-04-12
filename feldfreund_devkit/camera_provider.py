@@ -55,6 +55,8 @@ class CameraProvider:
         self.back = self._setup(config.back) if config and config.back else None
         self.left = self._setup(config.left) if config and config.left else None
         self.right = self._setup(config.right) if config and config.right else None
+        self._cameras = {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right)
+                         if cam is not None}
 
         if frame_provider is not None:
             self.set_frame_provider(frame_provider)
@@ -82,7 +84,7 @@ class CameraProvider:
     @property
     def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
         """Required by rosys CalibratableCameraProvider protocol."""
-        return {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right) if cam is not None}
+        return self._cameras
 
     @property
     def circle_sight_cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
