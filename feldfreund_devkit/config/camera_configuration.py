@@ -120,13 +120,15 @@ class RtspCameraConfig(CameraSlotConfig):
 class MjpegCameraConfig(CameraSlotConfig):
     """Configuration for an MJPEG camera.
 
+    The password can be added to the .env file as MJPEG_CAMERA_PASSWORD and then used with secrets.py.
+
     Defaults:
+        ip: '192.168.42.3'
         username: 'root'
-        password: 'zauberzg!'
     """
     ip: str = '192.168.42.3'
     username: str = 'root'
-    password: str = 'zauberzg!'
+    password: str
 
     @property
     def camera_kwargs(self) -> dict:
