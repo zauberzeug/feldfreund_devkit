@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 import rosys
 from nicegui import ui
 from rosys.geometry import FrameProvider
+from rosys.vision import CalibratableCamera
 from rosys.vision.mjpeg_camera.vendors import VendorType as MjpegVendorType
 from rosys.vision.mjpeg_camera.vendors import mac_to_vendor as mjpeg_mac_to_vendor
 from rosys.vision.rtsp_camera.arp_scan import find_cameras
@@ -33,6 +35,9 @@ class CalibratableMjpegCamera(rosys.vision.CalibratableCamera, rosys.vision.Mjpe
     pass
 
 
+CameraPosition = Literal['main', 'front', 'back', 'left', 'right']
+
+
 class CameraProvider:
 
     RECONNECT_INTERVAL = 10
@@ -58,25 +63,21 @@ class CameraProvider:
             rosys.on_repeat(self.update_device_list, self.RECONNECT_INTERVAL)
             rosys.on_shutdown(self.shutdown)
 
-    @property
-    def main_config(self) -> CameraSlotConfig | None:
-        return self._config.main if self._config else None
-
-    @property
-    def front_config(self) -> CameraSlotConfig | None:
-        return self._config.front if self._config else None
-
-    @property
-    def back_config(self) -> CameraSlotConfig | None:
-        return self._config.back if self._config else None
-
-    @property
-    def left_config(self) -> CameraSlotConfig | None:
-        return self._config.left if self._config else None
-
-    @property
-    def right_config(self) -> CameraSlotConfig | None:
-        return self._config.right if self._config else None
+    def slot_config(self, name: CameraPosition) -> CameraSlotConfig | None:
+        if self._config is None:
+            return None
+        match name:
+            case 'main':
+                return self._config.main
+            case 'front':
+                return self._config.front
+            case 'back':
+                return self._config.back
+            case 'left':
+                return self._config.left
+            case 'right':
+                return self._config.right
+        return None
 
     @property
     def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
@@ -125,9 +126,9 @@ class CameraProvider:
         self.log.debug('Created %s camera %s', self._camera_config_name(slot), camera.id)
         return camera
 
-    def _camera_config_name(self, config: CameraSlotConfig) -> str:
+    def _camera_config_name(self, config: CameraSlotConfig | None) -> str:
         """Get a human-friendly camera type name based on the config class name, e.g. 'Usb' for UsbCameraConfig."""
-        return type(config).__name__.removesuffix('CameraConfig').title()
+        return type(config).__name__.removesuffix('CameraConfig').title() if config else 'Unknown'
 
     async def update_device_list(self) -> None:
         """Attempt to connect to all disconnected cameras."""
@@ -170,8 +171,9 @@ class CameraProvider:
         self.log.info('Camera scan complete')
 
     def developer_ui(self) -> None:
-        slots = [('main', self.main), ('front', self.front), ('back', self.back),
-                 ('left', self.left), ('right', self.right)]
+        slots: list[tuple[CameraPosition, CalibratableCamera | None]] = [('main', self.main),
+                                                                         ('front', self.front), ('back', self.back),
+                                                                         ('left', self.left), ('right', self.right)]
         with ui.column():
             ui.label('Cameras').classes('text-center text-bold')
             with ui.grid(columns='auto auto auto auto').classes('items-center'):
@@ -186,7 +188,6 @@ class CameraProvider:
                         ui.label('—').classes('text-center')
                         ui.label('—').classes('text-center')
                     else:
-                        slot_config: CameraSlotConfig = getattr(self, f'{name}_config')
                         status_bulb().bind_value_from(camera, 'is_connected')
                         resolution = ui.label('—')
 
@@ -197,5 +198,5 @@ class CameraProvider:
                             label.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
 
                         ui.timer(5.0, update_resolution)
-                        ui.label(self._camera_config_name(slot_config))
+                        ui.label(self._camera_config_name(self.slot_config(name)))
             ui.button('Scan for cameras', on_click=self.scan)

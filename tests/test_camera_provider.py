@@ -77,8 +77,9 @@ async def test_crop_config_accessible(robot_locator):
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
-    assert provider.main_config is not None
-    assert provider.main_config.crop == crop
+    main_config = provider.slot_config('main')
+    assert main_config is not None
+    assert main_config.crop == crop
 
 
 async def test_rotation_config_accessible(robot_locator):
@@ -90,8 +91,9 @@ async def test_rotation_config_accessible(robot_locator):
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
     assert provider.main is not None
-    assert provider.main_config is not None
-    assert provider.main_config.rotation == ImageRotation.RIGHT
+    main_config = provider.slot_config('main')
+    assert main_config is not None
+    assert main_config.rotation == ImageRotation.RIGHT
 
 
 async def test_cameras_connect_on_update(robot_locator):
