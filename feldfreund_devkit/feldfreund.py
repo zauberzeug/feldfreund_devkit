@@ -36,6 +36,7 @@ from .config import (
     FlashlightMosfetConfiguration,
     InnotronicTracksConfiguration,
     ODriveTracksConfiguration,
+    TracksConfiguration,
 )
 from .hardware import (
     CanOpenMasterHardware,
@@ -113,13 +114,10 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                tx_pin=config.can.tx_pin,
                                baud=config.can.baud)
         estop = EStopHardware(robot_brain, name=config.estop.name, pins=config.estop.pins)
-        wheels: TracksHardware
-        if isinstance(config.wheels, ODriveTracksConfiguration):
-            wheels = ODriveTracksHardware(config.wheels, robot_brain, estop, can=self.can)
-        elif isinstance(config.wheels, InnotronicTracksConfiguration):
-            wheels = InnotronicTracksHardware(config.wheels, robot_brain, can=self.can)
-        else:
-            raise ValueError(f'Unknown tracks configuration type: {type(config.wheels)}')
+        wheels = self._setup_tracks(config.wheels,
+                                    robot_brain=robot_brain,
+                                    estop=estop,
+                                    can=self.can)
         can_open_master = CanOpenMasterHardware(robot_brain, can=self.can, name='master')
         bms = BmsHardware(robot_brain,
                           expander=self.expander if config.bms.on_expander else None,
@@ -219,6 +217,19 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         if isinstance(config, FlashlightMosfetConfiguration):
             return FlashlightHardwareMosfet(config, robot_brain, bms, expander=expander if config.on_expander else None)
         raise NotImplementedError(f'Unknown flashlight configuration: {config}')
+
+    def _setup_tracks(self, config: TracksConfiguration, *,
+                      robot_brain: RobotBrain,
+                      estop: EStop,
+                      can: CanHardware) -> TracksHardware:
+        wheels: TracksHardware
+        if isinstance(config.wheels, ODriveTracksConfiguration):
+            wheels = ODriveTracksHardware(config.wheels, robot_brain, estop, can=can)
+        elif isinstance(config.wheels, InnotronicTracksConfiguration):
+            wheels = InnotronicTracksHardware(config.wheels, robot_brain, can=can)
+        else:
+            raise ValueError(f'Unknown tracks configuration type: {type(config.wheels)}')
+        return wheels
 
 
 class FeldfreundSimulation(Feldfreund, RobotSimulation):
