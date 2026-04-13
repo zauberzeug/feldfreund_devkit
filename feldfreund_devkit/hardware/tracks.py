@@ -39,6 +39,8 @@ class ODriveTracksHardware(TracksHardware):
     """Tracked wheels driven by ODrive motors (four motors: front/back, left/right)."""
     ERROR_FLAG_VERSION = 6
 
+    config: ODriveTracksConfiguration
+
     def __init__(self, config: ODriveTracksConfiguration,
                  robot_brain: RobotBrain,
                  estop: EStopHardware, *,

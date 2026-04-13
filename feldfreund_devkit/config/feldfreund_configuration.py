@@ -17,7 +17,6 @@ from .robot_footprint import RobotFootprint
 from .tracks_configuration import (
     InnotronicTracksConfiguration,
     ODriveTracksConfiguration,
-    TracksConfiguration,
     create_drive_parameters,
 )
 

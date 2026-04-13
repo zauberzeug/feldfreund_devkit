@@ -43,13 +43,13 @@ from .hardware import (
     FlashlightHardware,
     FlashlightHardwareMosfet,
     FlashlightSimulation,
+    InnotronicTracksHardware,
+    ODriveTracksHardware,
     Safety,
     SafetyHardware,
     SafetyMixin,
     SafetySimulation,
     StatusControlHardware,
-    InnotronicTracksHardware,
-    ODriveTracksHardware,
     TracksHardware,
     TracksSimulation,
 )
@@ -113,6 +113,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                tx_pin=config.can.tx_pin,
                                baud=config.can.baud)
         estop = EStopHardware(robot_brain, name=config.estop.name, pins=config.estop.pins)
+        wheels: TracksHardware
         if isinstance(config.wheels, ODriveTracksConfiguration):
             wheels = ODriveTracksHardware(config.wheels, robot_brain, estop, can=self.can)
         elif isinstance(config.wheels, InnotronicTracksConfiguration):
