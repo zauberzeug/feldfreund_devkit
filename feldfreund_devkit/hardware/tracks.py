@@ -241,21 +241,3 @@ class TracksSimulation(WheelsSimulation):  # pylint: disable=too-many-ancestors
         velocity = Velocity(linear=self.linear_velocity,
                             angular=self.angular_velocity, time=self.pose.time)
         self.VELOCITY_MEASURED.emit([velocity])
-
-    def developer_ui(self) -> None:
-        @ui.refreshable
-        def _ui() -> None:
-            with ui.column():
-                ui.label('Simulated Tracks').classes('text-center text-bold')
-                ui.label(f'x: {self.pose.x:.3f} m')
-                ui.label(f'y: {self.pose.y:.3f} m')
-                ui.label(f'yaw: {np.rad2deg(eliminate_2pi(self.pose.yaw)):.2f} °')
-                ui.number('slip_factor_right', min=-1, max=1, step=0.01, value=0, format='%.2f') \
-                    .bind_value(self, 'slip_factor_right') \
-                    .classes('w-24')
-                ui.number('slip_factor_left', min=-1, max=1, step=0.01, value=0, format='%.2f') \
-                    .bind_value(self, 'slip_factor_left') \
-                    .classes('w-24')
-
-        _ui()
-        ui.timer(rosys.config.ui_update_interval, _ui.refresh)
