@@ -15,8 +15,7 @@ from .imu_configuration import ImuConfiguration
 from .robot_brain_configuration import RobotBrainConfiguration
 from .robot_footprint import RobotFootprint
 from .tracks_configuration import (
-    InnotronicTracksConfiguration,
-    ODriveTracksConfiguration,
+    TracksConfiguration,
     create_drive_parameters,
 )
 
@@ -40,4 +39,4 @@ class FeldfreundConfiguration:
     implement: ImplementConfiguration | None = None
     imu: ImuConfiguration | None = None
     robot_brain: RobotBrainConfiguration
-    wheels: ODriveTracksConfiguration | InnotronicTracksConfiguration
+    wheels: TracksConfiguration
