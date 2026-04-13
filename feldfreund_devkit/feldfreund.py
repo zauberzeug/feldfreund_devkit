@@ -220,7 +220,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
 
     def _setup_tracks(self, config: TracksConfiguration, *,
                       robot_brain: RobotBrain,
-                      estop: EStop,
+                      estop: EStopHardware,
                       can: CanHardware) -> TracksHardware:
         wheels: TracksHardware
         if isinstance(config, ODriveTracksConfiguration):
