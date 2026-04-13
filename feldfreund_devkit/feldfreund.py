@@ -223,12 +223,12 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                       estop: EStop,
                       can: CanHardware) -> TracksHardware:
         wheels: TracksHardware
-        if isinstance(config.wheels, ODriveTracksConfiguration):
-            wheels = ODriveTracksHardware(config.wheels, robot_brain, estop, can=can)
-        elif isinstance(config.wheels, InnotronicTracksConfiguration):
-            wheels = InnotronicTracksHardware(config.wheels, robot_brain, can=can)
+        if isinstance(config, ODriveTracksConfiguration):
+            wheels = ODriveTracksHardware(config, robot_brain, estop, can=can)
+        elif isinstance(config, InnotronicTracksConfiguration):
+            wheels = InnotronicTracksHardware(config, robot_brain, can=can)
         else:
-            raise ValueError(f'Unknown tracks configuration type: {type(config.wheels)}')
+            raise ValueError(f'Unknown tracks configuration type: {type(config)}')
         return wheels
 
 
