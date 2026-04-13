@@ -8,9 +8,8 @@ from nicegui import Event
 from rosys.driving import Odometer
 from rosys.geometry import GeoPoint, GeoReference
 
-from . import secrets
 from .camera_provider import CameraProvider
-from .config import FeldfreundConfiguration
+from .config import FeldfreundConfiguration, Secrets
 from .feldfreund import FeldfreundHardware, FeldfreundSimulation
 from .hardware import TeltonikaRouter
 
@@ -20,9 +19,10 @@ class System(rosys.persistence.Persistable):
     The System is the core class of a RoSys project to initialize all components of a robot or system.
     """
 
-    def __init__(self, config: FeldfreundConfiguration, *, use_acceleration: bool = False) -> None:
+    def __init__(self, config: FeldfreundConfiguration, *, secrets: Secrets, use_acceleration: bool = False) -> None:
         super().__init__()
         self.log = logging.getLogger('feldfreund.system')
+        self.secrets = secrets
         self.config = config
         rosys.hardware.SerialCommunication.search_paths.insert(0, '/dev/ttyTHS0')
         if not rosys.hardware.SerialCommunication.is_possible():
@@ -35,7 +35,7 @@ class System(rosys.persistence.Persistable):
             self.feldfreund = FeldfreundSimulation(self.config, use_acceleration=use_acceleration)
         else:
             self.feldfreund = FeldfreundHardware(self.config)
-            self.teltonika_router = TeltonikaRouter('http://192.168.42.1/api', secrets.TELTONIKA_PASSWORD)
+            self.teltonika_router = TeltonikaRouter('http://192.168.42.1/api', self.secrets.TELTONIKA_PASSWORD)
             rosys.on_repeat(self.log_status, 60 * 5)
         self.odometer = Odometer(self.feldfreund.wheels)
         self.camera_provider = CameraProvider(config.cameras, frame_provider=self.odometer)

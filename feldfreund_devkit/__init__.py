@@ -1,4 +1,4 @@
-from . import log_configuration, secrets
+from . import log_configuration
 from .camera_provider import CameraProvider
 from .feldfreund import Feldfreund, FeldfreundHardware, FeldfreundSimulation
 from .implement import Implement, ImplementDummy, ImplementException
@@ -20,5 +20,4 @@ __all__ = [
     'TargetLocator',
     '__version__',
     'log_configuration',
-    'secrets',
 ]

@@ -5,14 +5,15 @@ from rosys.automation import Automator, automation_controls
 from rosys.driving import Driver, Steerer, keyboard_control, robot_object
 
 import feldfreund_devkit
+from feldfreund_devkit import Secrets
 from feldfreund_devkit.config import FeldfreundConfiguration, config_from_id
 from feldfreund_devkit.implement import ImplementDummy
 from feldfreund_devkit.navigation import StraightLineNavigation
 
 
 class System(feldfreund_devkit.System):
-    def __init__(self, config: FeldfreundConfiguration) -> None:
-        super().__init__(config)
+    def __init__(self, config: FeldfreundConfiguration, secrets: Secrets) -> None:
+        super().__init__(config, secrets=secrets)
         self.steerer = Steerer(self.feldfreund.wheels, speed_scaling=0.25)
         self.driver = Driver(self.feldfreund.wheels, self.odometer, parameters=self.config.driver)
         self.shape = rosys.geometry.Prism.default_robot_shape()
@@ -24,8 +25,9 @@ class System(feldfreund_devkit.System):
 
 
 def startup() -> None:
-    config = config_from_id('example')
-    system = System(config).persistent()
+    secrets = Secrets()
+    config = config_from_id('example', secrets=secrets)
+    system = System(config, secrets).persistent()
 
     @ui.page('/')
     def ui_content() -> None:

@@ -22,10 +22,11 @@ from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
 from .robot_brain_configuration import RobotBrainConfiguration
 from .robot_footprint import RobotFootprint
+from .secrets import Secrets
 from .tracks_configuration import TracksConfiguration, create_drive_parameters
 
 
-def config_from_file(config_file: Path | str) -> FeldfreundConfiguration:
+def config_from_file(config_file: Path | str, *, secrets: Secrets) -> FeldfreundConfiguration:
     config_path = Path(config_file)
     if not config_path.exists():
         raise FileNotFoundError(f'No configuration file found at: {config_path}')
@@ -35,12 +36,12 @@ def config_from_file(config_file: Path | str) -> FeldfreundConfiguration:
         raise ImportError(f'Could not load configuration from: {config_path}')
     config_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(config_module)
-    return config_module.config
+    return config_module.build_config(secrets)
 
 
-def config_from_id(robot_id: str, *, config_dir: str = 'config') -> FeldfreundConfiguration:
+def config_from_id(robot_id: str, *, secrets: Secrets, config_dir: str = 'config') -> FeldfreundConfiguration:
     config_file = Path(config_dir) / f'{robot_id.lower()}.py'
-    return config_from_file(config_file)
+    return config_from_file(config_file, secrets=secrets)
 
 
 __all__ = [
@@ -62,6 +63,7 @@ __all__ = [
     'RobotBrainConfiguration',
     'RobotFootprint',
     'RtspCameraConfig',
+    'Secrets',
     'TracksConfiguration',
     'UsbCameraConfig',
     'config_from_file',
