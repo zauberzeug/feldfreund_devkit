@@ -1,9 +1,8 @@
-import numpy as np
 import rosys
 from nicegui import ui
 from rosys.geometry import PoseStep, Velocity
 from rosys.hardware import CanHardware, EStopHardware, ModuleHardware, RobotBrain, Wheels, WheelsSimulation
-from rosys.helpers import eliminate_2pi, remove_indentation
+from rosys.helpers import remove_indentation
 
 from ..config import InnotronicTracksConfiguration, ODriveTracksConfiguration, TracksConfiguration
 
