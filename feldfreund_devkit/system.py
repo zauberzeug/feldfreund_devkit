@@ -8,7 +8,8 @@ from nicegui import Event
 from rosys.driving import Odometer
 from rosys.geometry import GeoPoint, GeoReference
 
-from .config import FeldfreundConfiguration
+from .camera_provider import CameraProvider
+from .config import FeldfreundConfiguration, Secrets
 from .feldfreund import FeldfreundHardware, FeldfreundSimulation
 from .hardware import TeltonikaRouter
 
@@ -18,9 +19,10 @@ class System(rosys.persistence.Persistable):
     The System is the core class of a RoSys project to initialize all components of a robot or system.
     """
 
-    def __init__(self, config: FeldfreundConfiguration, *, use_acceleration: bool = False) -> None:
+    def __init__(self, config: FeldfreundConfiguration, *, secrets: Secrets, use_acceleration: bool = False) -> None:
         super().__init__()
         self.log = logging.getLogger('feldfreund.system')
+        self.secrets = secrets
         self.config = config
         rosys.hardware.SerialCommunication.search_paths.insert(0, '/dev/ttyTHS0')
         if not rosys.hardware.SerialCommunication.is_possible():
@@ -33,20 +35,15 @@ class System(rosys.persistence.Persistable):
             self.feldfreund = FeldfreundSimulation(self.config, use_acceleration=use_acceleration)
         else:
             self.feldfreund = FeldfreundHardware(self.config)
-            self.teltonika_router = self._setup_teltonika_router()
+            self.teltonika_router = TeltonikaRouter('http://192.168.42.1/api', self.secrets.TELTONIKA_PASSWORD)
             rosys.on_repeat(self.log_status, 60 * 5)
         self.odometer = Odometer(self.feldfreund.wheels)
+        self.camera_provider = CameraProvider(config.cameras, frame_provider=self.odometer)
         self.update_gnss_reference(reference=GeoReference(GeoPoint.from_degrees(51.983204032849706, 7.434321368936861)))
 
     @property
     def robot_id(self) -> str:
         return self.config.robot_id.lower()
-
-    def _setup_teltonika_router(self) -> TeltonikaRouter | None:
-        if teltonika_password := os.environ.get('TELTONIKA_PASSWORD', None):
-            return TeltonikaRouter('http://192.168.42.1/api', teltonika_password)
-        self.log.warning('TELTONIKA_PASSWORD environment variable not set, skipping Teltonika router setup')
-        return None
 
     def update_gnss_reference(self, *, reference: GeoReference | None = None) -> None:
         if reference is None:
