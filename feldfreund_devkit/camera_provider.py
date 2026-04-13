@@ -50,11 +50,11 @@ class CameraProvider:
         """
         self.log = logging.getLogger('feldfreund.camera_provider')
         self._config = config
-        self.main = self._setup(config.main) if config and config.main else None
-        self.front = self._setup(config.front) if config and config.front else None
-        self.back = self._setup(config.back) if config and config.back else None
-        self.left = self._setup(config.left) if config and config.left else None
-        self.right = self._setup(config.right) if config and config.right else None
+        self.main = self._setup('main')
+        self.front = self._setup('front')
+        self.back = self._setup('back')
+        self.left = self._setup('left')
+        self.right = self._setup('right')
         self._cameras = {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right)
                          if cam is not None}
 
@@ -66,6 +66,7 @@ class CameraProvider:
             rosys.on_shutdown(self.shutdown)
 
     def slot_config(self, name: CameraPosition) -> CameraSlotConfig | None:
+        """Get the CameraSlotConfig for a given position."""
         if self._config is None:
             return None
         match name:
@@ -99,8 +100,11 @@ class CameraProvider:
                 continue
             camera.calibration.extrinsics.in_frame(frame_provider.frame)
 
-    def _setup(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
-        """Create a camera based on the given slot configuration, and apply calibration if available."""
+    def _setup(self, name: CameraPosition) -> rosys.vision.CalibratableCamera | None:
+        """Create a camera for the given position, and apply calibration if available."""
+        slot_config = self.slot_config(name)
+        if not slot_config:
+            return None
         camera = self._create_camera(slot_config)
         if slot_config.calibration is not None:
             camera.calibration = slot_config.calibration
