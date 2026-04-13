@@ -174,6 +174,9 @@ class InnotronicTracksHardware(TracksHardware):
         else:
             self.log.error('Velocity is too high: (%s, %s)', velocity.linear, velocity.angular)
 
+    def developer_ui(self) -> None:
+        pass
+
 
 class TracksSimulation(WheelsSimulation):  # pylint: disable=too-many-ancestors
     """Simulated tracks with acceleration and deceleration handling."""
