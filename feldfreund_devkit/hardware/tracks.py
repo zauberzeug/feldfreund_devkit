@@ -1,8 +1,9 @@
+import numpy as np
 import rosys
 from nicegui import ui
 from rosys.geometry import PoseStep, Velocity
 from rosys.hardware import CanHardware, EStopHardware, ModuleHardware, RobotBrain, Wheels, WheelsSimulation
-from rosys.helpers import remove_indentation
+from rosys.helpers import eliminate_2pi, remove_indentation
 
 from ..config import InnotronicTracksConfiguration, ODriveTracksConfiguration, TracksConfiguration
 
@@ -33,6 +34,9 @@ class TracksHardware(Wheels, ModuleHardware):
             self.log.warning('Robot brain not ready')
             return
         await self.robot_brain.send(f'{self.config.name}.speed({linear}, {angular})')
+
+    def developer_ui(self) -> None:
+        pass
 
 
 class ODriveTracksHardware(TracksHardware):
@@ -130,7 +134,7 @@ class ODriveTracksHardware(TracksHardware):
     def developer_ui(self) -> None:
         @ui.refreshable
         def _ui() -> None:
-            ui.label('ODrive Motor Errors').classes('text-center text-bold')
+            ui.label('ODrive Tracks').classes('text-center text-bold')
             if self.config.odrive_version == self.ERROR_FLAG_VERSION:
                 with ui.grid(columns=2).classes('gap-0'):
                     ui.label(f'L0: {"Error" if self._l0_error else "No error"}')
@@ -175,7 +179,8 @@ class InnotronicTracksHardware(TracksHardware):
             self.log.error('Velocity is too high: (%s, %s)', velocity.linear, velocity.angular)
 
     def developer_ui(self) -> None:
-        pass
+        with ui.column():
+            ui.label('Innotronic Tracks').classes('text-center text-bold')
 
 
 class TracksSimulation(WheelsSimulation):  # pylint: disable=too-many-ancestors
@@ -236,3 +241,21 @@ class TracksSimulation(WheelsSimulation):  # pylint: disable=too-many-ancestors
         velocity = Velocity(linear=self.linear_velocity,
                             angular=self.angular_velocity, time=self.pose.time)
         self.VELOCITY_MEASURED.emit([velocity])
+
+    def developer_ui(self) -> None:
+        @ui.refreshable
+        def _ui() -> None:
+            with ui.column():
+                ui.label('Simulated Tracks').classes('text-center text-bold')
+                ui.label(f'x: {self.pose.x:.3f} m')
+                ui.label(f'y: {self.pose.y:.3f} m')
+                ui.label(f'yaw: {np.rad2deg(eliminate_2pi(self.pose.yaw)):.2f} °')
+                ui.number('slip_factor_right', min=-1, max=1, step=0.01, value=0, format='%.2f') \
+                    .bind_value(self, 'slip_factor_right') \
+                    .classes('w-24')
+                ui.number('slip_factor_left', min=-1, max=1, step=0.01, value=0, format='%.2f') \
+                    .bind_value(self, 'slip_factor_left') \
+                    .classes('w-24')
+
+        _ui()
+        ui.timer(rosys.config.ui_update_interval, _ui.refresh)
