@@ -6,8 +6,8 @@ from feldfreund_devkit.config import (
     FeldfreundConfiguration,
     FlashlightConfiguration,
     GnssConfiguration,
-    RobotBrainConfiguration,
     ODriveTracksConfiguration,
+    RobotBrainConfiguration,
 )
 
 config = FeldfreundConfiguration(
