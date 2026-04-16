@@ -1,4 +1,3 @@
-# pylint: disable=unused-argument
 from collections.abc import AsyncGenerator, Generator
 
 import pytest
@@ -9,13 +8,22 @@ from rosys.geometry import GeoPoint, GeoReference, Pose
 from rosys.hardware import GnssSimulation, ImuSimulation, WheelsSimulation
 from rosys.testing import forward, helpers
 
-from feldfreund_devkit.config import config_from_id, create_drive_parameters
+from feldfreund_devkit.config import Secrets, config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.implement import ImplementDummy
 from feldfreund_devkit.navigation import StraightLineNavigation
 from feldfreund_devkit.robot_locator import RobotLocator
 from feldfreund_devkit.system import System
 
+
+class FakeSecrets(Secrets):
+    # pylint: disable=super-init-not-called
+    def __init__(self) -> None:
+        self.TELTONIKA_PASSWORD = 'teltonika-test'
+        self.MJPEG_CAMERA_PASSWORD = 'camera-test'
+
+
+# pylint: disable=unused-argument
 GEO_REFERENCE = GeoReference(GeoPoint.from_degrees(lat=51.98333489813455, lon=7.434242465994318))
 ROBOT_GEO_START_POSITION = GEO_REFERENCE.origin
 
@@ -57,8 +65,9 @@ class TestSystem(System):
 
 @pytest.fixture
 async def devkit_system(rosys_integration) -> AsyncGenerator[TestSystem, None]:
-    config = config_from_id('example')
-    s = TestSystem(config)
+    secrets = FakeSecrets()
+    config = config_from_id('example', secrets=secrets)
+    s = TestSystem(config, secrets=secrets)
     await forward(3)
     assert s.feldfreund.gnss is not None
     assert s.feldfreund.gnss.is_connected, 'device should be created'
@@ -70,8 +79,9 @@ async def devkit_system(rosys_integration) -> AsyncGenerator[TestSystem, None]:
 
 @pytest.fixture
 async def devkit_system_with_acceleration(rosys_integration) -> AsyncGenerator[TestSystem, None]:
-    config = config_from_id('example')
-    s = TestSystem(config, use_acceleration=True)
+    secrets = FakeSecrets()
+    config = config_from_id('example', secrets=secrets)
+    s = TestSystem(config, secrets=secrets, use_acceleration=True)
     assert isinstance(s.feldfreund.wheels, TracksSimulation)
     await forward(3)
     assert s.feldfreund.gnss is not None

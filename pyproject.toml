@@ -7,7 +7,7 @@ readme = "README.md"
 requires-python = ">=3.11, <3.14"
 dependencies = [
     "nicegui (>= 3.2.0, <4.0.0)",
-    "rosys @ git+https://github.com/zauberzeug/rosys.git@722fe58d56b1508064fcfb14ac4719543c504082",
+    "rosys @ git+https://github.com/zauberzeug/rosys.git@721eadf4ea74d4ed8bb95d4899456615df4fc06f",
     "httpx >=0.25.0",
     "coloredlogs",
     "httpcore",
@@ -103,6 +103,12 @@ disable = [
     "R0917", # Too many positional arguments
     "W0511", # TODO: comments
     "W0718", # Catching too general exception
+]
+
+[tool.autopep8]
+max-line-length = 120
+ignore = [
+    "E402",
 ]
 
 [tool.ruff]
