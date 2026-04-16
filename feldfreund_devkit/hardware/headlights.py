@@ -81,7 +81,7 @@ class Headlights(rosys.hardware.Module, abc.ABC):
                 .bind_value_from(self, '_right_duty_cycle')
 
 
-class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware, SafetyMixin):
+class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware):
     """Headlights hardware implementation using PWM outputs."""
 
     def __init__(self, config: HeadlightsConfiguration,
@@ -90,20 +90,12 @@ class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware, SafetyMixin)
         self.config = config
         self.expander = expander
         lizard_code = remove_indentation(f'''
-            {config.name}_left = {expander.name + "." if expander else ""}PwmOutput({config.left_pin})
+            {config.name}_left = {expander.name + "." if config.on_expander else ""}PwmOutput({config.left_pin})
             {config.name}_left.duty = {self._convert_duty_cycle_to_8_bit(config.left_duty_cycle)}
-            {config.name}_right = {expander.name + "." if expander else ""}PwmOutput({config.right_pin})
+            {config.name}_right = {expander.name + "." if config.on_expander else ""}PwmOutput({config.right_pin})
             {config.name}_right.duty = {self._convert_duty_cycle_to_8_bit(config.right_duty_cycle)}
         ''')
         super().__init__(config, robot_brain=robot_brain, lizard_code=lizard_code)
-
-    @property
-    def enable_code(self) -> str:
-        return f'{self.config.name}_left.enable(); {self.config.name}_right.enable();'
-
-    @property
-    def disable_code(self) -> str:
-        return f'{self.config.name}_left.disable(); {self.config.name}_right.disable();'
 
     async def turn_on(self) -> None:
         """Turn on the headlights if the robot brain is ready."""

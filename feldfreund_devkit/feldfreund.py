@@ -155,8 +155,6 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         self.safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
         if flashlight:
             self.safety.add_module(flashlight)
-        if headlights:
-            self.safety.add_module(headlights)
         self.status_control = StatusControlHardware(robot_brain, expander=self.expander, rdyp_pin=39, vdp_pin=39)
         gnss = GnssHardware(antenna_pose=config.gnss.pose) if config.gnss else None
         modules = [self.bluetooth, self.can, wheels, serial, self.expander, can_open_master,
