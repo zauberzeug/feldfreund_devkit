@@ -5,26 +5,15 @@ from nicegui import ui
 from rosys.helpers import remove_indentation
 
 from ..config import HeadlightsConfiguration
-from .safety import SafetyMixin
 
 
 class Headlights(rosys.hardware.Module, abc.ABC):
-    """Base class for headlights modules with on/off and duty cycle control."""
+    """Base class for headlights modules with on/off control."""
 
     def __init__(self, config: HeadlightsConfiguration, **kwargs) -> None:
         super().__init__(**kwargs)
         self.config = config
-        self._left_duty_cycle: float = self.config.left_duty_cycle
-        self._right_duty_cycle: float = self.config.right_duty_cycle
         self._is_active: bool = False
-
-    @property
-    def left_duty_cycle(self) -> float:
-        return self._left_duty_cycle
-
-    @property
-    def right_duty_cycle(self) -> float:
-        return self._right_duty_cycle
 
     @property
     def is_active(self) -> bool:
@@ -38,51 +27,16 @@ class Headlights(rosys.hardware.Module, abc.ABC):
         self._is_active = False
         self.log.debug('Turning off headlights')
 
-    async def set_left_duty_cycle(self, duty_cycle: float) -> None:
-        """Set the duty cycle of the left headlight.
-
-        :param duty_cycle: float between 0 and 1
-        :raises ValueError: if duty cycle is not between 0 and 1
-        """
-        await self.set_duty_cycles(duty_cycle, self._right_duty_cycle)
-
-    async def set_right_duty_cycle(self, duty_cycle: float) -> None:
-        """Set the duty cycle of the right headlight.
-
-        :param duty_cycle: float between 0 and 1
-        :raises ValueError: if duty cycle is not between 0 and 1
-        """
-        await self.set_duty_cycles(self._left_duty_cycle, duty_cycle)
-
-    async def set_duty_cycles(self, left_duty_cycle: float, right_duty_cycle: float) -> None:
-        """Set the duty cycles of the headlights.
-
-        :param left_duty_cycle: float between 0 and 1
-        :param right_duty_cycle: float between 0 and 1
-        :raises ValueError: if duty cycle is not between 0 and 1
-        """
-        if not 0 <= left_duty_cycle <= 1:
-            raise ValueError('left duty cycle must be between 0 and 1')
-        if not 0 <= right_duty_cycle <= 1:
-            raise ValueError('right duty cycle must be between 0 and 1')
-        self._left_duty_cycle = left_duty_cycle
-        self._right_duty_cycle = right_duty_cycle
-        self.log.debug('Setting left duty cycle to %s and right duty cycle to %s', left_duty_cycle, right_duty_cycle)
-
     def developer_ui(self) -> None:
         with ui.column():
             ui.label('Headlights').classes('text-center text-bold')
             with ui.button_group():
                 ui.button('ON', on_click=self.turn_on)
                 ui.button('OFF', on_click=self.turn_off)
-            ui.slider(min=0, max=1, step=0.01, on_change=lambda e: self.set_left_duty_cycle(e.value)) \
-                .bind_value_from(self, '_left_duty_cycle')
-            ui.slider(min=0, max=1, step=0.01, on_change=lambda e: self.set_right_duty_cycle(e.value)) \
-                .bind_value_from(self, '_right_duty_cycle')
 
 
 class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware):
-    """Headlights hardware implementation using PWM outputs."""
+    """Headlights hardware implementation using digital outputs."""
 
     def __init__(self, config: HeadlightsConfiguration,
                  robot_brain: rosys.hardware.RobotBrain, *,
@@ -90,10 +44,8 @@ class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware):
         self.config = config
         self.expander = expander
         lizard_code = remove_indentation(f'''
-            {config.name}_left = {expander.name + "." if config.on_expander else ""}PwmOutput({config.left_pin})
-            {config.name}_left.duty = {self._convert_duty_cycle_to_8_bit(config.left_duty_cycle)}
-            {config.name}_right = {expander.name + "." if config.on_expander else ""}PwmOutput({config.right_pin})
-            {config.name}_right.duty = {self._convert_duty_cycle_to_8_bit(config.right_duty_cycle)}
+            {config.name}_left = {expander.name + "." if config.on_expander else ""}Output({config.left_pin})
+            {config.name}_right = {expander.name + "." if config.on_expander else ""}Output({config.right_pin})
         ''')
         super().__init__(config, robot_brain=robot_brain, lizard_code=lizard_code)
 
@@ -112,30 +64,6 @@ class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware):
             return
         await super().turn_off()
         await self.robot_brain.send(f'{self.config.name}_left.off(); {self.config.name}_right.off()')
-
-    async def set_duty_cycles(self, left_duty_cycle: float, right_duty_cycle: float) -> None:
-        """Set the duty cycle of the headlights if the robot brain is ready."""
-        if not self.robot_brain.is_ready:
-            self.log.error('Setting duty cycle failed. Robot Brain is not ready.')
-            return
-        await super().set_duty_cycles(left_duty_cycle, right_duty_cycle)
-        left_duty = self._convert_duty_cycle_to_8_bit(self._left_duty_cycle)
-        right_duty = self._convert_duty_cycle_to_8_bit(self._right_duty_cycle)
-        await self.robot_brain.send(
-            f'{self.config.name}_left.duty={left_duty};'
-            f'{self.config.name}_right.duty={right_duty};'
-        )
-
-    def _convert_duty_cycle_to_8_bit(self, duty_cycle: float) -> int:
-        """Convert the duty cycle to a 8 bit value (0-255).
-
-        :param duty_cycle: float between 0 and 1
-        :return: int between 0 and 255
-        :raises ValueError: if duty cycle is not between 0 and 1
-        """
-        if not 0 <= duty_cycle <= 1:
-            raise ValueError('duty cycle must be between 0 and 1')
-        return int(duty_cycle * 255)
 
 
 class HeadlightsSimulation(Headlights, rosys.hardware.ModuleSimulation):
