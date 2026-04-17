@@ -35,7 +35,7 @@ class InnotronicTracksConfiguration(TracksConfiguration):
     """Configuration for Innotronic-based tracks with two motors (left/right)."""
     left_can_address: int = 5
     right_can_address: int = 37
-    m_per_rad: float = 0.08275
+    m_per_rad: float = 0.0788
 
 
 def create_drive_parameters(*, linear_speed_limit: float = 0.3,
