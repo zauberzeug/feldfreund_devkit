@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from rosys.geometry import GeoReference, Point, Pose, Spline
 from rosys.hardware import Gnss
+from rosys.helpers import angle
 
 from .drive_segment import DriveSegment
 
@@ -79,19 +80,23 @@ def filter_path_from_start_pose(start_pose: Pose,
     """Return the tail of ``path_segments`` starting at the segment the robot can pick up next.
 
     A segment is a candidate if it is not yet (almost) completed, the robot's heading
-    points toward its end within ``max_angle``, and the cross-track distance to its
-    spline is within ``max_distance``. Returns an empty list if no segment qualifies.
+    aligns with the spline tangent at the closest point within ``max_angle`` (flipped by
+    π for backward segments, since the robot faces opposite to its direction of travel),
+    and the cross-track distance to the spline is within ``max_distance``. Returns an
+    empty list if no segment qualifies.
     """
     log.debug('filter_path_from_start_pose: start=%s, %d segments, max_distance=%.2fm, max_angle=%.1f°',
               start_pose, len(path_segments), max_distance, np.rad2deg(max_angle))
     for i, segment in enumerate(path_segments):
+        # search slightly beyond [0, 1] so a robot just before/after the segment still maps cleanly
         t = segment.spline.closest_point(start_pose.x, start_pose.y, t_min=-0.1, t_max=1.1)
         if t > completed_threshold:
             log.debug('  segment %d rejected: completed (t=%.3f > %.2f)', i, t, completed_threshold)
             continue
-        heading_offset = start_pose.relative_direction(segment.end)
+        expected_yaw = segment.spline.yaw(t) + (np.pi if segment.backward else 0.0)
+        heading_offset = angle(start_pose.yaw, expected_yaw)
         if abs(heading_offset) > max_angle:
-            log.debug('  segment %d rejected: heading offset to end is %.1f° (max %.1f°)',
+            log.debug('  segment %d rejected: heading offset %.1f° (max %.1f°)',
                       i, np.rad2deg(heading_offset), np.rad2deg(max_angle))
             continue
         cross_track_distance = start_pose.distance(segment.spline.pose(t))
@@ -102,6 +107,6 @@ def filter_path_from_start_pose(start_pose: Pose,
         log.debug('  segment %d accepted (t=%.3f, heading offset=%.1f°, cross-track=%.2fm); returning %d segments',
                   i, t, np.rad2deg(heading_offset), cross_track_distance, len(path_segments) - i)
         return path_segments[i:]
-    log.warning('filter_path_from_start_pose: no segment matched from %s among %d candidates',
-                start_pose, len(path_segments))
+    log.debug('filter_path_from_start_pose: no segment matched from %s among %d candidates',
+              start_pose, len(path_segments))
     return []

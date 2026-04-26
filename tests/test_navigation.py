@@ -186,3 +186,31 @@ def test_filter_path_from_start_pose(robot_x: float,
         assert result[0].start.x == pytest.approx(expected_start_x)
         assert result[0].start.y == pytest.approx(0.0)
         assert result[-1].end.x == pytest.approx(pose3.x)
+
+
+def test_filter_path_picks_up_backward_segment():
+    # robot drives backward from x=2 to x=1 (still facing +x), then forward from x=1 to x=3
+    path = [
+        DriveSegment.from_poses(Pose(x=2.0, y=0.0, yaw=0.0), Pose(x=1.0, y=0.0, yaw=0.0), backward=True),
+        DriveSegment.from_poses(Pose(x=1.0, y=0.0, yaw=0.0), Pose(x=3.0, y=0.0, yaw=0.0)),
+    ]
+    # robot mid-backward-segment, correctly facing +x → must accept the backward segment
+    result = filter_path_from_start_pose(Pose(x=1.5, y=0.0, yaw=0.0), path)
+    assert len(result) == 2
+    assert result[0].backward is True
+
+    # same position but facing -x → wrong way for the backward leg AND for the forward continuation
+    result = filter_path_from_start_pose(Pose(x=1.5, y=0.0, yaw=np.pi), path)
+    assert result == []
+
+
+def test_filter_path_handles_segment_seam():
+    # robot near the very end of segment 0 must continue from segment 1, not redrive segment 0
+    path = [
+        DriveSegment.from_poses(Pose(x=0.0, y=0.0, yaw=0.0), Pose(x=1.0, y=0.0, yaw=0.0)),
+        DriveSegment.from_poses(Pose(x=1.0, y=0.0, yaw=0.0), Pose(x=2.0, y=0.0, yaw=0.0)),
+        DriveSegment.from_poses(Pose(x=2.0, y=0.0, yaw=0.0), Pose(x=3.0, y=0.0, yaw=0.0)),
+    ]
+    result = filter_path_from_start_pose(Pose(x=0.999, y=0.0, yaw=0.0), path)
+    assert len(result) == 2
+    assert result[0].start.x == pytest.approx(1.0)
