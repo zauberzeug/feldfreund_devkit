@@ -26,6 +26,17 @@ class FlashlightConfiguration:
     back_ledc_channel: int = 1
     duty_cycle: float = 1.0
 
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.duty_cycle <= 1.0:
+            raise ValueError('duty_cycle must be between 0 and 1')
+        if not 0 <= self.ledc_timer <= 3:
+            raise ValueError('ledc_timer must be between 0 and 3')
+        for channel in (self.front_ledc_channel, self.back_ledc_channel):
+            if not 0 <= channel <= 15:
+                raise ValueError('LEDC channel must be between 0 and 15')
+        if self.front_ledc_channel == self.back_ledc_channel:
+            raise ValueError('front_ledc_channel and back_ledc_channel must differ')
+
 
 @dataclass(slots=True, kw_only=True)
 class FlashlightMosfetConfiguration:
