@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import rosys
 from nicegui import ui
 
 from .confirm_dialog import ConfirmDialog
@@ -87,8 +88,16 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
             else:
                 ui.notify('Router reboot failed', type='negative')
 
-        ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative') \
-            .props('outline')
+        async def handle_ping() -> None:
+            if await router.check_internet():
+                rosys.notify('Internet reachable', 'positive')
+            else:
+                rosys.notify('No internet connection', 'negative')
+
+        with ui.row():
+            ui.button('Ping 8.8.8.8', icon='network_ping', on_click=handle_ping).props('outline')
+            ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative') \
+                .props('outline')
     _ui()
     router.CONNECTION_CHANGED.subscribe(_ui.refresh, unsubscribe_on_delete=True)
     router.INFO_UPDATED.subscribe(_ui.refresh, unsubscribe_on_delete=True)
