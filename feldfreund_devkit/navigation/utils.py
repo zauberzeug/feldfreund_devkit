@@ -7,7 +7,6 @@ from rosys.hardware import Gnss
 from .drive_segment import DriveSegment
 
 log = logging.getLogger('feldfreund.navigation')
-log.setLevel(logging.DEBUG)
 
 
 def is_reference_valid(gnss: Gnss | None, *, max_distance: float = 5000.0) -> bool:
