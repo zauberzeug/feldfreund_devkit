@@ -5,7 +5,14 @@ from rosys.driving import DriveParameters
 
 @dataclass(kw_only=True)
 class TracksConfiguration:
-    """Base configuration for Feldfreund tracks."""
+    """Base configuration for Feldfreund tracks.
+
+    Defaults:
+        name: 'wheels'
+        is_left_reversed: False
+        is_right_reversed: False
+        width: 0.502
+    """
     name: str = 'wheels'
     is_left_reversed: bool = False
     is_right_reversed: bool = False
@@ -14,7 +21,19 @@ class TracksConfiguration:
 
 @dataclass(kw_only=True)
 class ODriveTracksConfiguration(TracksConfiguration):
-    """Configuration for ODrive-based tracks with four motors (front/back, left/right)."""
+    """Configuration for ODrive-based tracks with four motors (front/back, left/right).
+
+    Defaults:
+        left_back_can_address: 0x000
+        right_back_can_address: 0x100
+        left_front_can_address: 0x200
+        right_front_can_address: 0x300
+        odrive_version: 4
+        tooth_count: 15
+        pitch: 0.033
+        motor_gear_ratio: 12.52
+        has_temperature_sensor: False
+    """
     left_back_can_address: int = 0x000
     right_back_can_address: int = 0x100
     left_front_can_address: int = 0x200
@@ -32,7 +51,13 @@ class ODriveTracksConfiguration(TracksConfiguration):
 
 @dataclass(kw_only=True)
 class InnotronicTracksConfiguration(TracksConfiguration):
-    """Configuration for Innotronic-based tracks with two motors (left/right)."""
+    """Configuration for Innotronic-based tracks with two motors (left/right).
+
+    Defaults:
+        left_can_address: 5
+        right_can_address: 37
+        m_per_rad: 0.0788
+    """
     left_can_address: int = 5
     right_can_address: int = 37
     m_per_rad: float = 0.0788
