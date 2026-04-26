@@ -15,11 +15,13 @@ class RobotBrainConfiguration:
         enable_esp_on_startup: False
         nand: False
         swap_pins: False
+        heartbeat_interval: 0.5
     """
     name: str
     enable_esp_on_startup: bool = False
     nand: bool = False
     swap_pins: bool = False
+    heartbeat_interval: float = 0.5
 
     @property
     def flash_params(self) -> list[str]:
