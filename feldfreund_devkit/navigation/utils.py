@@ -72,11 +72,11 @@ def generate_three_point_turn(end_pose_current_row: Pose,
     ]
 
 
-def filter_path_from_start_pose(start_pose: Pose,
-                                path_segments: list[DriveSegment], *,
-                                max_distance: float = 1.0,
-                                max_angle: float = np.deg2rad(45),
-                                completed_threshold: float = 0.99) -> list[DriveSegment]:
+def skip_completed_segments(start_pose: Pose,
+                             path_segments: list[DriveSegment], *,
+                             max_distance: float = 1.0,
+                             max_angle: float = np.deg2rad(45),
+                             completed_threshold: float = 0.99) -> list[DriveSegment]:
     """Return the tail of ``path_segments`` starting at the segment the robot can pick up next.
 
     A segment is a candidate if it is not yet (almost) completed, the robot's heading
@@ -85,7 +85,7 @@ def filter_path_from_start_pose(start_pose: Pose,
     and the cross-track distance to the spline is within ``max_distance``. Returns an
     empty list if no segment qualifies.
     """
-    log.debug('filter_path_from_start_pose: start=%s, %d segments, max_distance=%.2fm, max_angle=%.1f°',
+    log.debug('skip_completed_segments: start=%s, %d segments, max_distance=%.2fm, max_angle=%.1f°',
               start_pose, len(path_segments), max_distance, np.rad2deg(max_angle))
     for i, segment in enumerate(path_segments):
         # search slightly beyond [0, 1] so a robot just before/after the segment still maps cleanly
@@ -107,6 +107,6 @@ def filter_path_from_start_pose(start_pose: Pose,
         log.debug('  segment %d accepted (t=%.3f, heading offset=%.1f°, cross-track=%.2fm); returning %d segments',
                   i, t, np.rad2deg(heading_offset), cross_track_distance, len(path_segments) - i)
         return path_segments[i:]
-    log.debug('filter_path_from_start_pose: no segment matched from %s among %d candidates',
+    log.debug('skip_completed_segments: no segment matched from %s among %d candidates',
               start_pose, len(path_segments))
     return []
