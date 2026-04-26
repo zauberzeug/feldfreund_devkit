@@ -81,7 +81,8 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
     def disable_code(self) -> str:
         return f'{self.config.name}_front.disable(); {self.config.name}_back.disable();'
 
-    def _convert_duty_cycle_to_8_bit(self, duty_cycle: float) -> int:
+    @staticmethod
+    def _convert_duty_cycle_to_8_bit(duty_cycle: float) -> int:
         """Convert the duty cycle to a 8 bit value (0-255).
 
         :param duty_cycle: float between 0 and 1
