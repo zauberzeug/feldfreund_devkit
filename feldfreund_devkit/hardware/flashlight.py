@@ -134,8 +134,9 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, Safety
         self.config = config
         self.expander = expander
         self.bms = bms
+        prefix = f'{expander.name}.' if expander is not None and config.on_expander else ''
         lizard_code = remove_indentation(f'''
-            {config.name} = {expander.name + "." if expander else ""}PwmOutput({config.pin})
+            {config.name} = {prefix}PwmOutput({config.pin})
             {config.name}.duty = 204
         ''')
         # NOTE: Electronically the duty cycle should be variable based on the battery voltage, but 204 has been tested extensively and works well.
