@@ -123,7 +123,10 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
 
 
 class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin):
-    """Flashlight hardware implementation using a MOSFET switch."""
+    """Flashlight hardware implementation using a MOSFET switch.
+
+    Deprecated: only used on U4. Not built into any new robot; do not extend.
+    """
 
     UPDATE_INTERVAL = 5.0
 
@@ -136,7 +139,7 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, Safety
         self.bms = bms
         prefix = f'{expander.name}.' if expander is not None and config.on_expander else ''
         lizard_code = remove_indentation(f'''
-            {config.name} = {prefix}PwmOutput({config.pin}, {config.ledc_timer}, {config.ledc_channel})
+            {config.name} = {prefix}PwmOutput({config.pin})
             {config.name}.duty = 204
         ''')
         # NOTE: Electronically the duty cycle should be variable based on the battery voltage, but 204 has been tested extensively and works well.

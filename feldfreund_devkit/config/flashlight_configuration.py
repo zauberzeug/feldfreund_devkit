@@ -43,23 +43,13 @@ class FlashlightConfiguration:
 class FlashlightMosfetConfiguration:
     """Configuration for the mosfet based flashlight of the Feldfreund robot.
 
-    The LEDC channel must not collide with other PwmOutputs on the same chip.
+    Deprecated: only used on U4. Not built into any new robot; do not extend.
 
     Defaults:
         name: str = 'flashlight_mosfet'
         on_expander: True
         pin: 2
-        ledc_timer: 0
-        ledc_channel: 0
     """
     name: str = 'flashlight_mosfet'
     on_expander: bool = True
     pin: int = 2
-    ledc_timer: int = 0
-    ledc_channel: int = 0
-
-    def __post_init__(self) -> None:
-        if not 0 <= self.ledc_timer <= 3:
-            raise ValueError('ledc_timer must be between 0 and 3')
-        if not 0 <= self.ledc_channel <= 15:
-            raise ValueError('ledc_channel must be between 0 and 15')
