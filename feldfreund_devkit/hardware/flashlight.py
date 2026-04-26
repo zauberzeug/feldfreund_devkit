@@ -61,14 +61,17 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
                  expander: rosys.hardware.ExpanderHardware | None) -> None:
         self.config = config
         self.expander = expander
+        prefix = f'{expander.name}.' if expander is not None and config.on_expander else ''
+        duty = self._convert_duty_cycle_to_8_bit(config.duty_cycle)
         lizard_code = remove_indentation(f'''
-            {config.name}_front = {expander.name + "." if expander else ""}PwmOutput({config.front_pin})
-            {config.name}_front.duty = 255
-            {config.name}_back = {expander.name + "." if expander else ""}PwmOutput({config.back_pin})
-            {config.name}_back.duty = 255
+            {config.name}_front = {prefix}PwmOutput({config.front_pin}, {config.ledc_timer}, {config.front_ledc_channel})
+            {config.name}_front.duty = {duty}
+            {config.name}_back = {prefix}PwmOutput({config.back_pin}, {config.ledc_timer}, {config.back_ledc_channel})
+            {config.name}_back.duty = {duty}
             {config.name}_front.shadow({config.name}_back)
         ''')
         super().__init__(robot_brain=robot_brain, lizard_code=lizard_code)
+        self._duty_cycle = config.duty_cycle
 
     @property
     def enable_code(self) -> str:
