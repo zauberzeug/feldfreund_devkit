@@ -95,7 +95,7 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
                 rosys.notify('No internet connection', 'negative')
 
         with ui.row():
-            ui.button('Ping 8.8.8.8', icon='network_ping', on_click=handle_ping).props('outline')
+            ui.button('Check Internet', icon='network_ping', on_click=handle_ping).props('outline')
             ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative') \
                 .props('outline')
     _ui()
