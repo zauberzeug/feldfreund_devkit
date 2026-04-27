@@ -18,6 +18,7 @@ from .estop_configuration import EstopConfiguration
 from .feldfreund_configuration import FeldfreundConfiguration
 from .flashlight_configuration import FlashlightConfiguration, FlashlightMosfetConfiguration
 from .gnss_configuration import GnssConfiguration
+from .headlights_configuration import HeadlightsConfiguration
 from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
 from .robot_brain_configuration import RobotBrainConfiguration
@@ -62,6 +63,7 @@ __all__ = [
     'FlashlightConfiguration',
     'FlashlightMosfetConfiguration',
     'GnssConfiguration',
+    'HeadlightsConfiguration',
     'ImplementConfiguration',
     'ImuConfiguration',
     'InnotronicTracksConfiguration',

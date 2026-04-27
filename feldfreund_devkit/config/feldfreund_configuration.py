@@ -10,6 +10,7 @@ from .can_configuration import CanConfiguration
 from .estop_configuration import EstopConfiguration
 from .flashlight_configuration import FlashlightConfiguration, FlashlightMosfetConfiguration
 from .gnss_configuration import GnssConfiguration
+from .headlights_configuration import HeadlightsConfiguration
 from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
 from .robot_brain_configuration import RobotBrainConfiguration
@@ -35,6 +36,7 @@ class FeldfreundConfiguration:
     estop: EstopConfiguration = field(default_factory=EstopConfiguration)
     flashlight: FlashlightConfiguration | FlashlightMosfetConfiguration | None = None
     gnss: GnssConfiguration | None = None
+    headlights: HeadlightsConfiguration | None = None
     implement: ImplementConfiguration | None = None
     imu: ImuConfiguration | None = None
     robot_brain: RobotBrainConfiguration

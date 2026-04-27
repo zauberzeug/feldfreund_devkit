@@ -1,5 +1,6 @@
 from .can_open_master import CanOpenMasterHardware
 from .flashlight import Flashlight, FlashlightHardware, FlashlightHardwareMosfet, FlashlightSimulation
+from .headlights import Headlights, HeadlightsHardware, HeadlightsSimulation
 from .safety import Safety, SafetyHardware, SafetyMixin, SafetySimulation
 from .status_control import StatusControlHardware
 from .teltonika_router import ConnectionStatus, DeviceInfo, ModemStatus, TeltonikaRouter, WifiInfo
@@ -13,6 +14,9 @@ __all__ = [
     'FlashlightHardware',
     'FlashlightHardwareMosfet',
     'FlashlightSimulation',
+    'Headlights',
+    'HeadlightsHardware',
+    'HeadlightsSimulation',
     'InnotronicTracksHardware',
     'ModemStatus',
     'ODriveTracksHardware',
