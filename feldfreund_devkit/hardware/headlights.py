@@ -128,7 +128,8 @@ class HeadlightsHardware(Headlights, rosys.hardware.ModuleHardware):
             f'{self.config.name}_right.duty={right_duty};'
         )
 
-    def _convert_duty_cycle_to_8_bit(self, duty_cycle: float) -> int:
+    @staticmethod
+    def _convert_duty_cycle_to_8_bit(duty_cycle: float) -> int:
         """Convert the duty cycle to a 8 bit value (0-255).
 
         :param duty_cycle: float between 0 and 1
