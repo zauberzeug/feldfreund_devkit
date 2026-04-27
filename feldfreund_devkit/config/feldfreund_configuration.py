@@ -14,7 +14,10 @@ from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
 from .robot_brain_configuration import RobotBrainConfiguration
 from .robot_footprint import RobotFootprint
-from .tracks_configuration import TracksConfiguration, create_drive_parameters
+from .tracks_configuration import (
+    TracksConfiguration,
+    create_drive_parameters,
+)
 
 
 @dataclass(kw_only=True)

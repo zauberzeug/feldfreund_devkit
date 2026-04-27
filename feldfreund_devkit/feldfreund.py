@@ -34,6 +34,9 @@ from .config import (
     FeldfreundConfiguration,
     FlashlightConfiguration,
     FlashlightMosfetConfiguration,
+    InnotronicTracksConfiguration,
+    ODriveTracksConfiguration,
+    TracksConfiguration,
 )
 from .hardware import (
     CanOpenMasterHardware,
@@ -41,6 +44,8 @@ from .hardware import (
     FlashlightHardware,
     FlashlightHardwareMosfet,
     FlashlightSimulation,
+    InnotronicTracksHardware,
+    ODriveTracksHardware,
     Safety,
     SafetyHardware,
     SafetyMixin,
@@ -97,7 +102,8 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         communication = SerialCommunication()
         robot_brain = RobotBrain(communication,
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
-                                 use_espresso=True)
+                                 use_espresso=True,
+                                 heartbeat_interval=config.robot_brain.heartbeat_interval)
         robot_brain.lizard_firmware.flash_params += config.robot_brain.flash_params
         self.bluetooth = BluetoothHardware(robot_brain, name=config.bluetooth.name, pin_code=config.bluetooth.pin_code)
         serial = SerialHardware(robot_brain)
@@ -109,7 +115,10 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                tx_pin=config.can.tx_pin,
                                baud=config.can.baud)
         estop = EStopHardware(robot_brain, name=config.estop.name, pins=config.estop.pins)
-        wheels = TracksHardware(config.wheels, robot_brain, estop, can=self.can)
+        wheels = self._setup_tracks(config.wheels,
+                                    robot_brain=robot_brain,
+                                    estop=estop,
+                                    can=self.can)
         can_open_master = CanOpenMasterHardware(robot_brain, can=self.can, name='master')
         bms = BmsHardware(robot_brain,
                           expander=self.expander if config.bms.on_expander else None,
@@ -209,6 +218,19 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         if isinstance(config, FlashlightMosfetConfiguration):
             return FlashlightHardwareMosfet(config, robot_brain, bms, expander=expander if config.on_expander else None)
         raise NotImplementedError(f'Unknown flashlight configuration: {config}')
+
+    def _setup_tracks(self, config: TracksConfiguration, *,
+                      robot_brain: RobotBrain,
+                      estop: EStopHardware,
+                      can: CanHardware) -> TracksHardware:
+        wheels: TracksHardware
+        if isinstance(config, ODriveTracksConfiguration):
+            wheels = ODriveTracksHardware(config, robot_brain, estop, can=can)
+        elif isinstance(config, InnotronicTracksConfiguration):
+            wheels = InnotronicTracksHardware(config, robot_brain, can=can)
+        else:
+            raise ValueError(f'Unknown tracks configuration type: {type(config)}')
+        return wheels
 
 
 class FeldfreundSimulation(Feldfreund, RobotSimulation):
