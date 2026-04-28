@@ -158,10 +158,8 @@ class InnotronicTracksHardware(TracksHardware):
                  robot_brain: RobotBrain, *,
                  can: CanHardware) -> None:
         lizard_code = remove_indentation(f'''
-            left = InnotronicMotor({can.name}, {config.left_can_address})
-            right = InnotronicMotor({can.name}, {config.right_can_address})
-            left.switch_to_drive_mode()
-            right.switch_to_drive_mode()
+            left = InnotronicDriveMotor({can.name}, {config.left_can_address})
+            right = InnotronicDriveMotor({can.name}, {config.right_can_address})
             left.reversed = {'true' if config.is_left_reversed else 'false'}
             right.reversed = {'true' if config.is_right_reversed else 'false'}
             left.m_per_rad = {config.m_per_rad}
