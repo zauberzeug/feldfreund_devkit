@@ -167,11 +167,19 @@ class InnotronicTracksHardware(TracksHardware):
             {config.name} = InnotronicWheels(left, right)
             {config.name}.width = {config.width}
         ''')
-        core_message_fields = [f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3']
+        core_message_fields = [
+            f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3',
+            'left.current_m1:3', 'left.current_m2:3',
+            'right.current_m1:3', 'right.current_m2:3',
+        ]
         super().__init__(config, robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
 
     def handle_core_output(self, time: float, words: list[str]) -> None:
         velocity = Velocity(linear=float(words.pop(0)), angular=float(words.pop(0)), time=time)
+        self.left_current_m1 = float(words.pop(0))
+        self.left_current_m2 = float(words.pop(0))
+        self.right_current_m1 = float(words.pop(0))
+        self.right_current_m2 = float(words.pop(0))
         if abs(velocity.linear) <= self.MAX_VALID_LINEAR_VELOCITY and abs(velocity.angular) <= self.MAX_VALID_ANGULAR_VELOCITY:
             self.VELOCITY_MEASURED.emit([velocity])
         else:
