@@ -6,7 +6,7 @@ from rosys.helpers import angle
 from rosys.testing import assert_point, forward
 
 from feldfreund_devkit.hardware.tracks import TracksSimulation
-from feldfreund_devkit.navigation import DriveSegment, StraightLineNavigation
+from feldfreund_devkit.navigation import DriveSegment, StraightLineNavigation, skip_completed_segments
 
 
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
@@ -130,9 +130,9 @@ async def test_start_on_end(devkit_system):
 
 
 async def test_skip_first_segment(devkit_system):
-    pose1 = Pose(x=-1, y=1, yaw=-np.pi/2)
+    pose1 = Pose(x=-1, y=1, yaw=-np.pi / 2)
     pose2 = Pose(x=0, y=0.0, yaw=0.0)
-    pose3 = Pose(x=1.0, y=1.0, yaw=np.pi/2)
+    pose3 = Pose(x=1.0, y=1.0, yaw=np.pi / 2)
     pose4 = Pose(x=0, y=2.0, yaw=np.pi)
     assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
 
@@ -154,3 +154,63 @@ async def test_skip_first_segment(devkit_system):
     assert devkit_system.current_navigation.current_segment.end.x == pytest.approx(pose3.x, abs=0.1)
     assert devkit_system.current_navigation.current_segment.end.y == pytest.approx(pose3.y, abs=0.1)
     assert devkit_system.current_navigation.current_segment.end.yaw_deg == pytest.approx(pose3.yaw_deg, abs=0.1)
+
+
+@pytest.mark.parametrize(('robot_x', 'robot_yaw_deg', 'expected_count', 'expected_start_x'), [
+    (0.0, 0, 3, 0.0),  # at start of first segment, facing forward
+    (0.5, 0, 3, 0.0),  # on first segment, facing forward
+    (1.2, 0, 2, 1.0),  # on second segment, facing forward
+    (2.5, 0, 1, 2.0),  # on third segment, facing forward
+    (1.2, 30, 2, 1.0),  # on second segment, heading offset within tolerance
+    (1.2, 60, 0, None),  # heading offset exceeds default 45° tolerance
+    (1.2, 180, 0, None),  # facing backward, no segment is reachable
+])
+def test_skip_completed_segments(robot_x: float,
+                                 robot_yaw_deg: float,
+                                 expected_count: int,
+                                 expected_start_x: float | None):
+    pose0 = Pose(x=0.0, y=0.0, yaw=0.0)
+    pose1 = Pose(x=1.0, y=0.0, yaw=0.0)
+    pose2 = Pose(x=2.0, y=0.0, yaw=0.0)
+    pose3 = Pose(x=3.0, y=0.0, yaw=0.0)
+    path = [
+        DriveSegment.from_poses(pose0, pose1),
+        DriveSegment.from_poses(pose1, pose2),
+        DriveSegment.from_poses(pose2, pose3),
+    ]
+    robot_pose = Pose(x=robot_x, y=0.0, yaw=np.deg2rad(robot_yaw_deg))
+    result = skip_completed_segments(robot_pose, path)
+    assert len(result) == expected_count
+    if expected_count > 0:
+        assert expected_start_x is not None
+        assert result[0].start.x == pytest.approx(expected_start_x)
+        assert result[0].start.y == pytest.approx(0.0)
+        assert result[-1].end.x == pytest.approx(pose3.x)
+
+
+def test_skip_completed_segments_picks_up_backward_segment():
+    # robot drives backward from x=2 to x=1 (still facing +x), then forward from x=1 to x=3
+    path = [
+        DriveSegment.from_poses(Pose(x=2.0, y=0.0, yaw=0.0), Pose(x=1.0, y=0.0, yaw=0.0), backward=True),
+        DriveSegment.from_poses(Pose(x=1.0, y=0.0, yaw=0.0), Pose(x=3.0, y=0.0, yaw=0.0)),
+    ]
+    # robot mid-backward-segment, correctly facing +x → must accept the backward segment
+    result = skip_completed_segments(Pose(x=1.5, y=0.0, yaw=0.0), path)
+    assert len(result) == 2
+    assert result[0].backward is True
+
+    # same position but facing -x → wrong way for the backward leg AND for the forward continuation
+    result = skip_completed_segments(Pose(x=1.5, y=0.0, yaw=np.pi), path)
+    assert result == []
+
+
+def test_skip_completed_segments_handles_segment_seam():
+    # robot near the very end of segment 0 must continue from segment 1, not redrive segment 0
+    path = [
+        DriveSegment.from_poses(Pose(x=0.0, y=0.0, yaw=0.0), Pose(x=1.0, y=0.0, yaw=0.0)),
+        DriveSegment.from_poses(Pose(x=1.0, y=0.0, yaw=0.0), Pose(x=2.0, y=0.0, yaw=0.0)),
+        DriveSegment.from_poses(Pose(x=2.0, y=0.0, yaw=0.0), Pose(x=3.0, y=0.0, yaw=0.0)),
+    ]
+    result = skip_completed_segments(Pose(x=0.999, y=0.0, yaw=0.0), path)
+    assert len(result) == 2
+    assert result[0].start.x == pytest.approx(1.0)
