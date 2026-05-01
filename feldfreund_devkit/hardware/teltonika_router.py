@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from typing import Literal
@@ -55,8 +56,9 @@ class TeltonikaRouter:
     TOKEN_EXPIRY_SECONDS = 4 * 60
     AUTH_RETRY_INTERVAL = 60
     FAILOVER_KEY_ETHER = 'wan'
-    FAILOVER_KEY_WIFI_PREFIXES = ('ifWan', 'wifi')
-    FAILOVER_KEYS_MOBILE = ('mob1s1a1', 'mob1s2a1')
+    FAILOVER_KEY_WIFI_PREFIXES = frozenset(('ifWan', 'wifi'))
+    FAILOVER_KEYS_MOBILE = frozenset(('mob1s1a1', 'mob1s2a1'))
+    INTERNET_CHECK_HOSTS = frozenset(('8.8.8.8', '1.1.1.1'))
 
     def __init__(self, url: str, admin_password: str) -> None:
         self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
@@ -106,6 +108,20 @@ class TeltonikaRouter:
             return True
         self.log.error('Router reboot failed')
         return False
+
+    async def check_internet(self,
+                             hosts: Iterable[str] = INTERNET_CHECK_HOSTS,
+                             port: int = 53,
+                             timeout: float = 2.0) -> bool:
+        """Check internet connectivity by probing ``hosts`` concurrently on ``port``."""
+        async def probe(host: str) -> bool:
+            try:
+                _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
+            except (OSError, TimeoutError):
+                return False
+            writer.close()
+            return True
+        return any(await asyncio.gather(*(probe(host) for host in hosts)))
 
     async def _poll_info(self) -> None:
         tasks = [self._poll_modem_status(), self._poll_wifi_info()]
