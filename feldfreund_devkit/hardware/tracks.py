@@ -158,10 +158,8 @@ class InnotronicTracksHardware(TracksHardware):
                  robot_brain: RobotBrain, *,
                  can: CanHardware) -> None:
         lizard_code = remove_indentation(f'''
-            left = InnotronicMotor({can.name}, {config.left_can_address})
-            right = InnotronicMotor({can.name}, {config.right_can_address})
-            left.switch_to_drive_mode()
-            right.switch_to_drive_mode()
+            left = InnotronicDriveMotor({can.name}, {config.left_can_address})
+            right = InnotronicDriveMotor({can.name}, {config.right_can_address})
             left.reversed = {'true' if config.is_left_reversed else 'false'}
             right.reversed = {'true' if config.is_right_reversed else 'false'}
             left.m_per_rad = {config.m_per_rad}
@@ -169,11 +167,22 @@ class InnotronicTracksHardware(TracksHardware):
             {config.name} = InnotronicWheels(left, right)
             {config.name}.width = {config.width}
         ''')
-        core_message_fields = [f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3']
+        core_message_fields = [
+            f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3',
+            'left.current_m1:3', 'left.current_m2:3',
+            'right.current_m1:3', 'right.current_m2:3',
+            'right.speed:3', 'left.speed:3',
+        ]
         super().__init__(config, robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
 
     def handle_core_output(self, time: float, words: list[str]) -> None:
         velocity = Velocity(linear=float(words.pop(0)), angular=float(words.pop(0)), time=time)
+        self.left_current_m1 = float(words.pop(0))
+        self.left_current_m2 = float(words.pop(0))
+        self.right_current_m1 = float(words.pop(0))
+        self.right_current_m2 = float(words.pop(0))
+        self.left_speed = float(words.pop(0))
+        self.right_speed = float(words.pop(0))
         if abs(velocity.linear) <= self.MAX_VALID_LINEAR_VELOCITY and abs(velocity.angular) <= self.MAX_VALID_ANGULAR_VELOCITY:
             self.VELOCITY_MEASURED.emit([velocity])
         else:
