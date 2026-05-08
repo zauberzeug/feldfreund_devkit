@@ -34,7 +34,6 @@ from .config import (
     FeldfreundConfiguration,
     FlashlightConfiguration,
     FlashlightMosfetConfiguration,
-    InnotronicTracksConfiguration,
     ODriveTracksConfiguration,
     TracksConfiguration,
 )
@@ -47,7 +46,6 @@ from .hardware import (
     Headlights,
     HeadlightsHardware,
     HeadlightsSimulation,
-    InnotronicTracksHardware,
     ODriveTracksHardware,
     Safety,
     SafetyHardware,
@@ -234,8 +232,6 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         wheels: TracksHardware
         if isinstance(config, ODriveTracksConfiguration):
             wheels = ODriveTracksHardware(config, robot_brain, estop, can=can)
-        elif isinstance(config, InnotronicTracksConfiguration):
-            wheels = InnotronicTracksHardware(config, robot_brain, can=can)
         else:
             raise ValueError(f'Unknown tracks configuration type: {type(config)}')
         return wheels

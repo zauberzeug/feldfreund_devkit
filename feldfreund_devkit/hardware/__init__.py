@@ -4,7 +4,7 @@ from .headlights import Headlights, HeadlightsHardware, HeadlightsSimulation
 from .safety import Safety, SafetyHardware, SafetyMixin, SafetySimulation
 from .status_control import StatusControlHardware
 from .teltonika_router import ConnectionStatus, DeviceInfo, ModemStatus, TeltonikaRouter, WifiInfo
-from .tracks import InnotronicTracksHardware, ODriveTracksHardware, TracksHardware, TracksSimulation
+from .tracks import ODriveTracksHardware, TracksHardware, TracksSimulation
 
 __all__ = [
     'CanOpenMasterHardware',
@@ -17,7 +17,6 @@ __all__ = [
     'Headlights',
     'HeadlightsHardware',
     'HeadlightsSimulation',
-    'InnotronicTracksHardware',
     'ModemStatus',
     'ODriveTracksHardware',
     'Safety',
