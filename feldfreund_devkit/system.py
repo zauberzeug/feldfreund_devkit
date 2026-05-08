@@ -31,10 +31,8 @@ class System(rosys.persistence.Persistable):
         self.GNSS_REFERENCE_CHANGED: Event[[]] = Event()
         self.feldfreund: FeldfreundHardware | FeldfreundSimulation
         self.teltonika_router: TeltonikaRouter | None = None
-        if rosys.is_simulation():
-            self.feldfreund = FeldfreundSimulation(self.config, use_acceleration=use_acceleration)
-        else:
-            self.feldfreund = FeldfreundHardware(self.config)
+        self.feldfreund = self._setup_feldfreund(use_acceleration=use_acceleration)
+        if not rosys.is_simulation():
             self.teltonika_router = TeltonikaRouter('http://192.168.42.1/api', self.secrets.TELTONIKA_PASSWORD)
             rosys.on_repeat(self.log_status, 60 * 5)
         self.odometer = Odometer(self.feldfreund.wheels)
@@ -44,6 +42,11 @@ class System(rosys.persistence.Persistable):
     @property
     def robot_id(self) -> str:
         return self.config.robot_id.lower()
+
+    def _setup_feldfreund(self, *, use_acceleration: bool = False) -> FeldfreundHardware | FeldfreundSimulation:
+        if rosys.is_simulation():
+            return FeldfreundSimulation(self.config, use_acceleration=use_acceleration)
+        return FeldfreundHardware(self.config)
 
     def update_gnss_reference(self, *, reference: GeoReference | None = None) -> None:
         if reference is None:

@@ -25,7 +25,6 @@ from .robot_brain_configuration import RobotBrainConfiguration
 from .robot_footprint import RobotFootprint
 from .secrets import Secrets
 from .tracks_configuration import (
-    InnotronicTracksConfiguration,
     ODriveTracksConfiguration,
     TracksConfiguration,
     create_drive_parameters,
@@ -66,7 +65,6 @@ __all__ = [
     'HeadlightsConfiguration',
     'ImplementConfiguration',
     'ImuConfiguration',
-    'InnotronicTracksConfiguration',
     'MjpegCameraConfig',
     'ODriveTracksConfiguration',
     'RobotBrainConfiguration',

@@ -49,20 +49,6 @@ class ODriveTracksConfiguration(TracksConfiguration):
         return self.tooth_count * self.pitch / self.motor_gear_ratio
 
 
-@dataclass(kw_only=True)
-class InnotronicTracksConfiguration(TracksConfiguration):
-    """Configuration for Innotronic-based tracks with two motors (left/right).
-
-    Defaults:
-        left_can_address: 5
-        right_can_address: 37
-        m_per_rad: 0.0788
-    """
-    left_can_address: int = 5
-    right_can_address: int = 37
-    m_per_rad: float = 0.0788
-
-
 def create_drive_parameters(*, linear_speed_limit: float = 0.3,
                             angular_speed_limit: float = 0.3,
                             minimum_turning_radius: float = 0.01,

@@ -4,7 +4,7 @@ from rosys.geometry import PoseStep, Velocity
 from rosys.hardware import CanHardware, EStopHardware, ModuleHardware, RobotBrain, Wheels, WheelsSimulation
 from rosys.helpers import remove_indentation
 
-from ..config import InnotronicTracksConfiguration, ODriveTracksConfiguration, TracksConfiguration
+from ..config import ODriveTracksConfiguration, TracksConfiguration
 
 
 class TracksHardware(Wheels, ModuleHardware):
@@ -149,39 +149,6 @@ class ODriveTracksHardware(TracksHardware):
                     ui.label(f'R1: {self._r1_temperature:.1f}°C')
         _ui()
         ui.timer(rosys.config.ui_update_interval, _ui.refresh)
-
-
-class InnotronicTracksHardware(TracksHardware):
-    """Tracked wheels driven by Innotronic drivers (two motors: left/right)."""
-
-    def __init__(self, config: InnotronicTracksConfiguration,
-                 robot_brain: RobotBrain, *,
-                 can: CanHardware) -> None:
-        lizard_code = remove_indentation(f'''
-            left = InnotronicMotor({can.name}, {config.left_can_address})
-            right = InnotronicMotor({can.name}, {config.right_can_address})
-            left.switch_to_drive_mode()
-            right.switch_to_drive_mode()
-            left.reversed = {'true' if config.is_left_reversed else 'false'}
-            right.reversed = {'true' if config.is_right_reversed else 'false'}
-            left.m_per_rad = {config.m_per_rad}
-            right.m_per_rad = {config.m_per_rad}
-            {config.name} = InnotronicWheels(left, right)
-            {config.name}.width = {config.width}
-        ''')
-        core_message_fields = [f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3']
-        super().__init__(config, robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
-
-    def handle_core_output(self, time: float, words: list[str]) -> None:
-        velocity = Velocity(linear=float(words.pop(0)), angular=float(words.pop(0)), time=time)
-        if abs(velocity.linear) <= self.MAX_VALID_LINEAR_VELOCITY and abs(velocity.angular) <= self.MAX_VALID_ANGULAR_VELOCITY:
-            self.VELOCITY_MEASURED.emit([velocity])
-        else:
-            self.log.error('Velocity is too high: (%s, %s)', velocity.linear, velocity.angular)
-
-    def developer_ui(self) -> None:
-        with ui.column():
-            ui.label('Innotronic Tracks').classes('text-center text-bold')
 
 
 class TracksSimulation(WheelsSimulation):  # pylint: disable=too-many-ancestors
