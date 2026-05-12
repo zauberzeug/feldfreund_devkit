@@ -1,6 +1,7 @@
 import gc
 import logging
 from abc import abstractmethod
+from asyncio import Task
 from typing import Any
 
 import rosys
@@ -28,7 +29,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         self.pose_provider = pose_provider
         self.name = name
         self._upcoming_path: list[DriveSegment] = []
-        self._is_prepared = False
+        self._finish_task: Task | None = None
         self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
 
         self.PATH_GENERATED = Event[list[DriveSegment]]()
@@ -42,6 +43,11 @@ class WaypointNavigation(rosys.persistence.Persistable):
 
         self.PATH_COMPLETED = Event[[]]()
         """the entire path with all its waypoints has been completed"""
+
+    @property
+    def is_ready(self) -> bool:
+        """Returns true if the navigation is ready to be started, false otherwise."""
+        return not self._upcoming_path and self._finish_task is None
 
     @property
     def path(self) -> list[DriveSegment]:
@@ -60,17 +66,11 @@ class WaypointNavigation(rosys.persistence.Persistable):
         """Returns True as long as there are waypoints to drive to."""
         return self.current_segment is not None
 
-    @property
-    def is_prepared(self) -> bool:
-        """Returns True if the navigation has been prepared for the start of the automation."""
-        return self._is_prepared
-
     @track
     async def prepare(self) -> bool:
         """Prepares the navigation for the start of the automation
 
         Returns true if all preparations were successful, otherwise false."""
-        self._is_prepared = True
         self._upcoming_path = self.generate_path()
         if not self._upcoming_path:
             self.log.error('Path generation failed')
@@ -84,11 +84,11 @@ class WaypointNavigation(rosys.persistence.Persistable):
 
     @track
     async def start(self) -> None:
+        if not self.is_ready:
+            rosys.notify('Previous navigation is still finishing up, please wait a moment',
+                         'warning', log_level=logging.WARNING)
+            return
         try:
-            # TODO
-            # if not is_reference_valid(self.gnss):
-            #     rosys.notify('GNSS not available or reference too far away', 'warning')
-            #     await rosys.sleep(3)
             if not await self.prepare():
                 self.log.error('Preparation failed')
                 return
@@ -110,7 +110,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
             rosys.notify('Automation failed', 'negative')
             self.log.exception('Navigation failed: %s', e)
         finally:
-            await self.finish()
+            self._finish_task = rosys.background_tasks.create(self.finish(), name='Finish Navigation')
 
     async def _run(self) -> None:
         if not await self._get_valid_implement_target():
@@ -137,13 +137,11 @@ class WaypointNavigation(rosys.persistence.Persistable):
     @track
     async def finish(self) -> None:
         """Executed after the navigation is done"""
-        if not self._is_prepared:
-            return
-        self._is_prepared = False
-        self.log.debug('Navigation finished')
         await self.driver.wheels.stop()
         await self.implement.deactivate()
         gc.collect()  # NOTE: auto garbage collection is deactivated to avoid hiccups from Global Interpreter Lock (GIL) so we collect here to reduce memory pressure
+        self._finish_task = None
+        rosys.notify('Navigation cleaned up')
 
     @track
     async def _drive_along_segment(self, *, linear_speed_limit: float = 0.3) -> None:
