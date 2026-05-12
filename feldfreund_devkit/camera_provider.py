@@ -46,7 +46,7 @@ class CalibratableMjpegCamera(_PoseMetadataMixin, rosys.vision.MjpegCamera):
     pass
 
 
-class SimulatedCalibratableCamera(_PoseMetadataMixin, rosys.vision.SimulatedCalibratableCamera):
+class SimulatedCalibratableCamera(_PoseMetadataMixin, rosys.vision.SimulatedCalibratableCamera):  # pylint: disable=too-many-ancestors
     pass
 
 
