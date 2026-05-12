@@ -5,7 +5,7 @@ from typing import Literal
 
 import rosys
 from nicegui import ui
-from rosys.geometry import FrameProvider
+from rosys.geometry import FrameProvider, Pose3d, Rotation
 from rosys.vision import CalibratableCamera
 from rosys.vision.mjpeg_camera.vendors import VendorType as MjpegVendorType
 from rosys.vision.mjpeg_camera.vendors import mac_to_vendor as mjpeg_mac_to_vendor
@@ -23,15 +23,30 @@ from .config import (
 from .interface.components import status_bulb
 
 
-class CalibratableUsbCamera(rosys.vision.CalibratableCamera, rosys.vision.UsbCamera):
+class _PoseMetadataMixin(rosys.vision.CalibratableCamera):
+    """Attaches the resolved camera pose to each captured image's metadata."""
+
+    def _add_image(self, image: rosys.vision.Image) -> None:
+        if self.calibration is not None:
+            pose = self.calibration.extrinsics.resolve()
+            image.metadata['pose'] = Pose3d(x=pose.x, y=pose.y, z=pose.z,
+                                            rotation=Rotation(R=[row[:] for row in pose.rotation.R]))
+        super()._add_image(image)
+
+
+class CalibratableUsbCamera(_PoseMetadataMixin, rosys.vision.UsbCamera):
     pass
 
 
-class CalibratableRtspCamera(rosys.vision.CalibratableCamera, rosys.vision.RtspCamera):
+class CalibratableRtspCamera(_PoseMetadataMixin, rosys.vision.RtspCamera):
     pass
 
 
-class CalibratableMjpegCamera(rosys.vision.CalibratableCamera, rosys.vision.MjpegCamera):
+class CalibratableMjpegCamera(_PoseMetadataMixin, rosys.vision.MjpegCamera):
+    pass
+
+
+class SimulatedCalibratableCamera(_PoseMetadataMixin, rosys.vision.SimulatedCalibratableCamera):
     pass
 
 
@@ -114,7 +129,7 @@ class CameraProvider:
         """Create a camera based on the given slot configuration."""
         camera: rosys.vision.CalibratableCamera
         if rosys.is_simulation():
-            camera = rosys.vision.SimulatedCalibratableCamera(
+            camera = SimulatedCalibratableCamera(
                 id=slot.camera_id,
                 width=slot.width,
                 height=slot.height,
