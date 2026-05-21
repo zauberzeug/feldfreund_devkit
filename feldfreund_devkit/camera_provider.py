@@ -23,7 +23,7 @@ from .config import (
 from .interface.components import status_bulb
 
 
-class _PoseMetadataMixin(rosys.vision.CalibratableCamera):
+class PoseMetadataMixin(rosys.vision.CalibratableCamera):
     """Attaches the resolved camera pose to each captured image's metadata."""
 
     def _add_image(self, image: rosys.vision.Image) -> None:
@@ -34,19 +34,19 @@ class _PoseMetadataMixin(rosys.vision.CalibratableCamera):
         super()._add_image(image)
 
 
-class CalibratableUsbCamera(_PoseMetadataMixin, rosys.vision.UsbCamera):
+class CalibratableUsbCamera(PoseMetadataMixin, rosys.vision.UsbCamera):
     pass
 
 
-class CalibratableRtspCamera(_PoseMetadataMixin, rosys.vision.RtspCamera):
+class CalibratableRtspCamera(PoseMetadataMixin, rosys.vision.RtspCamera):
     pass
 
 
-class CalibratableMjpegCamera(_PoseMetadataMixin, rosys.vision.MjpegCamera):
+class CalibratableMjpegCamera(PoseMetadataMixin, rosys.vision.MjpegCamera):
     pass
 
 
-class SimulatedCalibratableCamera(_PoseMetadataMixin, rosys.vision.SimulatedCalibratableCamera):  # pylint: disable=too-many-ancestors
+class SimulatedCalibratableCamera(PoseMetadataMixin, rosys.vision.SimulatedCalibratableCamera):  # pylint: disable=too-many-ancestors
     pass
 
 
