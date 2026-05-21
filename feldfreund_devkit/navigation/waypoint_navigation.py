@@ -1,3 +1,4 @@
+import copy
 import gc
 import logging
 from abc import abstractmethod
@@ -27,6 +28,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         self.driver = driver
         self.pose_provider = pose_provider
         self.name = name
+        self._driver_default_parameters = copy.copy(driver.parameters)
         self._upcoming_path: list[DriveSegment] = []
         self._is_prepared = False
         self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
@@ -259,15 +261,15 @@ class WaypointNavigation(rosys.persistence.Persistable):
     def settings_ui(self) -> None:
         ui.number('Linear Speed',
                   step=0.01,
-                  min=self.driver.parameters.throttle_at_end_min_speed,
-                  max=self.driver.parameters.linear_speed_limit,
+                  min=self._driver_default_parameters.throttle_at_end_min_speed,
+                  max=self._driver_default_parameters.linear_speed_limit,
                   format='%.2f',
                   suffix='m/s',
                   on_change=self.request_backup) \
             .props('dense outlined') \
             .classes('w-24') \
             .bind_value(self, 'linear_speed_limit') \
-            .tooltip(f'Forward speed limit between {self.driver.parameters.throttle_at_end_min_speed} and {self.driver.parameters.linear_speed_limit} m/s (default: {self.LINEAR_SPEED_LIMIT:.2f})')
+            .tooltip(f'Forward speed limit between {self._driver_default_parameters.throttle_at_end_min_speed} and {self._driver_default_parameters.linear_speed_limit} m/s (default: {self.LINEAR_SPEED_LIMIT:.2f})')
 
     def developer_ui(self) -> None:
         pass
