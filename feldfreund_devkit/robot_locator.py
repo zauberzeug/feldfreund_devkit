@@ -281,10 +281,10 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
                         .bind_value_to(self, '_r_odom_linear')
                 with ui.column().classes('w-24 gap-0'):
                     ui.number(label='R ω odom', min=0, step=0.01, format='%.3f', suffix='°/s', value=np.rad2deg(self._r_odom_angular), on_change=self.request_backup) \
-                        .bind_value_to(self, '_r_odom_angular', forward=np.deg2rad)
+                        .bind_value_to(self, '_r_odom_angular', forward=np.deg2rad)  # type: ignore[arg-type]
                 with ui.column().classes('w-24 gap-0'):
                     ui.number(label='R ω imu', min=0, step=0.01, format='%.3f', suffix='°/s', value=np.rad2deg(self._r_imu_angular), on_change=self.request_backup) \
-                        .bind_value_to(self, '_r_imu_angular', forward=np.deg2rad)
+                        .bind_value_to(self, '_r_imu_angular', forward=np.deg2rad)  # type: ignore[arg-type]
                 with ui.column().classes('w-24 gap-0'):
                     ui.number(label='ω odom weight', min=0, step=0.01, format='%.3f', value=self._odometry_angular_weight, on_change=self.request_backup) \
                         .bind_value_to(self, '_odometry_angular_weight')
