@@ -118,9 +118,11 @@ class TeltonikaRouter:
         async def probe(host: str) -> bool:
             try:
                 _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
-            except (OSError, TimeoutError):
+            except (OSError, TimeoutError) as e:
+                self.log.debug('Connectivity probe to %s:%d failed: %s', host, port, e or type(e).__name__)
                 return False
             writer.close()
+            self.log.debug('Connectivity probe to %s:%d succeeded', host, port)
             return True
         return any(await asyncio.gather(*(probe(host) for host in hosts)))
 
@@ -133,8 +135,10 @@ class TeltonikaRouter:
         async def resolve(hostname: str) -> bool:
             try:
                 await asyncio.wait_for(loop.getaddrinfo(hostname, None), timeout=timeout)
-            except (OSError, TimeoutError):
+            except (OSError, TimeoutError) as e:
+                self.log.debug('DNS resolution of %s failed: %s', hostname, e or type(e).__name__)
                 return False
+            self.log.debug('DNS resolution of %s succeeded', hostname)
             return True
         return any(await asyncio.gather(*(resolve(hostname) for hostname in hostnames)))
 
