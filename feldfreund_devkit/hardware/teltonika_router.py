@@ -59,6 +59,7 @@ class TeltonikaRouter:
     FAILOVER_KEY_WIFI_PREFIXES = frozenset(('ifWan', 'wifi'))
     FAILOVER_KEYS_MOBILE = frozenset(('mob1s1a1', 'mob1s2a1'))
     INTERNET_CHECK_HOSTS = frozenset(('8.8.8.8', '1.1.1.1'))
+    DNS_CHECK_HOSTNAMES = frozenset(('www.google.de', 'zauberzeug.com'))
 
     def __init__(self, url: str, admin_password: str) -> None:
         self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
@@ -113,7 +114,7 @@ class TeltonikaRouter:
                              hosts: Iterable[str] = INTERNET_CHECK_HOSTS,
                              port: int = 53,
                              timeout: float = 2.0) -> bool:
-        """Check internet connectivity by probing ``hosts`` concurrently on ``port``."""
+        """Check raw IP connectivity by probing ``hosts`` concurrently on ``port``."""
         async def probe(host: str) -> bool:
             try:
                 _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
@@ -122,6 +123,20 @@ class TeltonikaRouter:
             writer.close()
             return True
         return any(await asyncio.gather(*(probe(host) for host in hosts)))
+
+    async def check_dns(self,
+                        hostnames: Iterable[str] = DNS_CHECK_HOSTNAMES,
+                        timeout: float = 2.0) -> bool:
+        """Check DNS resolution by resolving ``hostnames`` concurrently."""
+        loop = asyncio.get_running_loop()
+
+        async def resolve(hostname: str) -> bool:
+            try:
+                await asyncio.wait_for(loop.getaddrinfo(hostname, None), timeout=timeout)
+            except (OSError, TimeoutError):
+                return False
+            return True
+        return any(await asyncio.gather(*(resolve(hostname) for hostname in hostnames)))
 
     async def _poll_info(self) -> None:
         tasks = [self._poll_modem_status(), self._poll_wifi_info()]

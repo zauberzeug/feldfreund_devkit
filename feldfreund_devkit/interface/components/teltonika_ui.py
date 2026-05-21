@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import rosys
@@ -89,8 +90,13 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
                 ui.notify('Router reboot failed', type='negative')
 
         async def handle_ping() -> None:
-            if await router.check_internet():
+            connectivity, dns = await asyncio.gather(router.check_internet(), router.check_dns())
+            if connectivity and dns:
                 rosys.notify('Internet reachable', 'positive')
+            elif connectivity:
+                rosys.notify('Internet reachable, but DNS not resolving', 'warning')
+            elif dns:
+                rosys.notify('DNS resolves, but no IP connectivity', 'warning')
             else:
                 rosys.notify('No internet connection', 'negative')
 
