@@ -74,8 +74,6 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
 
     def _generate_lizard_code(self) -> str:
         assert isinstance(self.wheels, TracksHardware | rosys.hardware.WheelsHardware)
-        assert isinstance(self.estop, rosys.hardware.EStopHardware)
-        assert isinstance(self.bumper, rosys.hardware.BumperHardware)
         lizard_code = 'bool disabled = false\n'
         lizard_code += f'let disable do disabled = true; {self.wheels.name}.disable();'
         for module in self.modules:
@@ -87,21 +85,20 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
             lizard_code += module.enable_code
         lizard_code += 'end\n'
 
-        if self.estop.pins:
-            lizard_code += 'bool estop_active = false\n'
+        lizard_code += 'bool estop_active = false\n'
+        lizard_code += 'bool bumper_active = false\n'
+        if isinstance(self.estop, rosys.hardware.EStopHardware) and self.estop.pins:
             enable_conditions = [f'estop_{name}.active == false' for name in self.estop.pins]
             disable_conditions = [f'estop_{name}.active == true' for name in self.estop.pins]
             lizard_code += f'when {" and ".join(enable_conditions)} then estop_active = false; end\n'
             lizard_code += f'when {" or ".join(disable_conditions)} then estop_active = true; end\n'
-        if self.bumper is not None:
-            lizard_code += 'bool bumper_active = false\n'
+        if isinstance(self.bumper, rosys.hardware.BumperHardware) and self.bumper.pins:
             enable_conditions = [f'bumper_{name}.active == false' for name in self.bumper.pins]
             disable_conditions = [f'bumper_{name}.active == true' for name in self.bumper.pins]
             lizard_code += f'when {" and ".join(enable_conditions)} then bumper_active = false; end\n'
             lizard_code += f'when {" or ".join(disable_conditions)} then bumper_active = true; end\n'
-        if self.estop.pins:
-            lizard_code += f'when estop_active == false and disabled == true {"and bumper_active == false" if self.bumper is not None else ""} then enable(); end\n'
-            lizard_code += f'when estop_active {"or bumper_active" if self.bumper is not None else ""} then disable(); end\n'
+        lizard_code += 'when disabled == true and estop_active == false and bumper_active == false then enable(); end\n'
+        lizard_code += 'when estop_active or bumper_active then disable(); end\n'
 
         lizard_code += f'when core.last_message_age > 1000 then {self.wheels.name}.speed(0, 0); end\n'
         lizard_code += 'when core.last_message_age > 20000 then disable(); end\n'
