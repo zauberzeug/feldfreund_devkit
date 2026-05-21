@@ -14,7 +14,7 @@ class LogMonitor(rosys.persistence.Persistable):
     def __init__(self, *, max_lines: int = MAX_LINES) -> None:
         super().__init__()
         self._max_lines = max_lines
-        self._lines: deque[str] = deque([], max_lines)
+        self._lines: deque[str] = deque(maxlen=max_lines)
 
         self.NEW_LINE: Event[str] = Event()
         """a new line was added to the log (argument: line)"""

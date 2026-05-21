@@ -61,14 +61,17 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
                  expander: rosys.hardware.ExpanderHardware | None) -> None:
         self.config = config
         self.expander = expander
+        prefix = f'{expander.name}.' if expander is not None and config.on_expander else ''
+        duty = self._convert_duty_cycle_to_8_bit(config.duty_cycle)
         lizard_code = remove_indentation(f'''
-            {config.name}_front = {expander.name + "." if expander else ""}PwmOutput({config.front_pin})
-            {config.name}_front.duty = 255
-            {config.name}_back = {expander.name + "." if expander else ""}PwmOutput({config.back_pin})
-            {config.name}_back.duty = 255
+            {config.name}_front = {prefix}PwmOutput({config.front_pin}, {config.ledc_timer}, {config.front_ledc_channel})
+            {config.name}_front.duty = {duty}
+            {config.name}_back = {prefix}PwmOutput({config.back_pin}, {config.ledc_timer}, {config.back_ledc_channel})
+            {config.name}_back.duty = {duty}
             {config.name}_front.shadow({config.name}_back)
         ''')
         super().__init__(robot_brain=robot_brain, lizard_code=lizard_code)
+        self._duty_cycle = config.duty_cycle
 
     @property
     def enable_code(self) -> str:
@@ -78,7 +81,8 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
     def disable_code(self) -> str:
         return f'{self.config.name}_front.disable(); {self.config.name}_back.disable();'
 
-    def _convert_duty_cycle_to_8_bit(self, duty_cycle: float) -> int:
+    @staticmethod
+    def _convert_duty_cycle_to_8_bit(duty_cycle: float) -> int:
         """Convert the duty cycle to a 8 bit value (0-255).
 
         :param duty_cycle: float between 0 and 1
@@ -119,7 +123,10 @@ class FlashlightHardware(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin)
 
 
 class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, SafetyMixin):
-    """Flashlight hardware implementation using a MOSFET switch."""
+    """Flashlight hardware implementation using a MOSFET switch.
+
+    Deprecated: only used on U4. Not built into any new robot; do not extend.
+    """
 
     UPDATE_INTERVAL = 5.0
 
@@ -130,8 +137,9 @@ class FlashlightHardwareMosfet(Flashlight, rosys.hardware.ModuleHardware, Safety
         self.config = config
         self.expander = expander
         self.bms = bms
+        prefix = f'{expander.name}.' if expander is not None and config.on_expander else ''
         lizard_code = remove_indentation(f'''
-            {config.name} = {expander.name + "." if expander else ""}PwmOutput({config.pin})
+            {config.name} = {prefix}PwmOutput({config.pin})
             {config.name}.duty = 204
         ''')
         # NOTE: Electronically the duty cycle should be variable based on the battery voltage, but 204 has been tested extensively and works well.

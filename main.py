@@ -5,8 +5,7 @@ from rosys.automation import Automator, automation_controls
 from rosys.driving import Driver, Steerer, keyboard_control, robot_object
 
 import feldfreund_devkit
-from feldfreund_devkit import Secrets
-from feldfreund_devkit.config import FeldfreundConfiguration, config_from_id
+from feldfreund_devkit.config import FeldfreundConfiguration, Secrets, config_from_id
 from feldfreund_devkit.implement import ImplementDummy
 from feldfreund_devkit.navigation import StraightLineNavigation
 

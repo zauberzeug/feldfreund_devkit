@@ -1,5 +1,5 @@
 from . import log_configuration
-from .camera_provider import CameraProvider
+from .camera_provider import CameraProvider, PoseMetadataMixin
 from .feldfreund import Feldfreund, FeldfreundHardware, FeldfreundSimulation
 from .implement import Implement, ImplementDummy, ImplementException
 from .robot_locator import RobotLocator
@@ -15,6 +15,7 @@ __all__ = [
     'Implement',
     'ImplementDummy',
     'ImplementException',
+    'PoseMetadataMixin',
     'RobotLocator',
     'System',
     'TargetLocator',
