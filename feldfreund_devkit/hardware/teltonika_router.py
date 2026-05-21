@@ -62,7 +62,7 @@ class TeltonikaRouter:
     DNS_CHECK_HOSTNAMES = frozenset(('www.google.de', 'zauberzeug.com'))
 
     def __init__(self, url: str, admin_password: str) -> None:
-        self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
+        self.log = logging.getLogger('feldfreund.teltonika_router')
         self._url = url
         self._admin_password = admin_password
 
