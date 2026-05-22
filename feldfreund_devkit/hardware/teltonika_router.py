@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
 from typing import Literal
@@ -55,11 +56,13 @@ class TeltonikaRouter:
     TOKEN_EXPIRY_SECONDS = 4 * 60
     AUTH_RETRY_INTERVAL = 60
     FAILOVER_KEY_ETHER = 'wan'
-    FAILOVER_KEY_WIFI_PREFIXES = ('ifWan', 'wifi')
-    FAILOVER_KEYS_MOBILE = ('mob1s1a1', 'mob1s2a1')
+    FAILOVER_KEY_WIFI_PREFIXES = frozenset(('ifWan', 'wifi'))
+    FAILOVER_KEYS_MOBILE = frozenset(('mob1s1a1', 'mob1s2a1'))
+    INTERNET_CHECK_HOSTS = frozenset(('8.8.8.8', '1.1.1.1'))
+    DNS_CHECK_HOSTNAMES = frozenset(('www.google.de', 'zauberzeug.com'))
 
     def __init__(self, url: str, admin_password: str) -> None:
-        self.log = logging.getLogger('feldfreund.hardware.teltonika_router')
+        self.log = logging.getLogger('feldfreund.teltonika_router')
         self._url = url
         self._admin_password = admin_password
 
@@ -106,6 +109,38 @@ class TeltonikaRouter:
             return True
         self.log.error('Router reboot failed')
         return False
+
+    async def check_internet(self,
+                             hosts: Iterable[str] = INTERNET_CHECK_HOSTS,
+                             port: int = 53,
+                             timeout: float = 2.0) -> bool:
+        """Check raw IP connectivity by probing ``hosts`` concurrently on ``port``."""
+        async def probe(host: str) -> bool:
+            try:
+                _, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=timeout)
+            except (OSError, TimeoutError) as e:
+                self.log.debug('Connectivity probe to %s:%d failed: %s', host, port, e or type(e).__name__)
+                return False
+            writer.close()
+            self.log.debug('Connectivity probe to %s:%d succeeded', host, port)
+            return True
+        return any(await asyncio.gather(*(probe(host) for host in hosts)))
+
+    async def check_dns(self,
+                        hostnames: Iterable[str] = DNS_CHECK_HOSTNAMES,
+                        timeout: float = 2.0) -> bool:
+        """Check DNS resolution by resolving ``hostnames`` concurrently."""
+        loop = asyncio.get_running_loop()
+
+        async def resolve(hostname: str) -> bool:
+            try:
+                await asyncio.wait_for(loop.getaddrinfo(hostname, None), timeout=timeout)
+            except (OSError, TimeoutError) as e:
+                self.log.debug('DNS resolution of %s failed: %s', hostname, e or type(e).__name__)
+                return False
+            self.log.debug('DNS resolution of %s succeeded', hostname)
+            return True
+        return any(await asyncio.gather(*(resolve(hostname) for hostname in hostnames)))
 
     async def _poll_info(self) -> None:
         tasks = [self._poll_modem_status(), self._poll_wifi_info()]
