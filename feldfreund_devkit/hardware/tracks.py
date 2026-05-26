@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import rosys
 from nicegui import ui
 from rosys.geometry import PoseStep, Velocity
@@ -5,6 +9,9 @@ from rosys.hardware import CanHardware, EStopHardware, ModuleHardware, RobotBrai
 from rosys.helpers import remove_indentation
 
 from ..config import ODriveTracksConfiguration, TracksConfiguration
+
+if TYPE_CHECKING:
+    from rosys.recording import McapLogger
 
 
 class TracksHardware(Wheels, ModuleHardware):

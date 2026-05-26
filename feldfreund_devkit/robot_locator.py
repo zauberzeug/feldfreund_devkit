@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import rosys
@@ -10,6 +12,9 @@ from rosys.geometry import Frame3d, FrameProvider, Pose, Pose3d, Rotation, Veloc
 from rosys.hardware import Gnss, GnssMeasurement, GnssSimulation, Imu, ImuMeasurement, Wheels, WheelsSimulation
 
 from .config import GnssConfiguration
+
+if TYPE_CHECKING:
+    from rosys.recording import McapLogger
 
 
 class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
@@ -63,6 +68,40 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         if self._gnss is not None:
             self._gnss.NEW_MEASUREMENT.subscribe(self._handle_gnss_measurement)
         rosys.on_startup(self.reset)
+
+    def register_mcap_topics(self, logger: McapLogger) -> None:
+        logger.add_topic('/ekf/pose', schema_name='EkfPose', schema={
+            'type': 'object',
+            'properties': {
+                'x': {'type': 'number', 'description': 'X position in meters'},
+                'y': {'type': 'number', 'description': 'Y position in meters'},
+                'yaw': {'type': 'number', 'description': 'Yaw angle in radians'},
+            },
+        })
+        logger.add_topic('/ekf/uncertainty', schema_name='EkfUncertainty', schema={
+            'type': 'object',
+            'properties': {
+                'sigma_x': {'type': 'number', 'description': 'X position std dev in meters'},
+                'sigma_y': {'type': 'number', 'description': 'Y position std dev in meters'},
+                'sigma_yaw': {'type': 'number', 'description': 'Yaw std dev in radians'},
+            },
+        })
+
+        def on_pose_updated(pose: Pose) -> None:
+            ts = int(pose.time * 1_000_000_000)
+            logger.log_message('/ekf/pose', {
+                'x': pose.x,
+                'y': pose.y,
+                'yaw': pose.yaw,
+            }, timestamp_ns=ts)
+            sigma_x, sigma_y, sigma_yaw = self.uncertainty
+            logger.log_message('/ekf/uncertainty', {
+                'sigma_x': sigma_x,
+                'sigma_y': sigma_y,
+                'sigma_yaw': sigma_yaw,
+            }, timestamp_ns=ts)
+
+        self.POSE_UPDATED.subscribe(on_pose_updated)
 
     @property
     def frame(self) -> Frame3d:
