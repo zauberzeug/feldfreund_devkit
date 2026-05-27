@@ -36,7 +36,7 @@ class System(rosys.persistence.Persistable):
             self.teltonika_router = TeltonikaRouter('http://192.168.42.1/api', self.secrets.TELTONIKA_PASSWORD)
             rosys.on_repeat(self.log_status, 60 * 5)
         self.odometer = Odometer(self.feldfreund.wheels)
-        self.camera_provider = CameraProvider(config.cameras, frame_provider=self.odometer)
+        self.camera_provider = self._create_camera_provider()
         self.update_gnss_reference(reference=GeoReference(GeoPoint.from_degrees(51.983204032849706, 7.434321368936861)))
 
     @property
@@ -47,6 +47,10 @@ class System(rosys.persistence.Persistable):
         if rosys.is_simulation():
             return FeldfreundSimulation(self.config, use_acceleration=use_acceleration)
         return FeldfreundHardware(self.config)
+
+    def _create_camera_provider(self) -> CameraProvider:
+        """Factory hook for the camera provider. Subclasses may override to plug in an app-specific provider."""
+        return CameraProvider(self.config.cameras, frame_provider=self.odometer)
 
     def update_gnss_reference(self, *, reference: GeoReference | None = None) -> None:
         if reference is None:
