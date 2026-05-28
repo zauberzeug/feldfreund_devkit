@@ -140,11 +140,14 @@ class MjpegCameraConfig(CameraSlotConfig):
 class CameraConfiguration:
     """Container of named camera slots for a Feldfreund robot.
 
+    ``main`` may be a single ``CameraSlotConfig`` or a list of them; the list form lets the
+    stereo locator triangulate across physically separated main cameras within a single stop.
+
     Defaults:
         left: None
         right: None
     """
-    main: CameraSlotConfig | None
+    main: CameraSlotConfig | list[CameraSlotConfig] | None
     front: CameraSlotConfig | None
     back: CameraSlotConfig | None
     left: CameraSlotConfig | None = None

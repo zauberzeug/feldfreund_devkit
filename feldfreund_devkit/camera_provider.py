@@ -65,12 +65,12 @@ class CameraProvider:
         """
         self.log = logging.getLogger('feldfreund.camera_provider')
         self._config = config
-        self.main = self._setup('main')
+        self.mains: list[rosys.vision.CalibratableCamera] = self._setup_mains()
         self.front = self._setup('front')
         self.back = self._setup('back')
         self.left = self._setup('left')
         self.right = self._setup('right')
-        self._cameras = {cam.id: cam for cam in (self.main, self.front, self.back, self.left, self.right)
+        self._cameras = {cam.id: cam for cam in (*self.mains, self.front, self.back, self.left, self.right)
                          if cam is not None}
 
         if frame_provider is not None:
@@ -81,12 +81,16 @@ class CameraProvider:
             rosys.on_shutdown(self.shutdown)
 
     def slot_config(self, name: CameraPosition) -> CameraSlotConfig | None:
-        """Get the CameraSlotConfig for a given position."""
+        """Get the CameraSlotConfig for a given position.
+
+        For ``'main'``, returns the first configured main; use ``main_slot_configs`` for the full list.
+        """
         if self._config is None:
             return None
         match name:
             case 'main':
-                return self._config.main
+                configs = self.main_slot_configs
+                return configs[0] if configs else None
             case 'front':
                 return self._config.front
             case 'back':
@@ -96,6 +100,18 @@ class CameraProvider:
             case 'right':
                 return self._config.right
         return None
+
+    @property
+    def main_slot_configs(self) -> list[CameraSlotConfig]:
+        """Normalized list of main camera slot configurations (empty when none configured)."""
+        if self._config is None or self._config.main is None:
+            return []
+        return list(self._config.main) if isinstance(self._config.main, list) else [self._config.main]
+
+    @property
+    def main(self) -> rosys.vision.CalibratableCamera | None:
+        """Primary main camera — the first of ``self.mains`` (used where a single camera is needed)."""
+        return self.mains[0] if self.mains else None
 
     @property
     def cameras(self) -> dict[str, rosys.vision.CalibratableCamera]:
@@ -120,6 +136,12 @@ class CameraProvider:
         slot_config = self.slot_config(name)
         if not slot_config:
             return None
+        return self._build_camera(slot_config)
+
+    def _setup_mains(self) -> list[rosys.vision.CalibratableCamera]:
+        return [self._build_camera(c) for c in self.main_slot_configs]
+
+    def _build_camera(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         camera = self._create_camera(slot_config)
         if slot_config.calibration is not None:
             camera.calibration = slot_config.calibration
@@ -192,9 +214,20 @@ class CameraProvider:
         self.log.info('Camera scan complete')
 
     def developer_ui(self) -> None:
-        slots: list[tuple[CameraPosition, CalibratableCamera | None]] = [('main', self.main),
-                                                                         ('front', self.front), ('back', self.back),
-                                                                         ('left', self.left), ('right', self.right)]
+        main_configs = self.main_slot_configs
+        slots: list[tuple[str, CalibratableCamera | None, CameraSlotConfig | None]] = []
+        if main_configs:
+            for i, (cam, cfg) in enumerate(zip(self.mains, main_configs, strict=True)):
+                label = 'main' if len(main_configs) == 1 else f'main[{i}]'
+                slots.append((label, cam, cfg))
+        else:
+            slots.append(('main', None, None))
+        slots.extend([
+            ('front', self.front, self.slot_config('front')),
+            ('back', self.back, self.slot_config('back')),
+            ('left', self.left, self.slot_config('left')),
+            ('right', self.right, self.slot_config('right')),
+        ])
         with ui.column():
             ui.label('Cameras').classes('text-center text-bold')
             with ui.grid(columns='auto auto auto auto').classes('items-center'):
@@ -202,7 +235,7 @@ class CameraProvider:
                 ui.label('Connected').classes('font-bold')
                 ui.label('Resolution').classes('font-bold')
                 ui.label('Type').classes('font-bold')
-                for name, camera in slots:
+                for name, camera, slot_cfg in slots:
                     ui.label(name)
                     if camera is None:
                         status_bulb()
@@ -219,5 +252,5 @@ class CameraProvider:
                             label.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
 
                         ui.timer(5.0, update_resolution)
-                        ui.label(self._camera_config_name(self.slot_config(name)))
+                        ui.label(self._camera_config_name(slot_cfg))
             ui.button('Scan for cameras', on_click=self.scan)
