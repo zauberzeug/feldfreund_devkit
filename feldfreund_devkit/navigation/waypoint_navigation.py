@@ -3,7 +3,7 @@ from __future__ import annotations
 import gc
 import logging
 from abc import abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import rosys
 from nicegui import Event, ui
@@ -15,9 +15,6 @@ from rosys.geometry import Point, Pose, PoseStep
 from ..implement import Implement
 from .drive_segment import DriveSegment
 from .utils import sub_spline
-
-if TYPE_CHECKING:
-    from rosys.recording import McapLogger
 
 
 class WaypointNavigation(rosys.persistence.Persistable):
@@ -49,35 +46,6 @@ class WaypointNavigation(rosys.persistence.Persistable):
 
         self.PATH_COMPLETED = Event[[]]()
         """the entire path with all its waypoints has been completed"""
-
-    def register_mcap_topics(self, logger: McapLogger) -> None:
-        logger.add_topic('/navigation/event', schema_name='NavigationEvent', schema={
-            'type': 'object',
-            'properties': {
-                'event': {'type': 'string', 'description': 'Event type (segment_started, segment_completed, path_completed)'},
-                'segment_start_x': {'type': 'number'},
-                'segment_start_y': {'type': 'number'},
-                'segment_end_x': {'type': 'number'},
-                'segment_end_y': {'type': 'number'},
-                'backward': {'type': 'boolean'},
-            },
-        })
-
-        def on_segment_event(event_type: str, segment: DriveSegment) -> None:
-            start = segment.spline.pose(0)
-            end = segment.spline.pose(1)
-            logger.log_message('/navigation/event', {
-                'event': event_type,
-                'segment_start_x': start.x,
-                'segment_start_y': start.y,
-                'segment_end_x': end.x,
-                'segment_end_y': end.y,
-                'backward': segment.backward,
-            })
-
-        self.SEGMENT_STARTED.subscribe(lambda seg: on_segment_event('segment_started', seg))
-        self.SEGMENT_COMPLETED.subscribe(lambda seg: on_segment_event('segment_completed', seg))
-        self.PATH_COMPLETED.subscribe(lambda: logger.log_message('/navigation/event', {'event': 'path_completed'}))
 
     @property
     def path(self) -> list[DriveSegment]:
