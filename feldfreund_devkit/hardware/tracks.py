@@ -85,9 +85,9 @@ class ODriveTracksHardware(TracksHardware):
         if config.odrive_version == self.ERROR_FLAG_VERSION:
             core_message_fields.extend(['l0.motor_error_flag', 'r0.motor_error_flag',
                                        'l1.motor_error_flag', 'r1.motor_error_flag'])
-        else:
-            self.log.warning('ODrive firmware is deprecated. Please update to benefit from the motor error detection.')
         super().__init__(config, robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
+        if config.odrive_version != self.ERROR_FLAG_VERSION:
+            self.log.warning('ODrive firmware is deprecated. Please update to benefit from the motor error detection.')
 
     @property
     def motor_error(self) -> bool:
