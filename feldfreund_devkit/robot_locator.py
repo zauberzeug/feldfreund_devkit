@@ -6,14 +6,14 @@ import numpy as np
 import rosys
 import rosys.helpers
 from nicegui import Event, ui
-from rosys.driving import PoseProvider
+from rosys.driving import PoseProvider, VelocityProvider
 from rosys.geometry import Frame3d, FrameProvider, Pose, Pose3d, Rotation, Velocity
 from rosys.hardware import Gnss, GnssMeasurement, GnssSimulation, Imu, ImuMeasurement, Wheels, WheelsSimulation
 
 from .config import GnssConfiguration
 
 
-class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
+class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, VelocityProvider):
     """Extended Kalman filter for robot pose estimation using odometry, GNSS, and IMU."""
 
     R_ODOM_LINEAR = 0.1
@@ -22,6 +22,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     ODOMETRY_ANGULAR_WEIGHT = 0.1
     POSE_HISTORY_DURATION = 2.0
     """Seconds of past pose estimates kept for time-based lookups via :meth:`_state_at`."""
+    VELOCITY_SMOOTHING_DURATION = 0.2
+    """Window over which the filtered pose is differenced into the emitted ``VELOCITY_MEASURED`` velocity."""
 
     def __init__(self,
                  wheels: Wheels, *,
@@ -53,6 +55,9 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._pose_frame = Pose3d().as_frame('feldfreund.robot_locator')
         self.FRAME_UPDATED: Event[Frame3d] = Event()
         """Emitted when the pose frame has been updated (argument: the new pose frame)."""
+
+        self.VELOCITY_MEASURED: Event[list[Velocity]] = Event()
+        """Emitted per processed wheel velocity with the filtered velocity (argument: list of ``Velocity``)."""
 
         self._ignore_gnss = gnss is None
         self._ignore_imu = imu is None
@@ -146,6 +151,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
 
             if velocity.linear == 0 and velocity.angular == 0 and self._first_prediction_done:
                 # NOTE: The robot is not moving, so we don't need to update the state
+                self.VELOCITY_MEASURED.emit([Velocity(linear=0.0, angular=0.0, time=velocity.time)])
                 continue
 
             v = velocity.linear
@@ -180,6 +186,32 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
             self._Sxx = F @ self._Sxx @ F.T + R
             self._update_frame()
             self._first_prediction_done = True
+            self.VELOCITY_MEASURED.emit([self._estimate_velocity(velocity.time)])
+
+    def _estimate_velocity(self, time: float) -> Velocity:
+        """Estimate a smoothed velocity by differencing the filtered pose over a short window.
+
+        Differencing the EKF pose (instead of forwarding the raw wheel speed) yields a velocity that
+        reflects the IMU blend and GNSS corrections folded into the state. The window spreads a discrete
+        GNSS correction jump over several samples rather than emitting it as a single-step spike.
+        """
+        newest_time, newest_x, _ = self._pose_history[-1]
+        target_time = newest_time - self.VELOCITY_SMOOTHING_DURATION
+        earlier_time, earlier_x, _ = self._pose_history[0]
+        for entry_time, entry_x, _ in self._pose_history:
+            if entry_time > target_time:
+                break
+            earlier_time, earlier_x = entry_time, entry_x
+        dt = newest_time - earlier_time
+        if dt <= 0:
+            return Velocity(linear=0.0, angular=0.0, time=time)
+        dx = newest_x[0, 0] - earlier_x[0, 0]
+        dy = newest_x[1, 0] - earlier_x[1, 0]
+        dyaw = rosys.helpers.angle(earlier_x[2, 0], newest_x[2, 0])
+        direction = earlier_x[2, 0] + dyaw / 2  # average heading over the window for the forward projection
+        linear = (dx * np.cos(direction) + dy * np.sin(direction)) / dt
+        angular = dyaw / dt
+        return Velocity(linear=linear, angular=angular, time=time)
 
     def _get_imu_angular_velocity(self) -> float | None:
         if self._previous_imu_measurement is None or self._imu is None or self._imu.last_measurement is None:
