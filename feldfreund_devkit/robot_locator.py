@@ -35,8 +35,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._gnss_config = gnss_config
 
         state_size = 3
-        self._x = np.zeros((state_size, 1))
-        self._Sxx = np.zeros((state_size, state_size))
+        self._x: np.ndarray = np.zeros((state_size, 1))
+        self._Sxx: np.ndarray = np.zeros((state_size, state_size))
         self._pose_timestamp = rosys.time()
         # NOTE: the prediction step needs to be run once before the first GNSS update
         self._first_prediction_done = False
@@ -209,7 +209,11 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
             L = np.linalg.cholesky(S)
             K = self._Sxx @ H.T @ np.linalg.solve(L.T, np.linalg.solve(L, np.eye(S.shape[0])))
         self._x = self._x + K @ (z - h)
-        self._Sxx = (np.eye(self._Sxx.shape[0]) - K @ H) @ self._Sxx
+        # Joseph form keeps the covariance symmetric and positive semi-definite, unlike the
+        # naive (I - K H) P which drifts into asymmetry and negative eigenvalues (#348, #372)
+        A = np.eye(self._Sxx.shape[0]) - K @ H
+        self._Sxx = A @ self._Sxx @ A.T + K @ Q @ K.T
+        self._Sxx = (self._Sxx + self._Sxx.T) / 2  # remove residual asymmetry from floating-point error
         self._update_frame()
 
     def _update_frame(self) -> None:
