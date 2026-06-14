@@ -194,14 +194,20 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         Differencing the EKF pose (instead of forwarding the raw wheel speed) yields a velocity that
         reflects the IMU blend and GNSS corrections folded into the state. The window spreads a discrete
         GNSS correction jump over several samples rather than emitting it as a single-step spike.
+
+        The walk back stops at the first gap larger than the window (e.g. a standstill, during which no
+        history is recorded), so velocity is never differenced across the gap; it recovers one sample later.
         """
         newest_time, newest_x, _ = self._pose_history[-1]
         target_time = newest_time - self.VELOCITY_SMOOTHING_DURATION
-        earlier_time, earlier_x, _ = self._pose_history[0]
-        for entry_time, entry_x, _ in self._pose_history:
-            if entry_time > target_time:
+        earlier_time, earlier_x = newest_time, newest_x
+        previous_time = newest_time
+        for entry_time, entry_x, _ in reversed(self._pose_history):
+            if previous_time - entry_time > self.VELOCITY_SMOOTHING_DURATION:
+                break  # consecutive gap exceeds the smoothing window — don't difference across it
+            earlier_time, earlier_x, previous_time = entry_time, entry_x, entry_time
+            if entry_time <= target_time:
                 break
-            earlier_time, earlier_x = entry_time, entry_x
         dt = newest_time - earlier_time
         if dt <= 0:
             return Velocity(linear=0.0, angular=0.0, time=time)
