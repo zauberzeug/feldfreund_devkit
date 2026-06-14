@@ -144,6 +144,66 @@ async def test_reset_snaps_pose_to_gnss(devkit_system):
     assert s.robot_locator.pose.y == pytest.approx(s.feldfreund.wheels.pose.y, abs=0.05)
 
 
+async def test_pose_at_interpolates_past_pose(devkit_system):
+    """``pose_at`` must return the pose estimated at an earlier time, not the live pose."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(1.5)
+    now = rosys.time()
+    current_x = s.robot_locator.pose.x
+    past = s.robot_locator.pose_at(now - 1.0)
+    assert past.x < current_x  # the earlier estimate is behind the current one
+    assert past.x == pytest.approx(current_x - 0.2 * 1.0, abs=0.05)  # ~0.2 m/s over 1 s
+    assert past.y == pytest.approx(0.0, abs=0.02)
+
+
+async def test_pose_at_clamps_to_current_for_future(devkit_system):
+    """A timestamp at or beyond the newest estimate returns the live pose."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(1.0)
+    future = s.robot_locator.pose_at(rosys.time() + 10.0)
+    assert future.x == pytest.approx(s.robot_locator.pose.x)
+    assert future.yaw == pytest.approx(s.robot_locator.pose.yaw)
+
+
+async def test_pose_history_is_time_windowed(devkit_system):
+    """The buffer keeps only roughly ``POSE_HISTORY_DURATION`` seconds of estimates."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(5.0)
+    history = s.robot_locator._pose_history
+    assert len(history) > 1
+    span = history[-1][0] - history[0][0]
+    assert span <= s.robot_locator.POSE_HISTORY_DURATION + 0.5
+
+
+async def test_pose_at_interpolates_yaw_across_turn(devkit_system):
+    """Yaw must be interpolated with wrap-around handling while turning."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.0, 0.3)  # turn in place
+    await forward(1.5)
+    now = rosys.time()
+    current_yaw = s.robot_locator.pose.yaw
+    past = s.robot_locator.pose_at(now - 1.0)
+    assert abs(past.yaw) < abs(current_yaw)  # earlier in the turn ⇒ smaller angle
+
+
+async def test_reset_clears_pose_history(devkit_system):
+    """Resetting discards the buffered estimates so interpolation never crosses the jump."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(1.0)
+    assert len(s.robot_locator._pose_history) > 1
+    s.robot_locator._reset()
+    assert len(s.robot_locator._pose_history) == 1  # only the post-reset estimate remains
+
+
 def test_combine_odom_imu_slip_reduces_speed(devkit_system):
     """When odometry and IMU disagree on the angular velocity (wheel slip), the
     fused linear velocity must be reduced and the angular velocity blended."""

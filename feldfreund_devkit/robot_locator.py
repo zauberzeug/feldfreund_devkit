@@ -1,4 +1,5 @@
 import logging
+from collections import deque
 from typing import Any
 
 import numpy as np
@@ -19,6 +20,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     R_ODOM_ANGULAR = 0.097
     R_IMU_ANGULAR = 0.01
     ODOMETRY_ANGULAR_WEIGHT = 0.1
+    POSE_HISTORY_DURATION = 2.0
+    """Seconds of past pose estimates kept for time-based lookups via :meth:`pose_at`."""
 
     def __init__(self,
                  wheels: Wheels, *,
@@ -42,6 +45,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._first_prediction_done = False
 
         self._pose = Pose(x=0.0, y=0.0, yaw=0.0, time=self._pose_timestamp)
+        # ring buffer of (timestamp, state, covariance) for time-based pose lookups
+        self._pose_history: deque[tuple[float, np.ndarray, np.ndarray]] = deque()
         self.POSE_UPDATED: Event[Pose] = Event()
         """Emitted when the pose has been updated (argument: current ``Pose``)."""
 
@@ -79,6 +84,30 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     @property
     def uncertainty(self) -> tuple[float, float, float]:
         return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
+
+    def pose_at(self, time: float) -> Pose:
+        """Return the estimated pose at the given ``time``, interpolated from the pose history.
+
+        Useful to project time-stamped measurements (e.g. camera detections) with the pose
+        that was estimated when they were taken, instead of the live pose. Outside the buffered
+        window the result is clamped to the oldest/newest available estimate.
+        """
+        if not self._pose_history or time >= self._pose_history[-1][0]:
+            return self.pose
+        oldest_time, oldest_x, _ = self._pose_history[0]
+        if time <= oldest_time:
+            return Pose(x=oldest_x[0, 0], y=oldest_x[1, 0], yaw=oldest_x[2, 0], time=time)
+        previous_time, previous_x = oldest_time, oldest_x
+        for current_time, current_x, _ in self._pose_history:
+            if previous_time <= time <= current_time:
+                span = current_time - previous_time
+                alpha = (time - previous_time) / span if span > 0 else 0.0
+                x = previous_x[0, 0] + alpha * (current_x[0, 0] - previous_x[0, 0])
+                y = previous_x[1, 0] + alpha * (current_x[1, 0] - previous_x[1, 0])
+                yaw = previous_x[2, 0] + alpha * rosys.helpers.angle(previous_x[2, 0], current_x[2, 0])
+                return Pose(x=x, y=y, yaw=yaw, time=time)
+            previous_time, previous_x = current_time, current_x
+        return self.pose
 
     def backup_to_dict(self) -> dict[str, Any]:
         return {
@@ -224,8 +253,20 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._pose.y = self._x[1, 0]
         self._pose.yaw = self._x[2, 0]
         self._pose.time = self._pose_timestamp
+        self._record_pose_history()
         self.FRAME_UPDATED.emit(self._pose_frame)
         self.POSE_UPDATED.emit(self._pose)
+
+    def _record_pose_history(self) -> None:
+        entry = (self._pose_timestamp, self._x.copy(), self._Sxx.copy())
+        # predict and the following GNSS update share a timestamp; keep only the corrected state
+        if self._pose_history and self._pose_history[-1][0] == self._pose_timestamp:
+            self._pose_history[-1] = entry
+        else:
+            self._pose_history.append(entry)
+        cutoff = self._pose_timestamp - self.POSE_HISTORY_DURATION
+        while len(self._pose_history) > 1 and self._pose_history[0][0] < cutoff:
+            self._pose_history.popleft()
 
     async def reset(self, *, gnss_timeout: float = 2.0) -> None:
         reset_pose = Pose(x=0.0, y=0.0, yaw=0.0, time=rosys.time())
@@ -260,6 +301,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._Sxx.fill(0)
         np.fill_diagonal(self._Sxx, variance)
         self._pose_timestamp = rosys.time()
+        self._pose_history.clear()  # the pose jumps discontinuously, so past estimates are invalid
         self._update_frame()
 
     def developer_ui(self) -> None:
