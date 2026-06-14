@@ -27,7 +27,7 @@ async def test_covariance_stays_positive_semidefinite(devkit_system):
 
     for _ in range(200):
         await forward(0.2)
-        covariance = s.robot_locator._Sxx  # noqa: SLF001
+        covariance = s.robot_locator._Sxx
         assert np.all(np.isfinite(covariance)), f'covariance must stay finite:\n{covariance}'
         eigenvalues = np.linalg.eigvalsh((covariance + covariance.T) / 2)
         scale = max(float(eigenvalues.max()), 1e-30)
@@ -49,14 +49,14 @@ async def test_covariance_stays_finite_while_driving(devkit_system):
     await forward(until=lambda: s.automator.is_running)
     for _ in range(200):
         await forward(0.2)
-        assert np.all(np.isfinite(s.robot_locator._Sxx)), 'covariance turned non-finite'  # noqa: SLF001
-        assert np.all(np.isfinite(s.robot_locator._x)), 'state turned non-finite'  # noqa: SLF001
+        assert np.all(np.isfinite(s.robot_locator._Sxx)), 'covariance turned non-finite'
+        assert np.all(np.isfinite(s.robot_locator._x)), 'state turned non-finite'
 
 
 async def test_dead_reckoning_integrates_odometry(devkit_system):
     """Without GNSS the prediction step alone must move the pose along the driven odometry."""
     s = devkit_system
-    s.robot_locator._ignore_gnss = True  # noqa: SLF001
+    s.robot_locator._ignore_gnss = True
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(5.0)
     await s.driver.wheels.drive(0.0, 0.0)
@@ -69,24 +69,24 @@ async def test_dead_reckoning_integrates_odometry(devkit_system):
 async def test_standstill_freezes_state(devkit_system):
     """At standstill the prediction step is skipped, so pose and covariance must not drift."""
     s = devkit_system
-    s.robot_locator._ignore_gnss = True  # noqa: SLF001
+    s.robot_locator._ignore_gnss = True
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(1.0)
     await s.driver.wheels.drive(0.0, 0.0)
     await forward(0.5)
     pose_before = s.robot_locator.pose
-    covariance_before = s.robot_locator._Sxx.copy()  # noqa: SLF001
+    covariance_before = s.robot_locator._Sxx.copy()
     await forward(3.0)
     assert s.robot_locator.pose.x == pytest.approx(pose_before.x, abs=1e-9)
     assert s.robot_locator.pose.y == pytest.approx(pose_before.y, abs=1e-9)
     assert s.robot_locator.pose.yaw == pytest.approx(pose_before.yaw, abs=1e-9)
-    np.testing.assert_array_equal(s.robot_locator._Sxx, covariance_before)  # noqa: SLF001
+    np.testing.assert_array_equal(s.robot_locator._Sxx, covariance_before)
 
 
 async def test_uncertainty_grows_during_dead_reckoning(devkit_system):
     """Driving without GNSS corrections must increase the pose uncertainty."""
     s = devkit_system
-    s.robot_locator._ignore_gnss = True  # noqa: SLF001
+    s.robot_locator._ignore_gnss = True
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(0.5)
     uncertainty_before = sum(s.robot_locator.uncertainty)
@@ -104,8 +104,8 @@ async def test_gnss_corrects_injected_error(devkit_system):
     """
     s = devkit_system
     await forward(2.0)  # let the filter settle at the origin
-    s.robot_locator._x[1, 0] = 1.0  # noqa: SLF001  inject a 1 m error in y
-    s.robot_locator._update_frame()  # noqa: SLF001
+    s.robot_locator._x[1, 0] = 1.0  # inject a 1 m error in y
+    s.robot_locator._update_frame()
     assert s.robot_locator.pose.y == pytest.approx(1.0, abs=1e-6)
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(5.0)
@@ -119,10 +119,10 @@ async def test_non_finite_heading_disables_update(devkit_system):
     even while driving (which otherwise keeps the Kalman gain alive)."""
     s = devkit_system
     await forward(2.0)
-    s.feldfreund.gnss._heading_std_dev = np.inf  # noqa: SLF001
+    s.feldfreund.gnss._heading_std_dev = np.inf
     await forward(1.0)  # flush a measurement so the guard is exercised
-    s.robot_locator._x[1, 0] = 1.0  # noqa: SLF001
-    s.robot_locator._update_frame()  # noqa: SLF001
+    s.robot_locator._x[1, 0] = 1.0
+    s.robot_locator._update_frame()
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(5.0)
     await s.driver.wheels.drive(0.0, 0.0)
@@ -136,8 +136,8 @@ async def test_reset_snaps_pose_to_gnss(devkit_system):
     advances, so it is run as a background task alongside ``forward``.
     """
     s = devkit_system
-    s.robot_locator._x[:, 0] = [5.0, 5.0, 1.0]  # noqa: SLF001  corrupt the state
-    s.robot_locator._update_frame()  # noqa: SLF001
+    s.robot_locator._x[:, 0] = [5.0, 5.0, 1.0]  # corrupt the state
+    s.robot_locator._update_frame()
     rosys.background_tasks.create(s.robot_locator.reset(), name='reset_locator')
     await forward(3.0)
     assert s.robot_locator.pose.x == pytest.approx(s.feldfreund.wheels.pose.x, abs=0.05)
@@ -148,12 +148,12 @@ def test_combine_odom_imu_slip_reduces_speed(devkit_system):
     """When odometry and IMU disagree on the angular velocity (wheel slip), the
     fused linear velocity must be reduced and the angular velocity blended."""
     locator = devkit_system.robot_locator
-    weight = locator._odometry_angular_weight  # noqa: SLF001
+    weight = locator._odometry_angular_weight
     # agreement: speed unchanged, angular velocity unchanged
-    v, omega = locator._combine_odom_imu(0.5, 0.2, 0.2)  # noqa: SLF001
+    v, omega = locator._combine_odom_imu(0.5, 0.2, 0.2)
     assert v == pytest.approx(0.5)
     assert omega == pytest.approx(0.2)
     # disagreement: linear speed reduced, angular velocity blended towards the IMU
-    v, omega = locator._combine_odom_imu(0.5, 0.2, 1.2)  # noqa: SLF001
+    v, omega = locator._combine_odom_imu(0.5, 0.2, 1.2)
     assert v < 0.5
     assert omega == pytest.approx(weight * 0.2 + (1 - weight) * 1.2)
