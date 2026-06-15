@@ -215,11 +215,15 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         pose, r_xy, r_theta = self._get_local_pose_and_uncertainty(gnss_measurement)
         if self._auto_tilt_correction and isinstance(self._imu, Imu) and not self._ignore_imu and self._imu.last_measurement is not None:
             pose = self._correct_gnss_with_imu(pose)
-        # The measurement reflects the pose at its (latent) timestamp, so compare it against the
+        # The measurement reflects the pose at the moment of the fix, so compare it against the
         # estimate from that time instead of the live pose. Fusing against the live pose would pull
         # the state backwards by ~v*latency along the driving direction (out-of-sequence update).
         # The gain is computed from the current covariance, which barely changes over the latency.
-        reference, _ = self._state_at(gnss_measurement.time)
+        # On hardware ``measurement.time`` is the arrival time (≈ now), while the true latency lives
+        # in ``measurement.age`` (fix epoch - now); ``now + age`` recovers the fix epoch on both
+        # hardware and simulation and adapts to each system's (variable) latency without a constant.
+        fix_time = rosys.time() + gnss_measurement.age
+        reference, _ = self._state_at(fix_time)
         yaw_measurement = reference.yaw + rosys.helpers.angle(reference.yaw, pose.yaw)
         z = [[pose.x], [pose.y], [yaw_measurement]]
         h = [[reference.x], [reference.y], [reference.yaw]]
