@@ -275,6 +275,21 @@ async def test_pose_history_dedups_predict_and_update(devkit_system):
     assert len(timestamps) == len(set(timestamps))
 
 
+async def test_gnss_latency_compensation_removes_along_track_lag(devkit_system):
+    """A latent GNSS measurement is fused against the pose from its own timestamp, so the
+    estimate stays aligned with ground truth instead of lagging behind by ~v*latency along
+    the driving direction (which is what fusing against the live pose would produce)."""
+    s = devkit_system
+    s.feldfreund.gnss._latency = 0.3
+    await forward(2.0)  # let the buffer fill and the filter settle
+    await s.driver.wheels.drive(0.3, 0.0)
+    await forward(10.0)
+    true_x = s.feldfreund.wheels.pose.x
+    # without compensation the estimate would trail by ~v*latency = 0.3 * 0.3 = 0.09 m
+    assert s.robot_locator.pose.x == pytest.approx(true_x, abs=0.03)
+    assert s.robot_locator.pose.y == pytest.approx(0.0, abs=0.03)
+
+
 def test_combine_odom_imu_slip_reduces_speed(devkit_system):
     """When odometry and IMU disagree on the angular velocity (wheel slip), the
     fused linear velocity must be reduced and the angular velocity blended."""
