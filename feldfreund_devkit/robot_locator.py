@@ -63,6 +63,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
 
         self.VELOCITY_MEASURED: Event[list[Velocity]] = Event()
         """Emitted per processed wheel velocity with the filtered velocity (argument: list of ``Velocity``)."""
+        self._velocity = Velocity(linear=0.0, angular=0.0, time=self._pose_timestamp)
+        """Last emitted filtered velocity, kept for the developer UI."""
 
         self._ignore_gnss = gnss is None
         self._ignore_imu = imu is None
@@ -156,7 +158,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
 
             if velocity.linear == 0 and velocity.angular == 0 and self._first_prediction_done:
                 # NOTE: The robot is not moving, so we don't need to update the state
-                self.VELOCITY_MEASURED.emit([Velocity(linear=0.0, angular=0.0, time=velocity.time)])
+                self._emit_velocity(Velocity(linear=0.0, angular=0.0, time=velocity.time))
                 continue
 
             v = velocity.linear
@@ -191,7 +193,11 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
             self._Sxx = F @ self._Sxx @ F.T + R
             self._update_frame()
             self._first_prediction_done = True
-            self.VELOCITY_MEASURED.emit([self._estimate_velocity(velocity.time)])
+            self._emit_velocity(self._estimate_velocity(velocity.time))
+
+    def _emit_velocity(self, velocity: Velocity) -> None:
+        self._velocity = velocity
+        self.VELOCITY_MEASURED.emit([velocity])
 
     def _estimate_velocity(self, time: float) -> Velocity:
         """Estimate a smoothed velocity by differencing the filtered pose over a short window.
@@ -382,6 +388,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
                 ui.label().bind_text_from(self, '_Sxx', lambda m: f'± {m[1, 1]:.3f}m')
                 ui.label().bind_text_from(self, 'pose', lambda p: f'θ: {p.yaw_deg:.2f}°')
                 ui.label().bind_text_from(self, '_Sxx', lambda m: f'± {np.rad2deg(m[2, 2]):.2f}°')
+                ui.label().bind_text_from(self, '_velocity', lambda v: f'v: {v.linear:.2f}m/s')
+                ui.label().bind_text_from(self, '_velocity', lambda v: f'ω: {np.rad2deg(v.angular):.1f}°/s')
 
             with ui.grid(columns=2).classes('w-full'):
                 ui.checkbox('Ignore GNSS', value=self._ignore_gnss).props('dense color=red').classes('col-span-2') \
