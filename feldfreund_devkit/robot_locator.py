@@ -21,7 +21,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     R_IMU_ANGULAR = 0.01
     ODOMETRY_ANGULAR_WEIGHT = 0.1
     POSE_HISTORY_DURATION = 2.0
-    """Seconds of past pose estimates kept for time-based lookups via :meth:`pose_at`."""
+    """Seconds of past pose estimates kept for time-based lookups via :meth:`_state_at`."""
 
     def __init__(self,
                  wheels: Wheels, *,
@@ -85,33 +85,38 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     def uncertainty(self) -> tuple[float, float, float]:
         return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
 
-    def pose_at(self, time: float) -> Pose:
-        """Return the estimated pose at the given ``time``, interpolated from the pose history.
+    def _state_at(self, time: float) -> tuple[Pose, np.ndarray]:
+        """Return the estimated pose and covariance at the given ``time``, interpolated from the history.
 
-        Useful to project time-stamped measurements (e.g. camera detections) with the pose
-        that was estimated when they were taken, instead of the live pose. Outside the buffered
-        window the result is clamped to the oldest/newest available estimate. The returned
-        ``Pose`` is always a fresh object stamped with the requested ``time``; it never aliases
-        the live internal pose.
+        Useful to project time-stamped measurements (e.g. camera detections) or to re-apply a latent
+        GNSS update with the filter state as it was when the measurement was taken, instead of the live
+        state. A single pass over the history yields both pose and covariance. Outside the buffered window
+        the result is clamped to the oldest/newest available estimate. The returned ``Pose`` is a fresh
+        object stamped with the requested ``time`` and the covariance is a fresh array; neither aliases
+        the live internal state.
         """
         if not self._pose_history:
-            return Pose(x=self._pose.x, y=self._pose.y, yaw=self._pose.yaw, time=time)
+            return Pose(x=self._pose.x, y=self._pose.y, yaw=self._pose.yaw, time=time), self._Sxx.copy()
         if time >= self._pose_history[-1][0]:
-            return self._pose_from_state(self._pose_history[-1][1], time)
-        oldest_time, oldest_x, _ = self._pose_history[0]
+            _, state, covariance = self._pose_history[-1]
+            return self._pose_from_state(state, time), covariance.copy()
+        oldest_time, oldest_state, oldest_covariance = self._pose_history[0]
         if time <= oldest_time:
-            return self._pose_from_state(oldest_x, time)
-        previous_time, previous_x = oldest_time, oldest_x
-        for current_time, current_x, _ in self._pose_history:
+            return self._pose_from_state(oldest_state, time), oldest_covariance.copy()
+        previous_time, previous_state, previous_covariance = oldest_time, oldest_state, oldest_covariance
+        for current_time, current_state, current_covariance in self._pose_history:
             if previous_time <= time <= current_time:
                 span = current_time - previous_time
                 alpha = (time - previous_time) / span if span > 0 else 0.0
-                x = previous_x[0, 0] + alpha * (current_x[0, 0] - previous_x[0, 0])
-                y = previous_x[1, 0] + alpha * (current_x[1, 0] - previous_x[1, 0])
-                yaw = previous_x[2, 0] + alpha * rosys.helpers.angle(previous_x[2, 0], current_x[2, 0])
-                return Pose(x=x, y=y, yaw=yaw, time=time)
-            previous_time, previous_x = current_time, current_x
-        return self._pose_from_state(self._pose_history[-1][1], time)  # unreachable: time is within the window
+                x = previous_state[0, 0] + alpha * (current_state[0, 0] - previous_state[0, 0])
+                y = previous_state[1, 0] + alpha * (current_state[1, 0] - previous_state[1, 0])
+                yaw = previous_state[2, 0] + alpha * rosys.helpers.angle(previous_state[2, 0], current_state[2, 0])
+                # convex combination of two PSD matrices stays PSD
+                covariance = previous_covariance + alpha * (current_covariance - previous_covariance)
+                return Pose(x=x, y=y, yaw=yaw, time=time), covariance
+            previous_time, previous_state, previous_covariance = current_time, current_state, current_covariance
+        _, state, covariance = self._pose_history[-1]  # unreachable: time is within the window
+        return self._pose_from_state(state, time), covariance.copy()
 
     @staticmethod
     def _pose_from_state(state: np.ndarray, time: float) -> Pose:
