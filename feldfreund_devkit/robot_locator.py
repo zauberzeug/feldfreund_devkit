@@ -1,4 +1,5 @@
 import logging
+from collections import deque
 from typing import Any
 
 import numpy as np
@@ -19,6 +20,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     R_ODOM_ANGULAR = 0.097
     R_IMU_ANGULAR = 0.01
     ODOMETRY_ANGULAR_WEIGHT = 0.1
+    POSE_HISTORY_DURATION = 2.0
+    """Seconds of past pose estimates kept for time-based lookups via :meth:`_state_at`."""
 
     def __init__(self,
                  wheels: Wheels, *,
@@ -42,6 +45,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._first_prediction_done = False
 
         self._pose = Pose(x=0.0, y=0.0, yaw=0.0, time=self._pose_timestamp)
+        # ring buffer of (timestamp, state, covariance) for time-based pose lookups
+        self._pose_history: deque[tuple[float, np.ndarray, np.ndarray]] = deque()
         self.POSE_UPDATED: Event[Pose] = Event()
         """Emitted when the pose has been updated (argument: current ``Pose``)."""
 
@@ -79,6 +84,43 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     @property
     def uncertainty(self) -> tuple[float, float, float]:
         return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
+
+    def _state_at(self, time: float) -> tuple[Pose, np.ndarray]:
+        """Return the estimated pose and covariance at the given ``time``, interpolated from the history.
+
+        Useful to project time-stamped measurements (e.g. camera detections) or to re-apply a latent
+        GNSS update with the filter state as it was when the measurement was taken, instead of the live
+        state. A single pass over the history yields both pose and covariance. Outside the buffered window
+        the result is clamped to the oldest/newest available estimate. The returned ``Pose`` is a fresh
+        object stamped with the requested ``time`` and the covariance is a fresh array; neither aliases
+        the live internal state.
+        """
+        if not self._pose_history:
+            return Pose(x=self._pose.x, y=self._pose.y, yaw=self._pose.yaw, time=time), self._Sxx.copy()
+        if time >= self._pose_history[-1][0]:
+            _, state, covariance = self._pose_history[-1]
+            return self._pose_from_state(state, time), covariance.copy()
+        oldest_time, oldest_state, oldest_covariance = self._pose_history[0]
+        if time <= oldest_time:
+            return self._pose_from_state(oldest_state, time), oldest_covariance.copy()
+        previous_time, previous_state, previous_covariance = oldest_time, oldest_state, oldest_covariance
+        for current_time, current_state, current_covariance in self._pose_history:
+            if previous_time <= time <= current_time:
+                span = current_time - previous_time
+                alpha = (time - previous_time) / span if span > 0 else 0.0
+                x = previous_state[0, 0] + alpha * (current_state[0, 0] - previous_state[0, 0])
+                y = previous_state[1, 0] + alpha * (current_state[1, 0] - previous_state[1, 0])
+                yaw = previous_state[2, 0] + alpha * rosys.helpers.angle(previous_state[2, 0], current_state[2, 0])
+                # convex combination of two PSD matrices stays PSD
+                covariance = previous_covariance + alpha * (current_covariance - previous_covariance)
+                return Pose(x=x, y=y, yaw=yaw, time=time), covariance
+            previous_time, previous_state, previous_covariance = current_time, current_state, current_covariance
+        _, state, covariance = self._pose_history[-1]  # unreachable: time is within the window
+        return self._pose_from_state(state, time), covariance.copy()
+
+    @staticmethod
+    def _pose_from_state(state: np.ndarray, time: float) -> Pose:
+        return Pose(x=state[0, 0], y=state[1, 0], yaw=state[2, 0], time=time)
 
     def backup_to_dict(self) -> dict[str, Any]:
         return {
@@ -224,8 +266,21 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._pose.y = self._x[1, 0]
         self._pose.yaw = self._x[2, 0]
         self._pose.time = self._pose_timestamp
+        self._record_pose_history()
         self.FRAME_UPDATED.emit(self._pose_frame)
         self.POSE_UPDATED.emit(self._pose)
+
+    def _record_pose_history(self) -> None:
+        entry = (self._pose_timestamp, self._x.copy(), self._Sxx.copy())
+        # predict and the following GNSS update share a timestamp; keep only the corrected state
+        # (both come from the same _pose_timestamp value, so exact float equality is intentional)
+        if self._pose_history and self._pose_history[-1][0] == self._pose_timestamp:
+            self._pose_history[-1] = entry
+        else:
+            self._pose_history.append(entry)
+        cutoff = self._pose_timestamp - self.POSE_HISTORY_DURATION
+        while len(self._pose_history) > 1 and self._pose_history[0][0] < cutoff:
+            self._pose_history.popleft()
 
     async def reset(self, *, gnss_timeout: float = 2.0) -> None:
         reset_pose = Pose(x=0.0, y=0.0, yaw=0.0, time=rosys.time())
@@ -260,6 +315,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
         self._Sxx.fill(0)
         np.fill_diagonal(self._Sxx, variance)
         self._pose_timestamp = rosys.time()
+        self._pose_history.clear()  # the pose jumps discontinuously, so past estimates are invalid
         self._update_frame()
 
     def developer_ui(self) -> None:
