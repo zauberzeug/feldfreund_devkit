@@ -90,13 +90,17 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
 
         Useful to project time-stamped measurements (e.g. camera detections) with the pose
         that was estimated when they were taken, instead of the live pose. Outside the buffered
-        window the result is clamped to the oldest/newest available estimate.
+        window the result is clamped to the oldest/newest available estimate. The returned
+        ``Pose`` is always a fresh object stamped with the requested ``time``; it never aliases
+        the live internal pose.
         """
-        if not self._pose_history or time >= self._pose_history[-1][0]:
-            return self.pose
+        if not self._pose_history:
+            return Pose(x=self._pose.x, y=self._pose.y, yaw=self._pose.yaw, time=time)
+        if time >= self._pose_history[-1][0]:
+            return self._pose_from_state(self._pose_history[-1][1], time)
         oldest_time, oldest_x, _ = self._pose_history[0]
         if time <= oldest_time:
-            return Pose(x=oldest_x[0, 0], y=oldest_x[1, 0], yaw=oldest_x[2, 0], time=time)
+            return self._pose_from_state(oldest_x, time)
         previous_time, previous_x = oldest_time, oldest_x
         for current_time, current_x, _ in self._pose_history:
             if previous_time <= time <= current_time:
@@ -107,7 +111,11 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
                 yaw = previous_x[2, 0] + alpha * rosys.helpers.angle(previous_x[2, 0], current_x[2, 0])
                 return Pose(x=x, y=y, yaw=yaw, time=time)
             previous_time, previous_x = current_time, current_x
-        return self.pose
+        return self._pose_from_state(self._pose_history[-1][1], time)  # unreachable: time is within the window
+
+    @staticmethod
+    def _pose_from_state(state: np.ndarray, time: float) -> Pose:
+        return Pose(x=state[0, 0], y=state[1, 0], yaw=state[2, 0], time=time)
 
     def backup_to_dict(self) -> dict[str, Any]:
         return {
@@ -260,6 +268,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider):
     def _record_pose_history(self) -> None:
         entry = (self._pose_timestamp, self._x.copy(), self._Sxx.copy())
         # predict and the following GNSS update share a timestamp; keep only the corrected state
+        # (both come from the same _pose_timestamp value, so exact float equality is intentional)
         if self._pose_history and self._pose_history[-1][0] == self._pose_timestamp:
             self._pose_history[-1] = entry
         else:

@@ -204,6 +204,58 @@ async def test_reset_clears_pose_history(devkit_system):
     assert len(s.robot_locator._pose_history) == 1  # only the post-reset estimate remains
 
 
+async def test_pose_at_with_empty_history_returns_live_pose(devkit_system):
+    """With no buffered estimates ``pose_at`` falls back to the live pose, stamped with the requested time."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(1.0)
+    s.robot_locator._pose_history.clear()
+    requested = rosys.time() - 0.5
+    result = s.robot_locator.pose_at(requested)
+    assert result.x == pytest.approx(s.robot_locator.pose.x)
+    assert result.y == pytest.approx(s.robot_locator.pose.y)
+    assert result.yaw == pytest.approx(s.robot_locator.pose.yaw)
+    assert result.time == requested
+
+
+async def test_pose_at_does_not_alias_live_pose(devkit_system):
+    """The returned pose must be a fresh object; mutating it must not corrupt the filter state."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(1.0)
+    live_x_before = s.robot_locator.pose.x
+    snapshot = s.robot_locator.pose_at(rosys.time() + 10.0)  # future clamp → newest estimate
+    assert snapshot is not s.robot_locator.pose
+    snapshot.x += 100.0
+    assert s.robot_locator.pose.x == pytest.approx(live_x_before)
+
+
+async def test_pose_at_matches_exact_history_timestamp(devkit_system):
+    """Querying the exact timestamp of a buffered estimate returns that estimate unchanged."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(1.5)
+    middle_time, middle_state, _ = list(s.robot_locator._pose_history)[len(s.robot_locator._pose_history) // 2]
+    result = s.robot_locator.pose_at(middle_time)
+    assert result.x == pytest.approx(middle_state[0, 0])
+    assert result.y == pytest.approx(middle_state[1, 0])
+    assert result.yaw == pytest.approx(middle_state[2, 0])
+    assert result.time == middle_time
+
+
+async def test_pose_history_dedups_predict_and_update(devkit_system):
+    """Predict and the following GNSS update share a timestamp, so the buffer must hold unique timestamps."""
+    s = devkit_system  # GNSS active: every prediction is followed by a correction at the same timestamp
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(2.0)
+    timestamps = [entry[0] for entry in s.robot_locator._pose_history]
+    assert len(timestamps) > 1
+    assert len(timestamps) == len(set(timestamps))
+
+
 def test_combine_odom_imu_slip_reduces_speed(devkit_system):
     """When odometry and IMU disagree on the angular velocity (wheel slip), the
     fused linear velocity must be reduced and the angular velocity blended."""
