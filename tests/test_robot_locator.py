@@ -355,7 +355,7 @@ async def test_velocity_measured_is_zero_at_standstill(devkit_system):
 
 
 async def test_velocity_measured_recovers_after_standstill(devkit_system):
-    """Resuming after a standstill must not difference across the gap (no spike), and recover the speed."""
+    """Resuming after a standstill must not difference across the gap, and recover to the driven speed."""
     s = devkit_system
     s.robot_locator._ignore_gnss = True
     await s.driver.wheels.drive(0.2, 0.0)
@@ -366,8 +366,10 @@ async def test_velocity_measured_recovers_after_standstill(devkit_system):
     s.robot_locator.VELOCITY_MEASURED.subscribe(measured.extend)
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(1.0)
-    assert max(v.linear for v in measured) < 0.3  # no spike from differencing across the gap (forward only)
-    assert measured[-1].linear == pytest.approx(0.2, abs=0.02)  # recovered to the driven speed
+    assert max(v.linear for v in measured) < 0.3  # no overshoot from differencing across the gap
+    # The gap guard keeps the window from straddling the standstill, which would otherwise under-report
+    # the resumed speed for ~VELOCITY_SMOOTHING_DURATION; once the window has refilled the speed is steady.
+    assert all(v.linear == pytest.approx(0.2, abs=0.03) for v in measured[-5:])
 
 
 def test_combine_odom_imu_slip_reduces_speed(devkit_system):

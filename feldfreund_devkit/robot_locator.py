@@ -193,13 +193,13 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
             self._Sxx = F @ self._Sxx @ F.T + R
             self._update_frame()
             self._first_prediction_done = True
-            self._emit_velocity(self._estimate_velocity(velocity.time))
+            self._emit_velocity(self._estimate_velocity())
 
     def _emit_velocity(self, velocity: Velocity) -> None:
         self._velocity = velocity
         self.VELOCITY_MEASURED.emit([velocity])
 
-    def _estimate_velocity(self, time: float) -> Velocity:
+    def _estimate_velocity(self) -> Velocity:
         """Estimate a smoothed velocity by differencing the filtered pose over a short window.
 
         Differencing the EKF pose (instead of forwarding the raw wheel speed) yields a velocity that
@@ -207,8 +207,9 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         GNSS correction jump over several samples rather than emitting it as a single-step spike.
 
         The walk back stops at the first gap larger than ``VELOCITY_GAP_THRESHOLD`` (e.g. a standstill,
-        during which no history is recorded), so velocity is never differenced across the gap; it recovers
-        one sample later.
+        during which no history is recorded), so velocity is never differenced across the gap; otherwise
+        the window would straddle the standstill and under-report the resumed speed. It returns zero for
+        one sample, then recovers.
         """
         newest_time, newest_x, _ = self._pose_history[-1]
         target_time = newest_time - self.VELOCITY_SMOOTHING_DURATION
@@ -222,14 +223,14 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
                 break
         dt = newest_time - earlier_time
         if dt <= 0:
-            return Velocity(linear=0.0, angular=0.0, time=time)
+            return Velocity(linear=0.0, angular=0.0, time=newest_time)
         dx = newest_x[0, 0] - earlier_x[0, 0]
         dy = newest_x[1, 0] - earlier_x[1, 0]
         dyaw = rosys.helpers.angle(earlier_x[2, 0], newest_x[2, 0])
         direction = earlier_x[2, 0] + dyaw / 2  # average heading over the window for the forward projection
         linear = (dx * np.cos(direction) + dy * np.sin(direction)) / dt
         angular = dyaw / dt
-        return Velocity(linear=linear, angular=angular, time=time)
+        return Velocity(linear=linear, angular=angular, time=newest_time)
 
     def _get_imu_angular_velocity(self) -> float | None:
         if self._previous_imu_measurement is None or self._imu is None or self._imu.last_measurement is None:
