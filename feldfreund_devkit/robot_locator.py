@@ -24,6 +24,11 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
     """Seconds of past pose estimates kept for time-based lookups via :meth:`_state_at`."""
     VELOCITY_SMOOTHING_DURATION = 0.2
     """Window over which the filtered pose is differenced into the emitted ``VELOCITY_MEASURED`` velocity."""
+    VELOCITY_GAP_THRESHOLD = 0.5
+    """A gap between consecutive pose estimates above this (e.g. a standstill, during which no history is
+    recorded) is treated as a discontinuity the velocity is not differenced across. Kept separate from
+    ``VELOCITY_SMOOTHING_DURATION`` so tuning the smoothing window can't make a normal sample interval look
+    like a gap; must stay comfortably above the odometry sample interval (else every step reads as a gap)."""
 
     def __init__(self,
                  wheels: Wheels, *,
@@ -195,16 +200,17 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         reflects the IMU blend and GNSS corrections folded into the state. The window spreads a discrete
         GNSS correction jump over several samples rather than emitting it as a single-step spike.
 
-        The walk back stops at the first gap larger than the window (e.g. a standstill, during which no
-        history is recorded), so velocity is never differenced across the gap; it recovers one sample later.
+        The walk back stops at the first gap larger than ``VELOCITY_GAP_THRESHOLD`` (e.g. a standstill,
+        during which no history is recorded), so velocity is never differenced across the gap; it recovers
+        one sample later.
         """
         newest_time, newest_x, _ = self._pose_history[-1]
         target_time = newest_time - self.VELOCITY_SMOOTHING_DURATION
         earlier_time, earlier_x = newest_time, newest_x
         previous_time = newest_time
         for entry_time, entry_x, _ in reversed(self._pose_history):
-            if previous_time - entry_time > self.VELOCITY_SMOOTHING_DURATION:
-                break  # consecutive gap exceeds the smoothing window — don't difference across it
+            if previous_time - entry_time > self.VELOCITY_GAP_THRESHOLD:
+                break  # consecutive gap exceeds the threshold (e.g. a standstill) — don't difference across it
             earlier_time, earlier_x, previous_time = entry_time, entry_x, entry_time
             if entry_time <= target_time:
                 break
