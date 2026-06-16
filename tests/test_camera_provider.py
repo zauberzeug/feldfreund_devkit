@@ -41,6 +41,34 @@ async def test_slots_assigned(robot_locator):
     assert len(provider.cameras) == 2
 
 
+async def test_multiple_mains(robot_locator):
+    config = CameraConfiguration(
+        main=[
+            UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720)),
+            UsbCameraConfig(camera_id='usb-1', image_size=ImageSize(width=1280, height=720)),
+        ],
+        front=None,
+        back=None,
+    )
+    provider = CameraProvider(config, frame_provider=robot_locator)
+    assert len(provider.mains) == 2
+    assert provider.main is provider.mains[0]
+    assert [cam.id for cam in provider.mains] == ['usb-0', 'usb-1']
+    assert len(provider.main_slot_configs) == 2
+    assert len(provider.cameras) == 2
+    assert provider.slot_config('main') is provider.main_slot_configs[0]
+
+
+async def test_empty_main_list(robot_locator):
+    config = CameraConfiguration(main=[], front=None, back=None)
+    provider = CameraProvider(config, frame_provider=robot_locator)
+    assert provider.main is None
+    assert provider.mains == []
+    assert provider.main_slot_configs == []
+    assert provider.slot_config('main') is None
+    assert provider.cameras == {}
+
+
 async def test_simulation_creates_simulated_cameras(robot_locator):
     config = CameraConfiguration(
         main=UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720)),
