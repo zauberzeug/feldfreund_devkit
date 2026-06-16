@@ -69,6 +69,16 @@ async def test_empty_main_list(robot_locator):
     assert provider.cameras == {}
 
 
+async def test_duplicate_camera_ids_raise(robot_locator):
+    config = CameraConfiguration(
+        main=UsbCameraConfig(camera_id='cam-0', image_size=ImageSize(width=1280, height=720)),
+        front=MjpegCameraConfig(camera_id='cam-0', image_size=ImageSize(width=640, height=480), password='test-pw'),
+        back=None,
+    )
+    with pytest.raises(ValueError, match='Duplicate camera id'):
+        CameraProvider(config, frame_provider=robot_locator)
+
+
 async def test_simulation_creates_simulated_cameras(robot_locator):
     config = CameraConfiguration(
         main=UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720)),

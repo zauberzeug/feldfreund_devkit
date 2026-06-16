@@ -70,8 +70,12 @@ class CameraProvider:
         self.back = self._setup('back')
         self.left = self._setup('left')
         self.right = self._setup('right')
-        self._cameras = {cam.id: cam for cam in (*self.mains, self.front, self.back, self.left, self.right)
-                         if cam is not None}
+        cameras = [cam for cam in (*self.mains, self.front, self.back, self.left, self.right) if cam is not None]
+        ids = [cam.id for cam in cameras]
+        duplicate_ids = sorted({cam_id for cam_id in ids if ids.count(cam_id) > 1})
+        if duplicate_ids:
+            raise ValueError(f'Duplicate camera id(s) in configuration: {", ".join(duplicate_ids)}')
+        self._cameras = {cam.id: cam for cam in cameras}
 
         if frame_provider is not None:
             self.set_frame_provider(frame_provider)
