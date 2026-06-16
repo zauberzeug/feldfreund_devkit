@@ -6,8 +6,8 @@ authors = [{ name="Zauberzeug GmbH", email="feldfreund@zauberzeug.com" }]
 readme = "README.md"
 requires-python = ">=3.11, <3.14"
 dependencies = [
-    "nicegui (>= 3.2.0, <4.0.0)",
-    "rosys @ git+https://github.com/zauberzeug/rosys.git@a3ff9f8944946105540094cc33a5740cbdfba3be",
+    "nicegui (>= 3.13.0, <4.0.0)",
+    "rosys @ git+https://github.com/zauberzeug/rosys.git@340e7b79dd0105b5b92e2978fbe9b1a8108b4f1f",
     "httpx >=0.25.0",
     "coloredlogs",
     "httpcore",
