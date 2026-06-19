@@ -34,12 +34,15 @@ class RecordedTrackNavigation(WaypointNavigation):
                  track_recording_controller: TrackRecordingController,
                  gnss: Gnss | None = None,
                  automator: Automator | None = None,
+                 robot_marker_icon_url: str | None = None,
                  **kwargs) -> None:
         super().__init__(**kwargs, name='Recorded Track Navigation')
         self.recorded_track_provider = recorded_track_provider
         self.track_recording_controller = track_recording_controller
         self.gnss = gnss
         self.automator = automator
+        # Robot marker image shown on the recorder map; None falls back to Leaflet's default marker.
+        self.robot_marker_icon_url = robot_marker_icon_url
         self.reverse: bool = False
         # Live waypoint count is patched directly into this label to avoid refreshing
         # the banner on every waypoint, which would disturb sibling elements.
@@ -230,4 +233,5 @@ class RecordedTrackNavigation(WaypointNavigation):
                 recorded_track_provider=self.recorded_track_provider,
                 track_recording_controller=self.track_recording_controller,
                 pose_provider=self.pose_provider,
-                gnss=self.gnss)
+                gnss=self.gnss,
+                robot_marker_icon_url=self.robot_marker_icon_url)

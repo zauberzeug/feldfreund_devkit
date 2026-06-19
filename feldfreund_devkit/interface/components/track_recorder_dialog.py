@@ -228,11 +228,15 @@ class TrackRecorderDialog:
                  recorded_track_provider: RecordedTrackProvider,
                  track_recording_controller: TrackRecordingController,
                  pose_provider: PoseProvider,
-                 gnss: Gnss | None = None) -> None:
+                 gnss: Gnss | None = None,
+                 robot_marker_icon_url: str | None = None) -> None:
         self.provider = recorded_track_provider
         self.controller = track_recording_controller
         self.pose_provider = pose_provider
         self.gnss = gnss
+        # URL of the robot marker image (served by the app, e.g. 'assets/robot.png').
+        # When None the map shows Leaflet's default marker.
+        self.robot_marker_icon_url = robot_marker_icon_url
 
         self.recorded_track = existing_track
 
@@ -384,8 +388,9 @@ class TrackRecorderDialog:
         geo_pose = GeoPose.from_pose(self.pose_provider.pose)
         latlng = geo_pose.point.degree_tuple
         self.robot_marker = self.robot_marker or self.dialog_map.marker(latlng=latlng)
-        icon = 'L.icon({iconUrl: "assets/robot_position_side.png", iconSize: [50,50], iconAnchor:[20,20]})'
-        self.robot_marker.run_method(':setIcon', icon)
+        if self.robot_marker_icon_url is not None:
+            icon = f'L.icon({{iconUrl: "{self.robot_marker_icon_url}", iconSize: [50,50], iconAnchor: [20,20]}})'
+            self.robot_marker.run_method(':setIcon', icon)
         self.robot_marker.move(*latlng)
 
     def _on_key(self, e) -> None:
