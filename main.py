@@ -7,7 +7,13 @@ from rosys.driving import Driver, Steerer, keyboard_control, robot_object
 import feldfreund_devkit
 from feldfreund_devkit.config import FeldfreundConfiguration, Secrets, config_from_id
 from feldfreund_devkit.implement import ImplementDummy
-from feldfreund_devkit.navigation import StraightLineNavigation
+from feldfreund_devkit.navigation import (
+    RecordedTrackNavigation,
+    RecordedTrackProvider,
+    StraightLineNavigation,
+    TrackRecordingController,
+    WaypointNavigation,
+)
 
 
 class System(feldfreund_devkit.System):
@@ -16,11 +22,32 @@ class System(feldfreund_devkit.System):
         self.steerer = Steerer(self.feldfreund.wheels, speed_scaling=0.25)
         self.driver = Driver(self.feldfreund.wheels, self.odometer, parameters=self.config.driver)
         self.shape = rosys.geometry.Prism.default_robot_shape()
-        self.navigation = StraightLineNavigation(implement=ImplementDummy(),
-                                                 driver=self.driver,
-                                                 pose_provider=self.odometer)
         self.automator = Automator(self.steerer, on_interrupt=self.feldfreund.stop, notify=False)
-        self.automator.default_automation = self.navigation.start
+
+        self.recorded_track_provider = RecordedTrackProvider().persistent()
+        self.track_recording_controller = TrackRecordingController(
+            self.recorded_track_provider, pose_provider=self.odometer, gnss=self.feldfreund.gnss)
+
+        common = {'implement': ImplementDummy(), 'driver': self.driver, 'pose_provider': self.odometer}
+        self.navigations: dict[str, WaypointNavigation] = {n.name: n for n in [
+            StraightLineNavigation(**common),
+            RecordedTrackNavigation(recorded_track_provider=self.recorded_track_provider,
+                                    track_recording_controller=self.track_recording_controller,
+                                    gnss=self.feldfreund.gnss,
+                                    automator=self.automator,
+                                    **common),
+        ]}
+        self._current_navigation: WaypointNavigation = next(iter(self.navigations.values()))
+        self.automator.default_automation = self._current_navigation.start
+
+    @property
+    def current_navigation(self) -> WaypointNavigation:
+        return self._current_navigation
+
+    @current_navigation.setter
+    def current_navigation(self, navigation: WaypointNavigation) -> None:
+        self._current_navigation = navigation
+        self.automator.default_automation = navigation.start
 
 
 def startup() -> None:
@@ -33,10 +60,21 @@ def startup() -> None:
         keyboard_control(system.steerer)
         with ui.scene():
             robot_object(system.shape, system.odometer)
+
+        @ui.refreshable
+        def navigation_settings() -> None:
+            system.current_navigation.settings_ui()
+
+        def select_navigation(name: str) -> None:
+            system.current_navigation = system.navigations[name]
+            navigation_settings.refresh()
+
         with ui.card():
             ui.label('hold SHIFT to steer with the keyboard arrow keys or use the automation controls')
+            ui.select(list(system.navigations), value=system.current_navigation.name, label='Navigation',
+                      on_change=lambda e: select_navigation(e.value)).classes('w-64')
             with ui.row():
-                system.navigation.settings_ui()
+                navigation_settings()
             with ui.row():
                 automation_controls(system.automator)
 
