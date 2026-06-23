@@ -145,15 +145,30 @@ async def test_reset_snaps_pose_to_gnss(devkit_system):
     assert s.robot_locator.pose.y == pytest.approx(s.feldfreund.wheels.pose.y, abs=0.05)
 
 
+async def test_pose_at_returns_state_at_pose(devkit_system):
+    """``pose_at`` is the pose-only convenience wrapper around ``state_at``."""
+    s = devkit_system
+    s.robot_locator._ignore_gnss = True
+    await s.driver.wheels.drive(0.2, 0.0)
+    await forward(1.5)
+    requested = rosys.time() - 0.5
+    pose = s.robot_locator.pose_at(requested)
+    expected, _ = s.robot_locator.state_at(requested)
+    assert pose.x == pytest.approx(expected.x)
+    assert pose.y == pytest.approx(expected.y)
+    assert pose.yaw == pytest.approx(expected.yaw)
+    assert pose.time == requested
+
+
 async def test_state_at_interpolates_past_pose(devkit_system):
-    """``_state_at`` must return the pose estimated at an earlier time, not the live pose."""
+    """``state_at`` must return the pose estimated at an earlier time, not the live pose."""
     s = devkit_system
     s.robot_locator._ignore_gnss = True
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(1.5)
     now = rosys.time()
     current_x = s.robot_locator.pose.x
-    past, _ = s.robot_locator._state_at(now - 1.0)
+    past, _ = s.robot_locator.state_at(now - 1.0)
     assert past.x < current_x  # the earlier estimate is behind the current one
     assert past.x == pytest.approx(current_x - 0.2 * 1.0, abs=0.05)  # ~0.2 m/s over 1 s
     assert past.y == pytest.approx(0.0, abs=0.02)
@@ -165,7 +180,7 @@ async def test_state_at_clamps_to_current_for_future(devkit_system):
     s.robot_locator._ignore_gnss = True
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(1.0)
-    future, _ = s.robot_locator._state_at(rosys.time() + 10.0)
+    future, _ = s.robot_locator.state_at(rosys.time() + 10.0)
     assert future.x == pytest.approx(s.robot_locator.pose.x)
     assert future.yaw == pytest.approx(s.robot_locator.pose.yaw)
 
@@ -190,7 +205,7 @@ async def test_state_at_interpolates_yaw_across_turn(devkit_system):
     await forward(1.5)
     now = rosys.time()
     current_yaw = s.robot_locator.pose.yaw
-    past, _ = s.robot_locator._state_at(now - 1.0)
+    past, _ = s.robot_locator.state_at(now - 1.0)
     assert abs(past.yaw) < abs(current_yaw)  # earlier in the turn ⇒ smaller angle
 
 
@@ -213,7 +228,7 @@ async def test_state_at_with_empty_history_returns_live_pose(devkit_system):
     await forward(1.0)
     s.robot_locator._pose_history.clear()
     requested = rosys.time() - 0.5
-    pose, covariance = s.robot_locator._state_at(requested)
+    pose, covariance = s.robot_locator.state_at(requested)
     assert pose.x == pytest.approx(s.robot_locator.pose.x)
     assert pose.y == pytest.approx(s.robot_locator.pose.y)
     assert pose.yaw == pytest.approx(s.robot_locator.pose.yaw)
@@ -229,7 +244,7 @@ async def test_state_at_does_not_alias_live_state(devkit_system):
     await forward(1.0)
     live_x_before = s.robot_locator.pose.x
     buffered_covariance_before = s.robot_locator._pose_history[-1][2].copy()
-    pose, covariance = s.robot_locator._state_at(rosys.time() + 10.0)  # future clamp → newest estimate
+    pose, covariance = s.robot_locator.state_at(rosys.time() + 10.0)  # future clamp → newest estimate
     assert pose is not s.robot_locator.pose
     pose.x += 100.0
     covariance += 100.0
@@ -245,7 +260,7 @@ async def test_state_at_matches_exact_history_timestamp(devkit_system):
     await forward(1.5)
     middle_time, middle_state, middle_covariance = \
         list(s.robot_locator._pose_history)[len(s.robot_locator._pose_history) // 2]
-    pose, covariance = s.robot_locator._state_at(middle_time)
+    pose, covariance = s.robot_locator.state_at(middle_time)
     assert pose.x == pytest.approx(middle_state[0, 0])
     assert pose.y == pytest.approx(middle_state[1, 0])
     assert pose.yaw == pytest.approx(middle_state[2, 0])
@@ -260,8 +275,8 @@ async def test_state_at_returns_growing_covariance(devkit_system):
     await s.driver.wheels.drive(0.2, 0.0)
     await forward(1.5)
     now = rosys.time()
-    _, past_covariance = s.robot_locator._state_at(now - 1.0)
-    _, recent_covariance = s.robot_locator._state_at(now)
+    _, past_covariance = s.robot_locator.state_at(now - 1.0)
+    _, recent_covariance = s.robot_locator.state_at(now)
     assert past_covariance.shape == (3, 3)
     assert recent_covariance[0, 0] >= past_covariance[0, 0]  # uncertainty grows without corrections
 
