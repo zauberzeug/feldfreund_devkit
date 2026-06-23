@@ -21,7 +21,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
     R_IMU_ANGULAR = 0.01
     ODOMETRY_ANGULAR_WEIGHT = 0.1
     POSE_HISTORY_DURATION = 2.0
-    """Seconds of past pose estimates kept for time-based lookups via :meth:`_state_at`."""
+    """Seconds of past pose estimates kept for time-based lookups via :meth:`state_at`."""
     VELOCITY_SMOOTHING_DURATION = 0.2
     """Window over which the filtered pose is differenced into the emitted ``VELOCITY_MEASURED`` velocity."""
     VELOCITY_GAP_THRESHOLD = 0.5
@@ -97,7 +97,15 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
     def uncertainty(self) -> tuple[float, float, float]:
         return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
 
-    def _state_at(self, time: float) -> tuple[Pose, np.ndarray]:
+    def pose_at(self, time: float) -> Pose:
+        """Return the estimated pose at the given ``time``, interpolated from the history.
+
+        Convenience wrapper around :meth:`state_at` for callers that only need the pose (e.g. to
+        project a time-stamped camera detection into the world at its capture time).
+        """
+        return self.state_at(time)[0]
+
+    def state_at(self, time: float) -> tuple[Pose, np.ndarray]:
         """Return the estimated pose and covariance at the given ``time``, interpolated from the history.
 
         Useful to project time-stamped measurements (e.g. camera detections) or to re-apply a latent
@@ -274,7 +282,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         # in ``measurement.age`` (fix epoch - now); ``now + age`` recovers the fix epoch on both
         # hardware and simulation and adapts to each system's (variable) latency without a constant.
         fix_time = rosys.time() + gnss_measurement.age
-        reference, _ = self._state_at(fix_time)
+        reference, _ = self.state_at(fix_time)
         yaw_measurement = reference.yaw + rosys.helpers.angle(reference.yaw, pose.yaw)
         z = [[pose.x], [pose.y], [yaw_measurement]]
         h = [[reference.x], [reference.y], [reference.yaw]]
