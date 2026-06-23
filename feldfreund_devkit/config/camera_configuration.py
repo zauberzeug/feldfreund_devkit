@@ -133,7 +133,7 @@ class MjpegCameraConfig(CameraSlotConfig):
     @property
     def camera_kwargs(self) -> dict:
         return {**super().camera_kwargs, 'username': self.username, 'password': self.password,
-                'ip': self.ip}
+                'ip': self.ip, 'resolution': (self.width, self.height)}
 
 
 @dataclass(kw_only=True)
