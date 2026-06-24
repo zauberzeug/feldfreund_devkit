@@ -96,6 +96,7 @@ class RecordedTrackList:
             if self.recorded_track.waypoints:
                 for i, wp in enumerate(self.recorded_track.waypoints):
                     self._create_waypoint_row(i, wp)
+            else:
                 with ui.column().classes('w-full items-center text-center gap-2 py-8 text-gray-500'):
                     ui.icon('place', size='lg')
                     ui.label('Drive the robot, then press Add Waypoint (or Space) to record your first point.') \
