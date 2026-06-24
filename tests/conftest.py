@@ -11,7 +11,12 @@ from rosys.testing import forward, helpers
 from feldfreund_devkit.config import Secrets, config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.implement import ImplementDummy
-from feldfreund_devkit.navigation import StraightLineNavigation
+from feldfreund_devkit.navigation import (
+    RecordedTrackNavigation,
+    RecordedTrackProvider,
+    StraightLineNavigation,
+    TrackRecordingController,
+)
 from feldfreund_devkit.robot_locator import RobotLocator
 from feldfreund_devkit.system import System
 
@@ -53,6 +58,23 @@ class TestSystem(System):
                                                          driver=self.driver,
                                                          pose_provider=self.robot_locator)
         self.automator.default_automation = self.current_navigation.start
+
+        self.recorded_track_provider = RecordedTrackProvider()
+        self.track_recording_controller = TrackRecordingController(
+            self.recorded_track_provider, pose_provider=self.robot_locator, gnss=self.feldfreund.gnss)
+        self.recorded_track_navigation = RecordedTrackNavigation(
+            recorded_track_provider=self.recorded_track_provider,
+            track_recording_controller=self.track_recording_controller,
+            gnss=self.feldfreund.gnss,
+            automator=self.automator,
+            implement=self.current_implement,
+            driver=self.driver,
+            pose_provider=self.robot_locator)
+
+    def use_recorded_track_navigation(self) -> None:
+        """Activate recorded-track navigation as the default automation."""
+        self.current_navigation = self.recorded_track_navigation
+        self.automator.default_automation = self.recorded_track_navigation.start
 
     def set_robot_pose(self, pose: Pose):
         # pylint: disable=protected-access
