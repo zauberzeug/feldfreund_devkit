@@ -114,30 +114,13 @@ async def test_gnss_corrects_injected_error(devkit_system):
     assert s.robot_locator.pose.y == pytest.approx(0.0, abs=0.05)
 
 
-async def test_non_finite_heading_disables_update(devkit_system):
-    """If the GNSS heading uncertainty is not finite, the update is skipped entirely
-    (the Feldfreund relies on RTK heading), so an injected error must NOT be corrected
-    even while driving (which otherwise keeps the Kalman gain alive)."""
+async def test_gnss_without_heading_corrects_position(devkit_system):
+    """A fix without a heading still corrects the position (it is no longer dropped).
+
+    With no GNSS heading the position is fused on its own, so an injected position error must be
+    pulled back while driving."""
     s = devkit_system
-    await forward(2.0)
-    s.feldfreund.gnss._heading_std_dev = np.inf
-    await forward(1.0)  # flush a measurement so the guard is exercised
-    s.robot_locator._x[1, 0] = 1.0
-    s.robot_locator._update_frame()
-    await s.driver.wheels.drive(0.2, 0.0)
-    await forward(5.0)
-    await s.driver.wheels.drive(0.0, 0.0)
-    assert s.robot_locator.pose.y == pytest.approx(1.0, abs=1e-6)  # uncorrected (straight drive keeps y in odometry)
-
-
-async def test_single_antenna_corrects_position_without_heading(devkit_system):
-    """In single-antenna mode a fix without a heading still corrects the position.
-
-    The dual-antenna path skips headingless fixes entirely; single-antenna mode instead fuses the
-    position on its own, so an injected position error must be pulled back while driving."""
-    s = devkit_system
-    s.robot_locator._single_antenna_mode = True
-    s.feldfreund.gnss._heading_std_dev = np.inf  # emulate a one-antenna receiver: no heading
+    s.feldfreund.gnss._heading_std_dev = np.inf  # emulate a receiver without heading (e.g. single antenna)
     await forward(2.0)
     s.robot_locator._x[1, 0] = 1.0  # inject a 1 m error in y
     s.robot_locator._update_frame()
@@ -147,14 +130,13 @@ async def test_single_antenna_corrects_position_without_heading(devkit_system):
     assert s.robot_locator.pose.y == pytest.approx(0.0, abs=0.05)
 
 
-async def test_single_antenna_derives_heading_from_motion(devkit_system):
-    """The heading is reconstructed from the GNSS position track, not from the receiver.
+async def test_gnss_without_heading_derives_heading_from_motion(devkit_system):
+    """The heading is reconstructed from the GNSS position track when the fix carries none.
 
     With no GNSS heading, an injected yaw error cannot be corrected by a heading measurement. The
     course-over-ground computed from consecutive fixes must pull the heading back to the driven
     direction (0 rad) while moving forward."""
     s = devkit_system
-    s.robot_locator._single_antenna_mode = True
     s.feldfreund.gnss._heading_std_dev = np.inf
     await forward(2.0)
     s.robot_locator._x[2, 0] = 0.5  # inject a heading error the GNSS heading can no longer fix
@@ -165,14 +147,13 @@ async def test_single_antenna_derives_heading_from_motion(devkit_system):
     assert s.robot_locator.pose.yaw == pytest.approx(0.0, abs=0.1)
 
 
-async def test_single_antenna_heading_handles_reverse(devkit_system):
+async def test_gnss_without_heading_handles_reverse(devkit_system):
     """GNSS course points opposite to the heading when reversing; the velocity sign must flip it back.
 
     Driving backwards, the position track runs opposite to where the robot faces. Without the
     forward/backward correction the derived heading would be off by 180°, so the estimate must still
     converge to the true 0 rad heading."""
     s = devkit_system
-    s.robot_locator._single_antenna_mode = True
     s.feldfreund.gnss._heading_std_dev = np.inf
     await forward(2.0)
     s.robot_locator._x[2, 0] = 0.5

@@ -29,12 +29,12 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
     recorded) is treated as a discontinuity the velocity is not differenced across. Kept separate from
     ``VELOCITY_SMOOTHING_DURATION`` so tuning the smoothing window can't make a normal sample interval look
     like a gap; must stay comfortably above the odometry sample interval (else every step reads as a gap)."""
-    SINGLE_ANTENNA_MIN_COURSE_DISTANCE = 0.05
-    """Single-antenna mode only derives a course heading once the robot has moved at least this far (m)
-    between two GNSS fixes; below it the angle between two noisy positions is dominated by position noise."""
-    SINGLE_ANTENNA_MIN_COURSE_STD = np.deg2rad(1.0)
-    """Floor for the course-heading uncertainty in single-antenna mode, so a long travel distance can't
-    make the position-derived heading look more certain than the underlying GNSS position noise warrants."""
+    COURSE_MIN_DISTANCE = 0.05
+    """A course heading is only derived from the position track once the robot has moved at least this far
+    (m) between two GNSS fixes; below it the angle between two noisy positions is dominated by position noise."""
+    COURSE_MIN_STD = np.deg2rad(1.0)
+    """Floor for the position-derived course-heading uncertainty, so a long travel distance can't make it
+    look more certain than the underlying GNSS position noise warrants."""
 
     def __init__(self,
                  wheels: Wheels, *,
@@ -74,11 +74,7 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
 
         self._ignore_gnss = gnss is None
         self._ignore_imu = imu is None
-        # Single-antenna mode: ignore the GNSS heading entirely and reconstruct it from the position
-        # track instead (for running the robot with one antenna). Off by default — the dual-antenna RTK
-        # heading path is unchanged. See AG-204.
-        self._single_antenna_mode = False
-        # Last GNSS position (local x, y) used to derive a course heading in single-antenna mode.
+        # Last GNSS position (local x, y), used to derive a course heading when a fix carries no heading.
         self._last_gnss_local_position: tuple[float, float] | None = None
         self._auto_tilt_correction = True
         self._r_odom_linear = self.R_ODOM_LINEAR
@@ -279,12 +275,10 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         """Triggers the 'update' step of the Kalman filter."""
         if self._ignore_gnss:
             return
-        if self._single_antenna_mode:
-            self._handle_single_antenna_gnss(gnss_measurement)
-            return
         if not np.isfinite(gnss_measurement.heading_std_dev):
-            # normally we would only handle the position if no heading is available,
-            # but the Feldfreund needs the rtk accuracy to function properly
+            # No GNSS heading (e.g. a single-antenna receiver): fuse the position and reconstruct the
+            # heading from the position track instead of dropping the fix.
+            self._handle_gnss_without_heading(gnss_measurement)
             return
         pose, r_xy, r_theta = self._get_local_pose_and_uncertainty(gnss_measurement)
         if self._auto_tilt_correction and isinstance(self._imu, Imu) and not self._ignore_imu and self._imu.last_measurement is not None:
@@ -306,13 +300,13 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         Q = np.diag(variance)
         self._update(z=np.array(z), h=np.array(h), H=H, Q=Q)
 
-    def _handle_single_antenna_gnss(self, gnss_measurement: GnssMeasurement) -> None:
-        """Fuse a single-antenna GNSS fix: position only, with heading derived from the position track.
+    def _handle_gnss_without_heading(self, gnss_measurement: GnssMeasurement) -> None:
+        """Fuse a GNSS fix that carries no heading: position only, heading derived from the position track.
 
-        A single-antenna receiver provides no heading, so unlike the dual-antenna path the GNSS yaw is
-        never fused. Position (x, y) is fused on its own, and a course-over-ground heading is reconstructed
-        from the displacement between consecutive fixes (see :meth:`_fuse_course_heading`). The GNSS
-        position carries no latency-free yaw, so heading lives purely in the motion model plus that course.
+        A fix without a heading (e.g. from a single-antenna receiver) used to be dropped entirely. Instead
+        we fuse the position (x, y) on its own and reconstruct a course-over-ground heading from the
+        displacement between consecutive fixes (see :meth:`_fuse_course_heading`), so the heading lives in
+        the motion model plus that course rather than the missing GNSS yaw.
         """
         # use the point (not the full pose) so we never touch the GNSS heading, which is absent here
         local_point = gnss_measurement.pose.point.to_local()
@@ -333,9 +327,9 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         self._fuse_course_heading(local_point.x, local_point.y, r_xy)
 
     def _fuse_course_heading(self, x: float, y: float, r_xy: float) -> None:
-        """Fuse a heading derived from the displacement between consecutive single-antenna GNSS fixes.
+        """Fuse a heading derived from the displacement between consecutive headingless GNSS fixes.
 
-        The course is meaningful only once the robot has actually moved (:attr:`SINGLE_ANTENNA_MIN_COURSE_DISTANCE`);
+        The course is meaningful only once the robot has actually moved (:attr:`COURSE_MIN_DISTANCE`);
         below that the angle between two noisy positions is dominated by noise and is skipped. GNSS alone
         cannot tell forward from reverse travel, so the sign is taken from the filtered velocity. The course
         uncertainty grows as the travel distance shrinks (``~sqrt(2)*r_xy/distance``), floored so it never
@@ -347,12 +341,12 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
             return
         dx, dy = x - previous[0], y - previous[1]
         distance = float(np.hypot(dx, dy))
-        if distance < self.SINGLE_ANTENNA_MIN_COURSE_DISTANCE:
+        if distance < self.COURSE_MIN_DISTANCE:
             return
         course = float(np.arctan2(dy, dx))
         if self._velocity.linear < 0:
             course += np.pi  # GNSS can't distinguish forward from reverse travel; trust the odometry sign
-        r_course = max(np.sqrt(2.0) * r_xy / distance, self.SINGLE_ANTENNA_MIN_COURSE_STD)
+        r_course = max(np.sqrt(2.0) * r_xy / distance, self.COURSE_MIN_STD)
         yaw_measurement = self._x[2, 0] + rosys.helpers.angle(self._x[2, 0], course)
         self._update(z=np.array([[yaw_measurement]]),
                      h=np.array([[self._x[2, 0]]]),
@@ -474,8 +468,6 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
                     .bind_value_to(self, '_ignore_gnss').tooltip('Ignore GNSS measurements. When deactivated, reset the filter for better positioning.')
                 ui.checkbox('Ignore IMU', value=self._ignore_imu).props('dense color=red').classes('col-span-2') \
                     .bind_value_to(self, '_ignore_imu')
-                ui.checkbox('Single antenna', value=self._single_antenna_mode).props('dense').classes('col-span-2') \
-                    .bind_value_to(self, '_single_antenna_mode').tooltip('Ignore the GNSS heading and derive it from the position track (one-antenna mode).')
                 ui.checkbox('Correct GNSS with IMU', value=self._auto_tilt_correction).props('dense').classes('col-span-2') \
                     .bind_value_to(self, '_auto_tilt_correction')
                 with ui.column().classes('w-24 gap-0'):
