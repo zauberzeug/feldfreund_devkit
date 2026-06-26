@@ -388,10 +388,13 @@ class TrackRecorderDialog:
     def update_robot_position(self) -> None:
         geo_pose = GeoPose.from_pose(self.pose_provider.pose)
         latlng = geo_pose.point.degree_tuple
-        self.robot_marker = self.robot_marker or self.dialog_map.marker(latlng=latlng)
-        if self.robot_marker_icon_url is not None:
-            icon = f'L.icon({{iconUrl: "{self.robot_marker_icon_url}", iconSize: [50,50], iconAnchor: [20,20]}})'
-            self.robot_marker.run_method(':setIcon', icon)
+        if self.robot_marker is None:
+            # Set the icon only once on creation; it never changes, so re-applying
+            # it on every 1-second tick would be needless client traffic.
+            self.robot_marker = self.dialog_map.marker(latlng=latlng)
+            if self.robot_marker_icon_url is not None:
+                icon = f'L.icon({{iconUrl: "{self.robot_marker_icon_url}", iconSize: [50,50], iconAnchor: [20,20]}})'
+                self.robot_marker.run_method(':setIcon', icon)
         self.robot_marker.move(*latlng)
 
     def _on_key(self, e) -> None:
