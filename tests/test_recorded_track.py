@@ -110,12 +110,14 @@ def test_meets_gnss_requirement():
     assert track.meets_gnss_requirement(GpsQuality.INVALID) is False
     assert track.meets_gnss_requirement(GpsQuality.GPS) is False
     assert track.meets_gnss_requirement(GpsQuality.DGPS) is True
+    assert track.meets_gnss_requirement(GpsQuality.PPS) is True
     assert track.meets_gnss_requirement(GpsQuality.RTK_FIXED) is True
     assert track.meets_gnss_requirement(GpsQuality.RTK_FLOAT) is True
 
     track.gnss_requirement = GnssRequirement.RTK
     assert track.meets_gnss_requirement(None) is False
     assert track.meets_gnss_requirement(GpsQuality.DGPS) is False
+    assert track.meets_gnss_requirement(GpsQuality.PPS) is False
     assert track.meets_gnss_requirement(GpsQuality.RTK_FLOAT) is False
     assert track.meets_gnss_requirement(GpsQuality.RTK_FIXED) is True
 
