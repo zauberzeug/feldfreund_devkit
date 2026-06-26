@@ -225,6 +225,14 @@ class RecordedTrackNavigation(WaypointNavigation):
         # ``interface.components`` which imports back into this package.
         # pylint: disable=import-outside-toplevel
         from ..interface.components.track_recorder_dialog import TrackRecorderDialog  # noqa: PLC0415
+        # Tear down any previous recorder and empty the host before rebuilding, so each
+        # open starts fresh instead of leaking the prior dialog's map, 1-second timer
+        # and keyboard handler into the (deliberately stable) host.
+        if self._current_recorder is not None:
+            self._current_recorder.tear_down()
+            self._current_recorder = None
+        if self._dialog_host is not None:
+            self._dialog_host.clear()
         # Build inside the stable dialog host so settings refreshes don't tear the dialog down.
         host = self._dialog_host if self._dialog_host is not None else contextlib.nullcontext()
         with host:

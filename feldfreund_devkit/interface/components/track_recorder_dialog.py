@@ -255,6 +255,8 @@ class TrackRecorderDialog:
 
         self._track_segments: list[GenericLayer] = []
         self._waypoint_markers: list[GenericLayer] = []
+        self._tick_timer: ui.timer | None = None
+        self._torn_down = False
 
         self._build_dialog()
         self._update_track_on_map()
@@ -265,7 +267,7 @@ class TrackRecorderDialog:
         self.controller.WAYPOINT_ADDED.subscribe(self._on_waypoint_added)
         self.controller.RECORDING_STARTED.subscribe(self._on_recording_started)
         self.controller.RECORDING_STOPPED.subscribe(self._on_recording_stopped)
-        self.dialog.on('hide', self._unsubscribe)
+        self.dialog.on('hide', self.tear_down)
 
     @property
     def is_recording(self) -> bool:
@@ -279,6 +281,21 @@ class TrackRecorderDialog:
         self.controller.WAYPOINT_ADDED.unsubscribe(self._on_waypoint_added)
         self.controller.RECORDING_STARTED.unsubscribe(self._on_recording_started)
         self.controller.RECORDING_STOPPED.unsubscribe(self._on_recording_stopped)
+
+    def tear_down(self) -> None:
+        """Release everything that would otherwise outlive this dialog.
+
+        The recorder is rebuilt on every open, so a closed or replaced instance
+        must drop its controller subscriptions and stop its 1-second timer; the
+        DOM (dialog, map, keyboard handler) is removed by the owner clearing the
+        dialog host. Idempotent: both the ``hide`` event and the owner may call it.
+        """
+        if self._torn_down:
+            return
+        self._torn_down = True
+        self._unsubscribe()
+        if self._tick_timer is not None:
+            self._tick_timer.cancel()
 
     def _build_dialog(self) -> None:
         with ui.dialog() as self.dialog, \
@@ -326,7 +343,7 @@ class TrackRecorderDialog:
             },
         )
         self.update_robot_position()
-        ui.timer(1, self._tick)
+        self._tick_timer = ui.timer(1, self._tick)
 
     def _build_action_bar(self) -> None:
         with ui.row().classes('w-full items-center gap-3 px-1'):
