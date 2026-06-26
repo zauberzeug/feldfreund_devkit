@@ -30,7 +30,6 @@ class WaypointNavigation(rosys.persistence.Persistable):
         self._default_min_speed = driver.parameters.throttle_at_end_min_speed
         self._default_max_speed = driver.parameters.linear_speed_limit
         self._upcoming_path: list[DriveSegment] = []
-        self._is_prepared = False
         self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
 
         self.PATH_GENERATED = Event[list[DriveSegment]]()
@@ -62,17 +61,11 @@ class WaypointNavigation(rosys.persistence.Persistable):
         """Returns True as long as there are waypoints to drive to."""
         return self.current_segment is not None
 
-    @property
-    def is_prepared(self) -> bool:
-        """Returns True if the navigation has been prepared for the start of the automation."""
-        return self._is_prepared
-
     @track
     async def prepare(self) -> bool:
         """Prepares the navigation for the start of the automation
 
         Returns true if all preparations were successful, otherwise false."""
-        self._is_prepared = True
         self._upcoming_path = self.generate_path()
         if not self._upcoming_path:
             self.log.error('Path generation failed')
@@ -139,13 +132,10 @@ class WaypointNavigation(rosys.persistence.Persistable):
     @track
     async def finish(self) -> None:
         """Executed after the navigation is done"""
-        if not self._is_prepared:
-            return
-        self._is_prepared = False
-        self.log.debug('Navigation finished')
         await self.driver.wheels.stop()
         await self.implement.deactivate()
         gc.collect()  # NOTE: auto garbage collection is deactivated to avoid hiccups from Global Interpreter Lock (GIL) so we collect here to reduce memory pressure
+        self.log.debug('Navigation finished')
 
     @track
     async def _drive_along_segment(self, *, linear_speed_limit: float = 0.3) -> None:
