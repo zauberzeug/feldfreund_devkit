@@ -256,7 +256,6 @@ class TrackRecorderDialog:
         self._track_segments: list[GenericLayer] = []
         self._waypoint_markers: list[GenericLayer] = []
         self._tick_timer: ui.timer | None = None
-        self._torn_down = False
 
         self._build_dialog()
         self._update_track_on_map()
@@ -283,16 +282,13 @@ class TrackRecorderDialog:
         self.controller.RECORDING_STOPPED.unsubscribe(self._on_recording_stopped)
 
     def tear_down(self) -> None:
-        """Release everything that would otherwise outlive this dialog.
+        """Drop controller subscriptions and stop the tick timer.
 
-        The recorder is rebuilt on every open, so a closed or replaced instance
-        must drop its controller subscriptions and stop its 1-second timer; the
-        DOM (dialog, map, keyboard handler) is removed by the owner clearing the
-        dialog host. Idempotent: both the ``hide`` event and the owner may call it.
+        The DOM (dialog, map, keyboard) is removed by the owner clearing the dialog
+        host; ``ui.timer`` even cancels itself on deletion, but ``hide`` does not
+        delete anything, so the timer is cancelled explicitly here. Idempotent —
+        both ``unsubscribe`` and ``Timer.cancel`` are no-ops once already done.
         """
-        if self._torn_down:
-            return
-        self._torn_down = True
         self._unsubscribe()
         if self._tick_timer is not None:
             self._tick_timer.cancel()
