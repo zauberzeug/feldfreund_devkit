@@ -48,6 +48,15 @@ class WifiInfo:
     sta_signal: int | None = None
 
 
+@dataclass(slots=True, kw_only=True)
+class WifiClientNetwork:
+    """An upstream WiFi network the router can join as a client (MultiAP station entry)."""
+    id: str
+    ssid: str
+    enabled: bool
+    encryption: str | None = None
+
+
 class TeltonikaRouter:
     """Implements the API of the builtin Teltonika RUT901 router."""
     WIFI_SIGNAL_GOOD = -67
@@ -60,6 +69,8 @@ class TeltonikaRouter:
     FAILOVER_KEYS_MOBILE = frozenset(('mob1s1a1', 'mob1s2a1'))
     INTERNET_CHECK_HOSTS = frozenset(('8.8.8.8', '1.1.1.1'))
     DNS_CHECK_HOSTNAMES = frozenset(('www.google.de', 'zauberzeug.com'))
+    WIFI_INTERFACES_ENDPOINT = 'wireless/interfaces/config'
+    WIFI_ENABLE_FIELD = 'enabled'  # RutOS config field; underlying UCI toggle is the inverse 'disabled'
 
     def __init__(self, url: str, admin_password: str) -> None:
         self.log = logging.getLogger('feldfreund.teltonika_router')
@@ -70,6 +81,7 @@ class TeltonikaRouter:
         self._modem_status: ModemStatus | None = None
         self._device_info: DeviceInfo | None = None
         self._wifi_info: WifiInfo | None = None
+        self._wifi_client_networks: list[WifiClientNetwork] = []
         self._client = httpx.AsyncClient(headers={'Content-Type': 'application/json'}, timeout=20.0)
         self._auth_token: str = ''
         self._token_time: float = 0.0
@@ -80,10 +92,13 @@ class TeltonikaRouter:
         """Emitted when the connection status changes."""
         self.INFO_UPDATED: Event = Event()
         """Emitted after modem, WiFi, and device info have been polled."""
+        self.WIFI_NETWORKS_CHANGED: Event = Event()
+        """Emitted after the upstream WiFi client network list has been refreshed."""
 
         rosys.on_repeat(self._check_connection, 5.0)
         rosys.on_repeat(self._poll_info, 30.0)
         rosys.on_startup(self._poll_device_info)
+        rosys.on_startup(self.refresh_wifi_client_networks)
         rosys.on_shutdown(self._client.aclose)
 
     @property
@@ -101,6 +116,10 @@ class TeltonikaRouter:
     @property
     def wifi_info(self) -> WifiInfo | None:
         return self._wifi_info
+
+    @property
+    def wifi_client_networks(self) -> list[WifiClientNetwork]:
+        return self._wifi_client_networks
 
     async def reboot(self) -> bool:
         """Send a reboot command to the router. Returns True on success."""
@@ -141,6 +160,72 @@ class TeltonikaRouter:
             self.log.debug('DNS resolution of %s succeeded', hostname)
             return True
         return any(await asyncio.gather(*(resolve(hostname) for hostname in hostnames)))
+
+    async def refresh_wifi_client_networks(self) -> None:
+        """Reload the upstream WiFi client networks from the router and emit ``WIFI_NETWORKS_CHANGED``."""
+        data = await self._get(self.WIFI_INTERFACES_ENDPOINT)
+        interfaces = self._normalize_interface_list(data) if data is not None else []
+        self._wifi_client_networks = [self._parse_wifi_client(i) for i in interfaces
+                                      if isinstance(i, dict) and i.get('mode') == 'sta']
+        self.WIFI_NETWORKS_CHANGED.emit()
+
+    async def add_wifi_client_network(self, ssid: str, password: str, *,
+                                      encryption: str = 'psk2', enabled: bool = False) -> str | None:
+        """Add an upstream WiFi network and return its config id, or ``None`` on failure.
+
+        The radio device and attached network are copied from an existing client entry, since
+        those depend on the router's wiring and cannot be guessed. Fails if none exists yet.
+        Refreshes the network list on success.
+
+        :param ssid: the network name to join.
+        :param password: the pre-shared key.
+        :param encryption: the encryption mode (default ``psk2``).
+        :param enabled: whether the entry is active right after creation (default ``False``).
+        :return: the created config id, or ``None`` if creation failed.
+        """
+        data = await self._get(self.WIFI_INTERFACES_ENDPOINT)
+        template = next((i for i in self._normalize_interface_list(data or [])
+                         if isinstance(i, dict) and i.get('mode') == 'sta'), None)
+        if template is None:
+            self.log.error('Cannot add WiFi client network: no existing client entry to derive device/network from')
+            return None
+        payload = {
+            'mode': 'sta',
+            'ssid': ssid,
+            'key': password,
+            'encryption': encryption,
+            'device': template.get('device'),
+            'network': template.get('network'),
+            self.WIFI_ENABLE_FIELD: '1' if enabled else '0',
+        }
+        response = await self._request('POST', self.WIFI_INTERFACES_ENDPOINT, json={'data': payload})
+        if response is None:
+            self.log.error('Failed to add WiFi client network %s', ssid)
+            return None
+        created = response.json().get('data')
+        network_id = created.get('id') if isinstance(created, dict) else None
+        self.log.info('Added WiFi client network %s (id=%s)', ssid, network_id)
+        await self.refresh_wifi_client_networks()
+        return network_id
+
+    async def remove_wifi_client_network(self, network_id: str) -> bool:
+        """Delete an upstream WiFi network by its config id, refreshing the list on success."""
+        if await self._request('DELETE', f'{self.WIFI_INTERFACES_ENDPOINT}/{network_id}') is None:
+            self.log.error('Failed to remove WiFi client network %s', network_id)
+            return False
+        self.log.info('Removed WiFi client network %s', network_id)
+        await self.refresh_wifi_client_networks()
+        return True
+
+    async def set_wifi_client_enabled(self, network_id: str, enabled: bool) -> bool:
+        """Enable or disable an upstream WiFi network by its config id, refreshing the list on success."""
+        payload = {self.WIFI_ENABLE_FIELD: '1' if enabled else '0'}
+        if await self._request('PUT', f'{self.WIFI_INTERFACES_ENDPOINT}/{network_id}', json={'data': payload}) is None:
+            self.log.error('Failed to %s WiFi client network %s', 'enable' if enabled else 'disable', network_id)
+            return False
+        self.log.info('%s WiFi client network %s', 'Enabled' if enabled else 'Disabled', network_id)
+        await self.refresh_wifi_client_networks()
+        return True
 
     async def _poll_info(self) -> None:
         tasks = [self._poll_modem_status(), self._poll_wifi_info()]
@@ -223,7 +308,7 @@ class TeltonikaRouter:
         """Perform an authenticated POST request. Returns ``True`` on success."""
         return await self._request('POST', endpoint, json=json) is not None
 
-    async def _request(self, method: Literal['GET', 'POST'], endpoint: str, *,
+    async def _request(self, method: Literal['GET', 'POST', 'PUT', 'DELETE'], endpoint: str, *,
                        json: dict | None = None) -> httpx.Response | None:
         """Perform an authenticated request, refreshing the token if needed."""
         if not await self._ensure_token():
@@ -307,6 +392,29 @@ class TeltonikaRouter:
         self._auth_token = token
         self._token_time = rosys.time()
         self.log.debug('Authentication successful')
+
+    @staticmethod
+    def _parse_wifi_client(interface: dict) -> WifiClientNetwork:
+        """Build a ``WifiClientNetwork`` from a raw interface config entry.
+
+        Reads the enable state from RutOS's ``enabled`` field but falls back to the inverse of
+        the underlying UCI ``disabled`` flag when only that is present.
+
+        :param interface: one raw entry from the wireless interfaces config response.
+        :return: the parsed client network.
+        """
+        false_values = ('0', 0, False, 'false', 'off', 'no')
+        enabled_value = interface.get('enabled')
+        if enabled_value is not None:
+            is_enabled = enabled_value not in false_values
+        else:
+            is_enabled = interface.get('disabled') in (None, *false_values)
+        return WifiClientNetwork(
+            id=interface.get('id') or interface.get('.name') or '',
+            ssid=interface.get('ssid') or '',
+            enabled=is_enabled,
+            encryption=interface.get('encryption'),
+        )
 
     @staticmethod
     def _normalize_interface_list(data: dict | list) -> list[dict]:
