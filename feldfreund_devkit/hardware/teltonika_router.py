@@ -164,9 +164,12 @@ class TeltonikaRouter:
     async def refresh_wifi_client_networks(self) -> None:
         """Reload the upstream WiFi client networks from the router and emit ``WIFI_NETWORKS_CHANGED``."""
         data = await self._get(self.WIFI_INTERFACES_ENDPOINT)
+        self.log.debug('Raw %s response: %s', self.WIFI_INTERFACES_ENDPOINT, data)
         interfaces = self._normalize_interface_list(data) if data is not None else []
         self._wifi_client_networks = [self._parse_wifi_client(i) for i in interfaces
                                       if isinstance(i, dict) and i.get('mode') == 'sta']
+        self.log.info('Found %d upstream WiFi client network(s) among %d wireless interface(s)',
+                      len(self._wifi_client_networks), len(interfaces))
         self.WIFI_NETWORKS_CHANGED.emit()
 
     async def add_wifi_client_network(self, ssid: str, password: str, *,

@@ -4,7 +4,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import rosys
-from nicegui import ui
+from nicegui import app, ui
 
 from .confirm_dialog import ConfirmDialog
 
@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from ...hardware import TeltonikaRouter, WifiClientNetwork
 
 ENCRYPTION_OPTIONS = ['psk2', 'sae', 'none']
+EXPANSION_STORAGE_PREFIX = 'teltonika_expansion_'
 
 
 def _format_value(value: str | int | None, unit: str = '') -> str:
@@ -110,11 +111,15 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
         else:
             rosys.notify('Failed to add WiFi network', 'negative')
 
+    async def refresh_networks() -> None:
+        await router.refresh_wifi_client_networks()
+        rosys.notify(f'Found {len(router.wifi_client_networks)} upstream WiFi network(s)', 'info')
+
     @ui.refreshable
     def _networks() -> None:
         with ui.row().classes('w-full items-center justify-between no-wrap'):
             ui.label('Upstream WiFi networks').classes('text-sm text-grey')
-            ui.button(icon='refresh', on_click=router.refresh_wifi_client_networks) \
+            ui.button(icon='refresh', on_click=refresh_networks) \
                 .props('flat dense round').tooltip('Reload the network list from the router')
         if not router.wifi_client_networks:
             ui.label('No upstream WiFi networks configured.').classes('text-sm text-grey')
@@ -133,15 +138,26 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
         ui.button('Add network', icon='add', on_click=add_network).props('flat dense')
 
     @ui.refreshable
-    def _status() -> None:
-        with ui.expansion('Router', icon='router').classes('w-full').props('default-opened dense'):
-            _device_section(router)
-        with ui.expansion('Mobile', icon='lte_mobiledata').classes('w-full').props('dense'):
-            _mobile_section(router)
-        with ui.expansion('Access Point', icon='wifi_tethering').classes('w-full').props('dense'):
-            _ap_section(router)
-        with ui.expansion('Upstream WiFi', icon='wifi').classes('w-full').props('dense'):
-            _multi_ap_section(router)
+    def _device() -> None:
+        _device_section(router)
+
+    @ui.refreshable
+    def _mobile() -> None:
+        _mobile_section(router)
+
+    @ui.refreshable
+    def _ap() -> None:
+        _ap_section(router)
+
+    @ui.refreshable
+    def _multi_ap() -> None:
+        _multi_ap_section(router)
+
+    def _refresh_status() -> None:
+        _device.refresh()
+        _mobile.refresh()
+        _ap.refresh()
+        _multi_ap.refresh()
 
     async def handle_reboot() -> None:
         if not await ConfirmDialog('Really reboot the router?'):
@@ -162,14 +178,38 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
         else:
             rosys.notify('No internet connection', 'negative')
 
+    expansions: dict[str, ui.expansion] = {}
     with ui.column().classes('w-full gap-1'):
-        _status()
-        with ui.expansion('WiFi Networks', icon='settings_ethernet').classes('w-full').props('dense'):
+        with ui.expansion('Router', icon='router', value=True).classes('w-full').props('dense') as expansions['router']:
+            _device()
+        with ui.expansion('Mobile', icon='lte_mobiledata').classes('w-full').props('dense') as expansions['mobile']:
+            _mobile()
+        with ui.expansion('Access Point', icon='wifi_tethering') \
+                .classes('w-full').props('dense') as expansions['access_point']:
+            _ap()
+        with ui.expansion('Upstream WiFi', icon='wifi').classes('w-full').props('dense') as expansions['upstream_wifi']:
+            _multi_ap()
+        with ui.expansion('WiFi Networks', icon='settings_ethernet') \
+                .classes('w-full').props('dense') as expansions['wifi_networks']:
             _networks()
         with ui.row().classes('mt-2'):
             ui.button('Check Internet', icon='network_ping', on_click=handle_ping).props('outline')
             ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative').props('outline')
 
-    router.CONNECTION_CHANGED.subscribe(_status.refresh, unsubscribe_on_delete=True)
-    router.INFO_UPDATED.subscribe(_status.refresh, unsubscribe_on_delete=True)
+    bound = False
+
+    def _persist_expansions(_=None) -> None:
+        nonlocal bound
+        if bound:  # on_connect fires again on reconnect; bind only once
+            return
+        bound = True
+        for name, expansion in expansions.items():
+            key = f'{EXPANSION_STORAGE_PREFIX}{name}'
+            if key not in app.storage.tab:
+                app.storage.tab[key] = expansion.value  # seed the constructed default before binding
+            expansion.bind_value(app.storage.tab, key)
+    ui.context.client.on_connect(_persist_expansions)  # app.storage.tab needs an established connection
+
+    router.CONNECTION_CHANGED.subscribe(_refresh_status, unsubscribe_on_delete=True)
+    router.INFO_UPDATED.subscribe(_refresh_status, unsubscribe_on_delete=True)
     router.WIFI_NETWORKS_CHANGED.subscribe(_networks.refresh, unsubscribe_on_delete=True)
