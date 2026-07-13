@@ -70,6 +70,7 @@ class TeltonikaRouter:
     INTERNET_CHECK_HOSTS = frozenset(('8.8.8.8', '1.1.1.1'))
     DNS_CHECK_HOSTNAMES = frozenset(('www.google.de', 'zauberzeug.com'))
     WIFI_INTERFACES_ENDPOINT = 'wireless/interfaces/config'
+    WIFI_CLIENT_MODE = 'multi_ap'  # RutOS mode of an upstream client interface (vs. 'ap' for the broadcast network)
     WIFI_ENABLE_FIELD = 'enabled'  # RutOS config field; underlying UCI toggle is the inverse 'disabled'
 
     def __init__(self, url: str, admin_password: str) -> None:
@@ -167,18 +168,37 @@ class TeltonikaRouter:
         self.log.debug('Raw %s response: %s', self.WIFI_INTERFACES_ENDPOINT, data)
         interfaces = self._normalize_interface_list(data) if data is not None else []
         self._wifi_client_networks = [self._parse_wifi_client(i) for i in interfaces
-                                      if isinstance(i, dict) and i.get('mode') == 'sta']
-        self.log.info('Found %d upstream WiFi client network(s) among %d wireless interface(s): %s',
-                      len(self._wifi_client_networks), len(interfaces),
-                      [{'mode': i.get('mode'), 'ssid': i.get('ssid'), 'fields': sorted(i)}
-                       for i in interfaces if isinstance(i, dict)])
+                                      if isinstance(i, dict) and i.get('mode') == self.WIFI_CLIENT_MODE]
+        self.log.info('Found %d upstream WiFi client network(s) among %d wireless interface(s)',
+                      len(self._wifi_client_networks), len(interfaces))
+        await self._probe_multiap_endpoints(interfaces)
         self.WIFI_NETWORKS_CHANGED.emit()
+
+    async def _probe_multiap_endpoints(self, interfaces: list[dict]) -> None:
+        """TEMPORARY: discover where the router stores the MultiAP candidate AP list.
+
+        The candidate SSIDs (each with its own enable toggle) are not the wireless interfaces;
+        this probes likely endpoints and logs their responses so the real one can be identified.
+
+        :param interfaces: the wireless interfaces already fetched, used to derive the client id.
+        """
+        multi_ap_id = next((i.get('id') for i in interfaces
+                            if isinstance(i, dict) and i.get('mode') == self.WIFI_CLIENT_MODE), None)
+        candidates = ['wireless/multi_ap/config', 'wireless/multiap/config', 'wireless/aps/config',
+                      'wireless/access_points/config', 'wireless/multi_ap_aps/config',
+                      'multiap/aps/config', 'multiap/config']
+        if multi_ap_id is not None:
+            candidates += [f'{self.WIFI_INTERFACES_ENDPOINT}/{multi_ap_id}',
+                           f'{self.WIFI_INTERFACES_ENDPOINT}/{multi_ap_id}/aps',
+                           f'{self.WIFI_INTERFACES_ENDPOINT}/{multi_ap_id}/multi_ap']
+        for endpoint in candidates:
+            self.log.info('MultiAP endpoint probe: %s -> %s', endpoint, await self._get(endpoint))
 
     async def add_wifi_client_network(self, ssid: str, password: str, *,
                                       encryption: str = 'psk2', enabled: bool = False) -> str | None:
         """Add an upstream WiFi network and return its config id, or ``None`` on failure.
 
-        The radio device and attached network are copied from an existing client entry, since
+        The radio (``wifi_id``) and attached network are copied from an existing client entry, since
         those depend on the router's wiring and cannot be guessed. Fails if none exists yet.
         Refreshes the network list on success.
 
@@ -190,16 +210,16 @@ class TeltonikaRouter:
         """
         data = await self._get(self.WIFI_INTERFACES_ENDPOINT)
         template = next((i for i in self._normalize_interface_list(data or [])
-                         if isinstance(i, dict) and i.get('mode') == 'sta'), None)
+                         if isinstance(i, dict) and i.get('mode') == self.WIFI_CLIENT_MODE), None)
         if template is None:
-            self.log.error('Cannot add WiFi client network: no existing client entry to derive device/network from')
+            self.log.error('Cannot add WiFi client network: no existing client entry to derive wifi_id/network from')
             return None
         payload = {
-            'mode': 'sta',
+            'mode': self.WIFI_CLIENT_MODE,
             'ssid': ssid,
             'key': password,
             'encryption': encryption,
-            'device': template.get('device'),
+            'wifi_id': template.get('wifi_id'),
             'network': template.get('network'),
             self.WIFI_ENABLE_FIELD: '1' if enabled else '0',
         }
