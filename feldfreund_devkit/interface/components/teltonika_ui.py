@@ -123,10 +123,7 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
             ui.label('No upstream WiFi networks configured.').classes('text-sm text-grey')
         for network in router.wifi_client_networks:
             with ui.row().classes('w-full items-center justify-between no-wrap'):
-                with ui.column().classes('gap-0 min-w-0'):
-                    ui.label(network.ssid or '(hidden)').classes('truncate')
-                    if network.priority is not None:
-                        ui.label(f'priority {network.priority}').classes('text-xs text-grey')
+                ui.label(network.ssid or '(hidden)').classes('truncate min-w-0')
                 with ui.row().classes('items-center gap-1 no-wrap'):
                     ui.switch(value=network.enabled,
                               on_change=lambda e, n=network: toggle_network(n, e.value)) \
