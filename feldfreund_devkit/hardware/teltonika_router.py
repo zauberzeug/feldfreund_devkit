@@ -50,11 +50,11 @@ class WifiInfo:
 
 @dataclass(slots=True, kw_only=True)
 class WifiClientNetwork:
-    """An upstream WiFi network the router can join as a client (MultiAP station entry)."""
+    """A MultiAP candidate network the router can join as a client (one entry of the AP list)."""
     id: str
     ssid: str
     enabled: bool
-    encryption: str | None = None
+    priority: int | None = None
 
 
 class TeltonikaRouter:
@@ -69,8 +69,7 @@ class TeltonikaRouter:
     FAILOVER_KEYS_MOBILE = frozenset(('mob1s1a1', 'mob1s2a1'))
     INTERNET_CHECK_HOSTS = frozenset(('8.8.8.8', '1.1.1.1'))
     DNS_CHECK_HOSTNAMES = frozenset(('www.google.de', 'zauberzeug.com'))
-    WIFI_INTERFACES_ENDPOINT = 'wireless/interfaces/config'
-    WIFI_CLIENT_MODE = 'multi_ap'  # RutOS mode of an upstream client interface (vs. 'ap' for the broadcast network)
+    MULTI_AP_ENDPOINT = 'wireless/multi_ap/config'  # the MultiAP candidate AP list (one section per SSID)
     WIFI_ENABLE_FIELD = 'enabled'  # RutOS config field; underlying UCI toggle is the inverse 'disabled'
 
     def __init__(self, url: str, admin_password: str) -> None:
@@ -163,92 +162,57 @@ class TeltonikaRouter:
         return any(await asyncio.gather(*(resolve(hostname) for hostname in hostnames)))
 
     async def refresh_wifi_client_networks(self) -> None:
-        """Reload the upstream WiFi client networks from the router and emit ``WIFI_NETWORKS_CHANGED``."""
-        data = await self._get(self.WIFI_INTERFACES_ENDPOINT)
-        self.log.debug('Raw %s response: %s', self.WIFI_INTERFACES_ENDPOINT, data)
-        interfaces = self._normalize_interface_list(data) if data is not None else []
-        self._wifi_client_networks = [self._parse_wifi_client(i) for i in interfaces
-                                      if isinstance(i, dict) and i.get('mode') == self.WIFI_CLIENT_MODE]
-        self.log.info('Found %d upstream WiFi client network(s) among %d wireless interface(s)',
-                      len(self._wifi_client_networks), len(interfaces))
-        await self._probe_multiap_endpoints(interfaces)
+        """Reload the MultiAP candidate networks from the router and emit ``WIFI_NETWORKS_CHANGED``."""
+        data = await self._get(self.MULTI_AP_ENDPOINT)
+        entries = self._normalize_interface_list(data) if data is not None else []
+        networks = [self._parse_wifi_client(e) for e in entries if isinstance(e, dict)]
+        self._wifi_client_networks = sorted(networks, key=lambda n: (n.priority is None, n.priority))
+        self.log.info('Found %d MultiAP candidate network(s)', len(self._wifi_client_networks))
         self.WIFI_NETWORKS_CHANGED.emit()
 
-    async def _probe_multiap_endpoints(self, interfaces: list[dict]) -> None:
-        """TEMPORARY: discover where the router stores the MultiAP candidate AP list.
+    async def add_wifi_client_network(self, ssid: str, password: str, *, enabled: bool = False) -> str | None:
+        """Add a MultiAP candidate network and return its config id, or ``None`` on failure.
 
-        The candidate SSIDs (each with its own enable toggle) are not the wireless interfaces;
-        this probes likely endpoints and logs their responses so the real one can be identified.
-
-        :param interfaces: the wireless interfaces already fetched, used to derive the client id.
-        """
-        multi_ap_id = next((i.get('id') for i in interfaces
-                            if isinstance(i, dict) and i.get('mode') == self.WIFI_CLIENT_MODE), None)
-        candidates = ['wireless/multi_ap/config', 'wireless/multiap/config', 'wireless/aps/config',
-                      'wireless/access_points/config', 'wireless/multi_ap_aps/config',
-                      'multiap/aps/config', 'multiap/config']
-        if multi_ap_id is not None:
-            candidates += [f'{self.WIFI_INTERFACES_ENDPOINT}/{multi_ap_id}',
-                           f'{self.WIFI_INTERFACES_ENDPOINT}/{multi_ap_id}/aps',
-                           f'{self.WIFI_INTERFACES_ENDPOINT}/{multi_ap_id}/multi_ap']
-        for endpoint in candidates:
-            self.log.info('MultiAP endpoint probe: %s -> %s', endpoint, await self._get(endpoint))
-
-    async def add_wifi_client_network(self, ssid: str, password: str, *,
-                                      encryption: str = 'psk2', enabled: bool = False) -> str | None:
-        """Add an upstream WiFi network and return its config id, or ``None`` on failure.
-
-        The radio (``wifi_id``) and attached network are copied from an existing client entry, since
-        those depend on the router's wiring and cannot be guessed. Fails if none exists yet.
-        Refreshes the network list on success.
+        The new entry is appended with the next free priority. Refreshes the list on success.
 
         :param ssid: the network name to join.
         :param password: the pre-shared key.
-        :param encryption: the encryption mode (default ``psk2``).
         :param enabled: whether the entry is active right after creation (default ``False``).
         :return: the created config id, or ``None`` if creation failed.
         """
-        data = await self._get(self.WIFI_INTERFACES_ENDPOINT)
-        template = next((i for i in self._normalize_interface_list(data or [])
-                         if isinstance(i, dict) and i.get('mode') == self.WIFI_CLIENT_MODE), None)
-        if template is None:
-            self.log.error('Cannot add WiFi client network: no existing client entry to derive wifi_id/network from')
-            return None
+        priorities = [n.priority for n in self._wifi_client_networks if n.priority is not None]
         payload = {
-            'mode': self.WIFI_CLIENT_MODE,
             'ssid': ssid,
             'key': password,
-            'encryption': encryption,
-            'wifi_id': template.get('wifi_id'),
-            'network': template.get('network'),
+            'priority': str(max(priorities, default=0) + 1),
             self.WIFI_ENABLE_FIELD: '1' if enabled else '0',
         }
-        response = await self._request('POST', self.WIFI_INTERFACES_ENDPOINT, json={'data': payload})
+        response = await self._request('POST', self.MULTI_AP_ENDPOINT, json={'data': payload})
         if response is None:
-            self.log.error('Failed to add WiFi client network %s', ssid)
+            self.log.error('Failed to add MultiAP candidate network %s', ssid)
             return None
         created = response.json().get('data')
         network_id = created.get('id') if isinstance(created, dict) else None
-        self.log.info('Added WiFi client network %s (id=%s)', ssid, network_id)
+        self.log.info('Added MultiAP candidate network %s (id=%s)', ssid, network_id)
         await self.refresh_wifi_client_networks()
         return network_id
 
     async def remove_wifi_client_network(self, network_id: str) -> bool:
-        """Delete an upstream WiFi network by its config id, refreshing the list on success."""
-        if await self._request('DELETE', f'{self.WIFI_INTERFACES_ENDPOINT}/{network_id}') is None:
-            self.log.error('Failed to remove WiFi client network %s', network_id)
+        """Delete a MultiAP candidate network by its config id, refreshing the list on success."""
+        if await self._request('DELETE', f'{self.MULTI_AP_ENDPOINT}/{network_id}') is None:
+            self.log.error('Failed to remove MultiAP candidate network %s', network_id)
             return False
-        self.log.info('Removed WiFi client network %s', network_id)
+        self.log.info('Removed MultiAP candidate network %s', network_id)
         await self.refresh_wifi_client_networks()
         return True
 
     async def set_wifi_client_enabled(self, network_id: str, enabled: bool) -> bool:
-        """Enable or disable an upstream WiFi network by its config id, refreshing the list on success."""
+        """Enable or disable a MultiAP candidate network by its config id, refreshing the list on success."""
         payload = {self.WIFI_ENABLE_FIELD: '1' if enabled else '0'}
-        if await self._request('PUT', f'{self.WIFI_INTERFACES_ENDPOINT}/{network_id}', json={'data': payload}) is None:
-            self.log.error('Failed to %s WiFi client network %s', 'enable' if enabled else 'disable', network_id)
+        if await self._request('PUT', f'{self.MULTI_AP_ENDPOINT}/{network_id}', json={'data': payload}) is None:
+            self.log.error('Failed to %s MultiAP candidate network %s', 'enable' if enabled else 'disable', network_id)
             return False
-        self.log.info('%s WiFi client network %s', 'Enabled' if enabled else 'Disabled', network_id)
+        self.log.info('%s MultiAP candidate network %s', 'Enabled' if enabled else 'Disabled', network_id)
         await self.refresh_wifi_client_networks()
         return True
 
@@ -419,26 +383,27 @@ class TeltonikaRouter:
         self.log.debug('Authentication successful')
 
     @staticmethod
-    def _parse_wifi_client(interface: dict) -> WifiClientNetwork:
-        """Build a ``WifiClientNetwork`` from a raw interface config entry.
+    def _parse_wifi_client(entry: dict) -> WifiClientNetwork:
+        """Build a ``WifiClientNetwork`` from a raw MultiAP candidate config entry.
 
         Reads the enable state from RutOS's ``enabled`` field but falls back to the inverse of
         the underlying UCI ``disabled`` flag when only that is present.
 
-        :param interface: one raw entry from the wireless interfaces config response.
-        :return: the parsed client network.
+        :param entry: one raw entry from the MultiAP config response.
+        :return: the parsed candidate network.
         """
         false_values = ('0', 0, False, 'false', 'off', 'no')
-        enabled_value = interface.get('enabled')
+        enabled_value = entry.get('enabled')
         if enabled_value is not None:
             is_enabled = enabled_value not in false_values
         else:
-            is_enabled = interface.get('disabled') in (None, *false_values)
+            is_enabled = entry.get('disabled') in (None, *false_values)
+        priority = entry.get('priority')
         return WifiClientNetwork(
-            id=interface.get('id') or interface.get('.name') or '',
-            ssid=interface.get('ssid') or '',
+            id=entry.get('id') or entry.get('.name') or '',
+            ssid=entry.get('ssid') or '',
             enabled=is_enabled,
-            encryption=interface.get('encryption'),
+            priority=int(priority) if priority is not None and str(priority).isdigit() else None,
         )
 
     @staticmethod

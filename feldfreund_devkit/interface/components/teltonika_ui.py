@@ -11,7 +11,6 @@ from .confirm_dialog import ConfirmDialog
 if TYPE_CHECKING:
     from ...hardware import TeltonikaRouter, WifiClientNetwork
 
-ENCRYPTION_OPTIONS = ['psk2', 'sae', 'none']
 EXPANSION_STORAGE_PREFIX = 'teltonika_expansion_'
 
 
@@ -96,7 +95,6 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
             ui.label('Add WiFi network').classes('text-bold')
             ssid_input = ui.input('SSID').classes('w-full')
             password_input = ui.input('Password', password=True, password_toggle_button=True).classes('w-full')
-            encryption_select = ui.select(ENCRYPTION_OPTIONS, value='psk2', label='Encryption').classes('w-full')
             with ui.row():
                 ui.button('Add', on_click=lambda: dialog.submit(True))
                 ui.button('Cancel', on_click=lambda: dialog.submit(False)).props('flat')
@@ -106,7 +104,7 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
         if not ssid:
             rosys.notify('SSID must not be empty', 'warning')
             return
-        if await router.add_wifi_client_network(ssid, password_input.value, encryption=encryption_select.value):
+        if await router.add_wifi_client_network(ssid, password_input.value):
             rosys.notify(f'Added WiFi network "{ssid}"', 'positive')
         else:
             rosys.notify('Failed to add WiFi network', 'negative')
@@ -127,8 +125,8 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
             with ui.row().classes('w-full items-center justify-between no-wrap'):
                 with ui.column().classes('gap-0 min-w-0'):
                     ui.label(network.ssid or '(hidden)').classes('truncate')
-                    if network.encryption:
-                        ui.label(network.encryption).classes('text-xs text-grey')
+                    if network.priority is not None:
+                        ui.label(f'priority {network.priority}').classes('text-xs text-grey')
                 with ui.row().classes('items-center gap-1 no-wrap'):
                     ui.switch(value=network.enabled,
                               on_change=lambda e, n=network: toggle_network(n, e.value)) \
