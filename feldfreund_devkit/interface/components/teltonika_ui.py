@@ -7,6 +7,7 @@ import rosys
 from nicegui import app, ui
 
 from .confirm_dialog import ConfirmDialog
+from .teltonika_status_widget import teltonika_status_widget
 
 if TYPE_CHECKING:
     from ...hardware import TeltonikaRouter, WifiClientNetwork
@@ -175,7 +176,9 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
     expansions: dict[str, ui.expansion] = {}
     with ui.column().classes('w-full gap-1'):
         ui.label('Teltonika Router').classes('text-center text-bold')
-        with ui.row().classes('gap-1'):
+        with ui.row().classes('gap-1 items-center'):
+            teltonika_status_widget(router)
+            ui.space()
             ui.button('Check Internet', on_click=handle_ping).props('dense size=sm')
             ui.button('Reboot Router', on_click=handle_reboot, color='negative').props('dense size=sm')
         with ui.expansion('Router', icon='router', value=True).classes('w-full').props('dense') as expansions['router']:
