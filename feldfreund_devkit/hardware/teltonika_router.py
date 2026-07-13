@@ -168,8 +168,10 @@ class TeltonikaRouter:
         interfaces = self._normalize_interface_list(data) if data is not None else []
         self._wifi_client_networks = [self._parse_wifi_client(i) for i in interfaces
                                       if isinstance(i, dict) and i.get('mode') == 'sta']
-        self.log.info('Found %d upstream WiFi client network(s) among %d wireless interface(s)',
-                      len(self._wifi_client_networks), len(interfaces))
+        self.log.info('Found %d upstream WiFi client network(s) among %d wireless interface(s): %s',
+                      len(self._wifi_client_networks), len(interfaces),
+                      [{'mode': i.get('mode'), 'ssid': i.get('ssid'), 'fields': sorted(i)}
+                       for i in interfaces if isinstance(i, dict)])
         self.WIFI_NETWORKS_CHANGED.emit()
 
     async def add_wifi_client_network(self, ssid: str, password: str, *,

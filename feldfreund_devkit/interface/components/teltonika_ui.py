@@ -4,7 +4,7 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import rosys
-from nicegui import app, ui
+from nicegui import app, background_tasks, ui
 
 from .confirm_dialog import ConfirmDialog
 
@@ -196,19 +196,17 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
             ui.button('Check Internet', icon='network_ping', on_click=handle_ping).props('outline')
             ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative').props('outline')
 
-    bound = False
+    client = ui.context.client
 
-    def _persist_expansions(_=None) -> None:
-        nonlocal bound
-        if bound:  # on_connect fires again on reconnect; bind only once
-            return
-        bound = True
-        for name, expansion in expansions.items():
-            key = f'{EXPANSION_STORAGE_PREFIX}{name}'
-            if key not in app.storage.tab:
-                app.storage.tab[key] = expansion.value  # seed the constructed default before binding
-            expansion.bind_value(app.storage.tab, key)
-    ui.context.client.on_connect(_persist_expansions)  # app.storage.tab needs an established connection
+    async def _persist_expansions() -> None:
+        await client.connected()  # app.storage.tab is only created once the tab connection is established
+        with client:  # restore the client context inside the background task
+            for name, expansion in expansions.items():
+                key = f'{EXPANSION_STORAGE_PREFIX}{name}'
+                if key not in app.storage.tab:
+                    app.storage.tab[key] = expansion.value  # seed the constructed default before binding
+                expansion.bind_value(app.storage.tab, key)
+    background_tasks.create(_persist_expansions(), name='teltonika expansion persistence')
 
     router.CONNECTION_CHANGED.subscribe(_refresh_status, unsubscribe_on_delete=True)
     router.INFO_UPDATED.subscribe(_refresh_status, unsubscribe_on_delete=True)
