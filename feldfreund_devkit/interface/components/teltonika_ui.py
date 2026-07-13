@@ -123,13 +123,13 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
             ui.label('No upstream WiFi networks configured.').classes('text-sm text-grey')
         for network in router.wifi_client_networks:
             with ui.row().classes('w-full items-center justify-between no-wrap'):
-                ui.label(network.ssid or '(hidden)').classes('truncate min-w-0')
+                ui.label(network.ssid or '(hidden)').classes('truncate min-w-0 text-sm')
                 with ui.row().classes('items-center gap-1 no-wrap'):
                     ui.switch(value=network.enabled,
                               on_change=lambda e, n=network: toggle_network(n, e.value)) \
-                        .tooltip('Enable or disable this network')
+                        .props('dense size=sm').tooltip('Enable or disable this network')
                     ui.button(icon='delete', on_click=lambda _, n=network: delete_network(n)) \
-                        .props('flat dense round color=negative').tooltip('Delete this network')
+                        .props('flat dense round size=sm color=negative').tooltip('Delete this network')
 
     @ui.refreshable
     def _device() -> None:
