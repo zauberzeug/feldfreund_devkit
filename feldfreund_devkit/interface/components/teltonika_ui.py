@@ -118,7 +118,7 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
     @ui.refreshable
     def _networks() -> None:
         with ui.row().classes('w-full items-center justify-between no-wrap'):
-            ui.label('Upstream WiFi networks').classes('text-sm text-grey')
+            ui.button('Add network', icon='add', on_click=add_network).props('flat dense')
             ui.button(icon='refresh', on_click=refresh_networks) \
                 .props('flat dense round').tooltip('Reload the network list from the router')
         if not router.wifi_client_networks:
@@ -135,7 +135,6 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
                         .tooltip('Enable or disable this network')
                     ui.button(icon='delete', on_click=lambda _, n=network: delete_network(n)) \
                         .props('flat dense round color=negative').tooltip('Delete this network')
-        ui.button('Add network', icon='add', on_click=add_network).props('flat dense')
 
     @ui.refreshable
     def _device() -> None:
@@ -180,6 +179,10 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
 
     expansions: dict[str, ui.expansion] = {}
     with ui.column().classes('w-full gap-1'):
+        ui.label('Teltonika Router').classes('text-center text-bold')
+        with ui.row().classes('gap-1'):
+            ui.button('Check Internet', on_click=handle_ping).props('dense size=sm')
+            ui.button('Reboot Router', on_click=handle_reboot, color='negative').props('dense size=sm')
         with ui.expansion('Router', icon='router', value=True).classes('w-full').props('dense') as expansions['router']:
             _device()
         with ui.expansion('Mobile', icon='lte_mobiledata').classes('w-full').props('dense') as expansions['mobile']:
@@ -192,9 +195,6 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
         with ui.expansion('WiFi Networks', icon='settings_ethernet') \
                 .classes('w-full').props('dense') as expansions['wifi_networks']:
             _networks()
-        with ui.row().classes('mt-2'):
-            ui.button('Check Internet', icon='network_ping', on_click=handle_ping).props('outline')
-            ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative').props('outline')
 
     for name, expansion in expansions.items():
         key = f'{EXPANSION_STORAGE_PREFIX}{name}'
