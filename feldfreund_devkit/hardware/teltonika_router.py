@@ -319,8 +319,11 @@ class TeltonikaRouter:
                 return None
             response.raise_for_status()
             return response
-        except httpx.HTTPError:
-            self.log.warning('%s /%s failed', method, endpoint)
+        except httpx.HTTPStatusError as e:
+            self.log.warning('%s /%s -> %s: %s', method, endpoint, e.response.status_code, e.response.text)
+            return None
+        except httpx.HTTPError as e:
+            self.log.warning('%s /%s failed: %s', method, endpoint, e or type(e).__name__)
             return None
 
     async def _check_connection(self) -> None:
