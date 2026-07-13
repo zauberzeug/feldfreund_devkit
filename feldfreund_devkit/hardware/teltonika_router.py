@@ -209,11 +209,14 @@ class TeltonikaRouter:
     async def set_wifi_client_enabled(self, network_id: str, enabled: bool) -> bool:
         """Enable or disable a MultiAP candidate network by its config id, refreshing the list on success."""
         payload = {self.WIFI_ENABLE_FIELD: '1' if enabled else '0'}
-        if await self._request('PUT', f'{self.MULTI_AP_ENDPOINT}/{network_id}', json={'data': payload}) is None:
+        response = await self._request('PUT', f'{self.MULTI_AP_ENDPOINT}/{network_id}', json={'data': payload})
+        if response is None:
             self.log.error('Failed to %s MultiAP candidate network %s', 'enable' if enabled else 'disable', network_id)
             return False
-        self.log.info('%s MultiAP candidate network %s', 'Enabled' if enabled else 'Disabled', network_id)
+        self.log.info('PUT %s/%s -> %s', self.MULTI_AP_ENDPOINT, network_id, response.json())  # TEMPORARY diagnostic
         await self.refresh_wifi_client_networks()
+        after = next((n for n in self._wifi_client_networks if n.id == network_id), None)
+        self.log.info('After refresh, network %s enabled=%s', network_id, after.enabled if after else None)
         return True
 
     async def _poll_info(self) -> None:
