@@ -170,15 +170,15 @@ class TeltonikaRouter:
         self.log.info('Found %d MultiAP candidate network(s)', len(self._wifi_client_networks))
         self.WIFI_NETWORKS_CHANGED.emit()
 
-    async def add_wifi_client_network(self, ssid: str, password: str, *, enabled: bool = False) -> str | None:
-        """Add a MultiAP candidate network and return its config id, or ``None`` on failure.
+    async def add_wifi_client_network(self, ssid: str, password: str, *, enabled: bool = False) -> bool:
+        """Add a MultiAP candidate network, appended with the next free priority.
 
-        The new entry is appended with the next free priority. Refreshes the list on success.
+        Refreshes the list on success.
 
         :param ssid: the network name to join.
         :param password: the pre-shared key.
         :param enabled: whether the entry is active right after creation (default ``False``).
-        :return: the created config id, or ``None`` if creation failed.
+        :return: ``True`` if the router accepted the new network, ``False`` on failure.
         """
         priorities = [n.priority for n in self._wifi_client_networks if n.priority is not None]
         payload = {
@@ -187,15 +187,12 @@ class TeltonikaRouter:
             'priority': str(max(priorities, default=0) + 1),
             self.WIFI_ENABLE_FIELD: '1' if enabled else '0',
         }
-        response = await self._request('POST', self.MULTI_AP_ENDPOINT, json={'data': payload})
-        if response is None:
+        if await self._request('POST', self.MULTI_AP_ENDPOINT, json={'data': payload}) is None:
             self.log.error('Failed to add MultiAP candidate network %s', ssid)
-            return None
-        created = response.json().get('data')
-        network_id = created.get('id') if isinstance(created, dict) else None
-        self.log.info('Added MultiAP candidate network %s (id=%s)', ssid, network_id)
+            return False
+        self.log.info('Added MultiAP candidate network %s', ssid)
         await self.refresh_wifi_client_networks()
-        return network_id
+        return True
 
     async def remove_wifi_client_network(self, network_id: str) -> bool:
         """Delete a MultiAP candidate network by its config id, refreshing the list on success."""
@@ -213,10 +210,8 @@ class TeltonikaRouter:
         if response is None:
             self.log.error('Failed to %s MultiAP candidate network %s', 'enable' if enabled else 'disable', network_id)
             return False
-        self.log.info('PUT %s/%s -> %s', self.MULTI_AP_ENDPOINT, network_id, response.json())  # TEMPORARY diagnostic
+        self.log.info('%s MultiAP candidate network %s', 'Enabled' if enabled else 'Disabled', network_id)
         await self.refresh_wifi_client_networks()
-        after = next((n for n in self._wifi_client_networks if n.id == network_id), None)
-        self.log.info('After refresh, network %s enabled=%s', network_id, after.enabled if after else None)
         return True
 
     async def _poll_info(self) -> None:

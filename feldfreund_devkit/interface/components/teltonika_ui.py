@@ -81,6 +81,7 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
         if await router.set_wifi_client_enabled(network.id, target):
             rosys.notify(f'{action}d WiFi network "{network.ssid}"', 'positive')
         else:
+            _networks.refresh()  # revert the switch to the unchanged state
             rosys.notify(f'Failed to {action.lower()} WiFi network', 'negative')
 
     async def delete_network(network: WifiClientNetwork) -> None:

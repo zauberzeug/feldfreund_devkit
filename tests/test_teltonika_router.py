@@ -114,12 +114,11 @@ async def test_set_enabled_sends_put_and_refreshes(rosys_integration):
 
 
 async def test_add_appends_with_next_priority(rosys_integration):
-    """Adding posts ssid/key/enabled with the next free priority and returns the new id."""
+    """Adding posts ssid/key/enabled with the next free priority and reports success."""
     api = FakeMultiApApi([_entry('1', 'Barn', priority='1'), _entry('2', 'Shed', priority='2')])
     router = _make_router(api)
     await router.refresh_wifi_client_networks()
-    network_id = await router.add_wifi_client_network('Field', 'hunter2', enabled=True)
-    assert network_id == '3'
+    assert await router.add_wifi_client_network('Field', 'hunter2', enabled=True) is True
     post = next(r for r in api.requests if r[0] == 'POST')
     assert post[2] == {'ssid': 'Field', 'key': 'hunter2', 'priority': '3', 'enabled': '1'}
     assert {n.ssid for n in router.wifi_client_networks} == {'Barn', 'Shed', 'Field'}
@@ -130,7 +129,7 @@ async def test_add_on_empty_list_uses_priority_one(rosys_integration):
     api = FakeMultiApApi([])
     router = _make_router(api)
     await router.refresh_wifi_client_networks()
-    assert await router.add_wifi_client_network('Field', 'hunter2') == '1'
+    assert await router.add_wifi_client_network('Field', 'hunter2') is True
     post = next(r for r in api.requests if r[0] == 'POST')
     assert post[2]['priority'] == '1'
 
