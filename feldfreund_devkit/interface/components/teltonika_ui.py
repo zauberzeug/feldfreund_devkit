@@ -4,12 +4,15 @@ import asyncio
 from typing import TYPE_CHECKING
 
 import rosys
-from nicegui import ui
+from nicegui import app, ui
 
 from .confirm_dialog import ConfirmDialog
+from .teltonika_status_widget import teltonika_status_widget
 
 if TYPE_CHECKING:
-    from ...hardware import TeltonikaRouter
+    from ...hardware import TeltonikaRouter, WifiClientNetwork
+
+EXPANSION_STORAGE_PREFIX = 'teltonika_expansion_'
 
 
 def _format_value(value: str | int | None, unit: str = '') -> str:
@@ -19,9 +22,9 @@ def _format_value(value: str | int | None, unit: str = '') -> str:
 
 def _device_section(router: TeltonikaRouter) -> None:
     device = router.device_info
-    title = device.model if device and device.model else 'Teltonika Router'
-    ui.label(title).classes('text-bold')
     with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
+        ui.label('Model:').tooltip('Router model name')
+        ui.label(_format_value(device.model) if device else '-')
         ui.label('Connection:').tooltip('Active failover interface type')
         ui.label(router.connection_status.value.upper())
         ui.label('Firmware:').tooltip('RutOS firmware version')
@@ -31,7 +34,6 @@ def _device_section(router: TeltonikaRouter) -> None:
 
 
 def _mobile_section(router: TeltonikaRouter) -> None:
-    ui.label('Mobile').classes('font-bold')
     modem = router.modem_status
     with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
         ui.label('Operator:').tooltip('Mobile network operator')
@@ -51,7 +53,6 @@ def _mobile_section(router: TeltonikaRouter) -> None:
 
 
 def _ap_section(router: TeltonikaRouter) -> None:
-    ui.label('AP').classes('font-bold')
     wifi = router.wifi_info
     with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
         ui.label('SSID:').tooltip('Broadcast WiFi network name')
@@ -61,7 +62,6 @@ def _ap_section(router: TeltonikaRouter) -> None:
 
 
 def _multi_ap_section(router: TeltonikaRouter) -> None:
-    ui.label('Multi AP').classes('font-bold')
     wifi = router.wifi_info
     with ui.grid(columns=2).classes('w-full gap-x-4 gap-y-1'):
         ui.label('SSID:').tooltip('Upstream WiFi network the router connects to')
@@ -71,39 +71,137 @@ def _multi_ap_section(router: TeltonikaRouter) -> None:
 
 
 def teltonika_ui(router: TeltonikaRouter) -> None:
+    async def toggle_network(network: WifiClientNetwork, target: bool) -> None:
+        if target == network.enabled:
+            return
+        action = 'Enable' if target else 'Disable'
+        if not await ConfirmDialog(f'{action} WiFi network "{network.ssid}"?'):
+            _networks.refresh()  # revert the switch to the unchanged state
+            return
+        if await router.set_wifi_client_enabled(network.id, target):
+            rosys.notify(f'{action}d WiFi network "{network.ssid}"', 'positive')
+        else:
+            _networks.refresh()  # revert the switch to the unchanged state
+            rosys.notify(f'Failed to {action.lower()} WiFi network', 'negative')
+
+    async def delete_network(network: WifiClientNetwork) -> None:
+        if not await ConfirmDialog(f'Delete WiFi network "{network.ssid}"?'):
+            return
+        if await router.remove_wifi_client_network(network.id):
+            rosys.notify(f'Deleted WiFi network "{network.ssid}"', 'positive')
+        else:
+            rosys.notify('Failed to delete WiFi network', 'negative')
+
+    async def add_network() -> None:
+        with ui.dialog() as dialog, ui.card():
+            ui.label('Add WiFi network').classes('text-bold')
+            ssid_input = ui.input('SSID').classes('w-full')
+            password_input = ui.input('Password', password=True, password_toggle_button=True).classes('w-full')
+            with ui.row():
+                ui.button('Add', on_click=lambda: dialog.submit(True))
+                ui.button('Cancel', on_click=lambda: dialog.submit(False)).props('flat')
+        if not await dialog:
+            return
+        ssid = ssid_input.value.strip()
+        if not ssid:
+            rosys.notify('SSID must not be empty', 'warning')
+            return
+        if await router.add_wifi_client_network(ssid, password_input.value):
+            rosys.notify(f'Added WiFi network "{ssid}"', 'positive')
+        else:
+            rosys.notify('Failed to add WiFi network', 'negative')
+
+    async def refresh_networks() -> None:
+        await router.refresh_wifi_client_networks()
+        rosys.notify(f'Found {len(router.wifi_client_networks)} upstream WiFi network(s)', 'info')
+
     @ui.refreshable
-    def _ui() -> None:
+    def _networks() -> None:
+        with ui.row().classes('w-full items-center justify-between no-wrap'):
+            ui.button('Add network', icon='add', on_click=add_network).props('flat dense')
+            ui.button(icon='refresh', on_click=refresh_networks) \
+                .props('flat dense round').tooltip('Reload the network list from the router')
+        if not router.wifi_client_networks:
+            ui.label('No upstream WiFi networks configured.').classes('text-sm text-grey')
+        for network in router.wifi_client_networks:
+            with ui.row().classes('w-full items-center justify-between no-wrap'):
+                ui.label(network.ssid or '(hidden)').classes('truncate min-w-0 text-sm')
+                with ui.row().classes('items-center gap-1 no-wrap'):
+                    ui.switch(value=network.enabled,
+                              on_change=lambda e, n=network: toggle_network(n, e.value)) \
+                        .props('dense size=sm').tooltip('Enable or disable this network')
+                    ui.button(icon='delete', on_click=lambda _, n=network: delete_network(n)) \
+                        .props('flat dense round size=sm color=negative').tooltip('Delete this network')
+
+    @ui.refreshable
+    def _device() -> None:
         _device_section(router)
-        ui.separator()
+
+    @ui.refreshable
+    def _mobile() -> None:
         _mobile_section(router)
-        ui.separator()
+
+    @ui.refreshable
+    def _ap() -> None:
         _ap_section(router)
-        ui.separator()
+
+    @ui.refreshable
+    def _multi_ap() -> None:
         _multi_ap_section(router)
 
-        async def handle_reboot() -> None:
-            if not await ConfirmDialog('Really reboot the router?'):
-                return
-            if await router.reboot():
-                ui.notify('Router reboot initiated', type='positive')
-            else:
-                ui.notify('Router reboot failed', type='negative')
+    def _refresh_status() -> None:
+        _device.refresh()
+        _mobile.refresh()
+        _ap.refresh()
+        _multi_ap.refresh()
 
-        async def handle_ping() -> None:
-            connectivity, dns = await asyncio.gather(router.check_internet(), router.check_dns())
-            if connectivity and dns:
-                rosys.notify('Internet reachable', 'positive')
-            elif connectivity:
-                rosys.notify('Internet reachable, but DNS not resolving', 'warning')
-            elif dns:
-                rosys.notify('DNS resolves, but no IP connectivity', 'warning')
-            else:
-                rosys.notify('No internet connection', 'negative')
+    async def handle_reboot() -> None:
+        if not await ConfirmDialog('Really reboot the router?'):
+            return
+        if await router.reboot():
+            ui.notify('Router reboot initiated', type='positive')
+        else:
+            ui.notify('Router reboot failed', type='negative')
 
-        with ui.row():
-            ui.button('Check Internet', icon='network_ping', on_click=handle_ping).props('outline')
-            ui.button('Reboot Router', icon='restart_alt', on_click=handle_reboot, color='negative') \
-                .props('outline')
-    _ui()
-    router.CONNECTION_CHANGED.subscribe(_ui.refresh, unsubscribe_on_delete=True)
-    router.INFO_UPDATED.subscribe(_ui.refresh, unsubscribe_on_delete=True)
+    async def handle_ping() -> None:
+        connectivity, dns = await asyncio.gather(router.check_internet(), router.check_dns())
+        if connectivity and dns:
+            rosys.notify('Internet reachable', 'positive')
+        elif connectivity:
+            rosys.notify('Internet reachable, but DNS not resolving', 'warning')
+        elif dns:
+            rosys.notify('DNS resolves, but no IP connectivity', 'warning')
+        else:
+            rosys.notify('No internet connection', 'negative')
+
+    expansions: dict[str, ui.expansion] = {}
+    with ui.column().classes('w-full gap-1'):
+        ui.label('Teltonika Router').classes('text-center text-bold')
+        with ui.row().classes('w-full gap-1 pb-5'):
+            ui.label('Status:').props('align-left')
+            teltonika_status_widget(router)
+            ui.space()
+            ui.button('Check Internet', on_click=handle_ping).props('dense size=sm')
+            ui.button('Reboot Router', on_click=handle_reboot, color='negative').props('dense size=sm')
+        with ui.expansion('Router', icon='router', value=True).classes('w-full').props('dense') as expansions['router']:
+            _device()
+        with ui.expansion('Mobile', icon='lte_mobiledata').classes('w-full').props('dense') as expansions['mobile']:
+            _mobile()
+        with ui.expansion('Access Point', icon='wifi_tethering') \
+                .classes('w-full').props('dense') as expansions['access_point']:
+            _ap()
+        with ui.expansion('Upstream WiFi', icon='wifi').classes('w-full').props('dense') as expansions['upstream_wifi']:
+            _multi_ap()
+        with ui.expansion('WiFi Networks', icon='settings_ethernet') \
+                .classes('w-full').props('dense') as expansions['wifi_networks']:
+            _networks()
+
+    for name, expansion in expansions.items():
+        key = f'{EXPANSION_STORAGE_PREFIX}{name}'
+        if key not in app.storage.user:
+            app.storage.user[key] = expansion.value  # seed the constructed default (bind syncs storage -> element)
+        expansion.bind_value(app.storage.user, key)
+
+    router.CONNECTION_CHANGED.subscribe(_refresh_status, unsubscribe_on_delete=True)
+    router.INFO_UPDATED.subscribe(_refresh_status, unsubscribe_on_delete=True)
+    router.WIFI_NETWORKS_CHANGED.subscribe(_networks.refresh, unsubscribe_on_delete=True)

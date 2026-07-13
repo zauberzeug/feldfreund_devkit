@@ -3,7 +3,14 @@ from .flashlight import Flashlight, FlashlightHardware, FlashlightHardwareMosfet
 from .headlights import Headlights, HeadlightsHardware, HeadlightsSimulation
 from .safety import Safety, SafetyHardware, SafetyMixin, SafetySimulation
 from .status_control import StatusControlHardware
-from .teltonika_router import ConnectionStatus, DeviceInfo, ModemStatus, TeltonikaRouter, WifiInfo
+from .teltonika_router import (
+    ConnectionStatus,
+    DeviceInfo,
+    ModemStatus,
+    TeltonikaRouter,
+    WifiClientNetwork,
+    WifiInfo,
+)
 from .tracks import ODriveTracksHardware, TracksHardware, TracksSimulation
 
 __all__ = [
@@ -27,5 +34,6 @@ __all__ = [
     'TeltonikaRouter',
     'TracksHardware',
     'TracksSimulation',
+    'WifiClientNetwork',
     'WifiInfo',
 ]
