@@ -176,7 +176,8 @@ def teltonika_ui(router: TeltonikaRouter) -> None:
     expansions: dict[str, ui.expansion] = {}
     with ui.column().classes('w-full gap-1'):
         ui.label('Teltonika Router').classes('text-center text-bold')
-        with ui.row().classes('gap-1 items-center'):
+        with ui.row().classes('w-full gap-1 pb-5'):
+            ui.label('Status:').props('align-left')
             teltonika_status_widget(router)
             ui.space()
             ui.button('Check Internet', on_click=handle_ping).props('dense size=sm')
