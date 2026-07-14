@@ -24,7 +24,7 @@ class HeaderBar:
     def content(self) -> None:
         ui.colors(primary='#6E93D6', secondary='#53B689', accent='#111B1E', positive='#53B689')
         if self.robot_id:
-            ui.page_title(f'{self.robot_id} · Feldfreund')
+            ui.page_title(f'Feldfreund {self.robot_id}')
         with ui.header().classes('items-center py-3'):
             with ui.link(target='/'):
                 ui.image('assets/zz_logo.png').classes('w-12')
