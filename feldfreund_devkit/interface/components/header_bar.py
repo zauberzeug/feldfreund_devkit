@@ -9,11 +9,13 @@ class HeaderBar:
     """Navigation header with logo, page links, and status indicators."""
 
     def __init__(self, pages: dict[str, str] | None = None, *,
+                 robot_id: str | None = None,
                  estop: EStop | None = None,
                  bms: Bms | None = None,
                  bms_url: str | None = None,
                  teltonika_router: TeltonikaRouter | None = None):
         self._pages = pages or {}
+        self.robot_id = robot_id.upper() if robot_id else None
         self.estop = estop
         self.bms = bms
         self.bms_url = bms_url
@@ -21,10 +23,13 @@ class HeaderBar:
 
     def content(self) -> None:
         ui.colors(primary='#6E93D6', secondary='#53B689', accent='#111B1E', positive='#53B689')
+        if self.robot_id:
+            ui.page_title(f'{self.robot_id} · Feldfreund')
         with ui.header().classes('items-center py-3'):
             with ui.link(target='/'):
                 ui.image('assets/zz_logo.png').classes('w-12')
-            ui.link('FELDFREUND', '/').classes('text-2xl text-white !no-underline mr-auto')
+            title = f'FELDFREUND {self.robot_id}' if self.robot_id else 'FELDFREUND'
+            ui.link(title, '/').classes('text-2xl text-white !no-underline mr-auto')
             with ui.row().classes('items-right pr-4'):
                 if self.estop:
                     self.estop_status(self.estop)
