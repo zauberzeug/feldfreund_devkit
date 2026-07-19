@@ -18,6 +18,8 @@ def extract_events(filepath: str) -> dict[str, str]:
     for i, line in enumerate(lines):
         if re.search(r'= Event(\[.*?\])?\(\)$', line):
             event_name_ = line.strip().split()[0].removeprefix('self.').rstrip(':')
+            if i + 1 >= len(lines) or '"""' not in lines[i + 1]:
+                continue
             event_doc_ = lines[i + 1].split('"""')[1]
             events_[event_name_] = event_doc_
     return events_
