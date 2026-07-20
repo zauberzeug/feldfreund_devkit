@@ -106,7 +106,8 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         robot_brain = RobotBrain(communication,
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
                                  use_espresso=True,
-                                 heartbeat_interval=config.robot_brain.heartbeat_interval)
+                                 heartbeat_interval=config.robot_brain.heartbeat_interval,
+                                 supported_lizard_versions=config.robot_brain.supported_lizard_versions)
         robot_brain.lizard_firmware.flash_params += config.robot_brain.flash_params
         self.bluetooth = BluetoothHardware(robot_brain, name=config.bluetooth.name, pin_code=config.bluetooth.pin_code)
         serial = SerialHardware(robot_brain)
