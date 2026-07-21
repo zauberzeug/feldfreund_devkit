@@ -7,7 +7,7 @@ readme = "README.md"
 requires-python = ">=3.11, <3.14"
 dependencies = [
     "nicegui (>= 3.13.0, <4.0.0)",
-    "rosys @ git+https://github.com/zauberzeug/rosys.git@02512c542e81ca99e75e9093acbc42e5870205a3",
+    "rosys @ git+https://github.com/zauberzeug/rosys.git@957d7644810c75b5a9da23f1c85cfa665c5ed195",
     "httpx >=0.25.0",
     "coloredlogs",
     "httpcore",
@@ -81,6 +81,11 @@ module = [
     "odrive.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# analysing mcap's sources trips mypy's fatal "source file found twice" (pulled in via rosys)
+module = ["mcap.*"]
+follow_imports = "skip"
 
 [tool.pylint]
 disable = [

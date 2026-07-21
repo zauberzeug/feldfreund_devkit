@@ -16,12 +16,17 @@ class RobotBrainConfiguration:
         nand: False
         swap_pins: False
         heartbeat_interval: 0.5
+        supported_lizard_versions: None
+
+    ``supported_lizard_versions`` is a PEP 440 version specifier like ``'<0.14.0'`` restricting which
+    Lizard versions can be downloaded and flashed. ``None`` allows all versions.
     """
     name: str
     enable_esp_on_startup: bool = False
     nand: bool = False
     swap_pins: bool = False
     heartbeat_interval: float = 0.5
+    supported_lizard_versions: str | None = None
 
     @property
     def flash_params(self) -> list[str]:
