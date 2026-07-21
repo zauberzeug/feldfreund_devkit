@@ -82,6 +82,11 @@ module = [
 ]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+# analysing mcap's sources trips mypy's fatal "source file found twice" (pulled in via rosys)
+module = ["mcap.*"]
+follow_imports = "skip"
+
 [tool.pylint]
 disable = [
     "C0103", # Invalid name (e.g., variable/function/class naming conventions)
