@@ -82,6 +82,9 @@ class TeltonikaRouter:
         self._device_info: DeviceInfo | None = None
         self._wifi_info: WifiInfo | None = None
         self._wifi_client_networks: list[WifiClientNetwork] = []
+        # The router forces https but presents a device certificate from an internal CA (chain not
+        # served, SAN is 192.168.1.1) that cannot be verified normally, so skip verification for
+        # this router-only client on the robot's private 192.168.42.x subnet — not globally.
         self._client = httpx.AsyncClient(headers={'Content-Type': 'application/json'}, timeout=20.0,
                                          follow_redirects=True, verify=False)
         self._auth_token: str = ''
