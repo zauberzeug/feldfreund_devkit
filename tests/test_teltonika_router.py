@@ -1,6 +1,7 @@
 import json
 
 import httpx
+import pytest
 import rosys
 
 from feldfreund_devkit.hardware.teltonika_router import ConnectionStatus, TeltonikaRouter
@@ -150,12 +151,21 @@ def test_parse_falls_back_to_disabled_field():
     assert TeltonikaRouter._parse_wifi_client({'id': 'x', 'ssid': 'A', 'disabled': '1'}).enabled is False
 
 
-def _router_with_failover(interfaces: dict) -> TeltonikaRouter:
+def _router_with_failover(interfaces: dict, monkeypatch: pytest.MonkeyPatch) -> TeltonikaRouter:
     """Create a router whose ``failover/status`` endpoint returns ``interfaces``, with a preset token.
 
+    Neutralizes the rosys lifecycle hooks so that constructing the router does not schedule
+    background polling or fire startup polls against the real HTTP client (startup has already
+    finished inside the ``rosys_integration`` fixture, so ``on_startup`` would run immediately).
+
     :param interfaces: the raw mwan3 failover interfaces, keyed by name.
+    :param monkeypatch: neutralizes the rosys lifecycle registration during construction.
     :return: the ready-to-use router.
     """
+    monkeypatch.setattr(rosys, 'on_repeat', lambda *args, **kwargs: None)
+    monkeypatch.setattr(rosys, 'on_startup', lambda *args, **kwargs: None)
+    monkeypatch.setattr(rosys, 'on_shutdown', lambda *args, **kwargs: None)
+
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == '/api/failover/status':
             return httpx.Response(200, json={'data': interfaces})
@@ -169,32 +179,42 @@ def _router_with_failover(interfaces: dict) -> TeltonikaRouter:
     return router
 
 
-async def test_connection_online_wifi_is_connected(rosys_integration):
+async def test_connection_online_wifi_is_connected(rosys_integration, monkeypatch):
     """An online WiFi-WAN interface is reported as the wifi connection."""
     router = _router_with_failover({
         'wan': {'up': False, 'status': 'disabled'},
         'mob1s1a1': {'up': False, 'status': 'disabled'},
         'ifWan1': {'up': True, 'status': 'online'},
-    })
+    }, monkeypatch)
     await router._check_connection()  # pylint: disable=protected-access
     assert router.connection_status is ConnectionStatus.WIFI
 
 
-async def test_connection_online_ethernet_is_connected(rosys_integration):
+async def test_connection_online_ethernet_is_connected(rosys_integration, monkeypatch):
     """An online ethernet interface is reported as the ether connection."""
     router = _router_with_failover({
         'wan': {'up': True, 'status': 'online'},
         'ifWan1': {'up': False, 'status': 'offline'},
-    })
+    }, monkeypatch)
     await router._check_connection()  # pylint: disable=protected-access
     assert router.connection_status is ConnectionStatus.ETHER
 
 
-async def test_connection_offline_and_disabled_is_disconnected(rosys_integration):
+async def test_connection_prefers_ethernet_over_simultaneous_wifi(rosys_integration, monkeypatch):
+    """With both a WiFi and the wired uplink online, the wired connection wins regardless of order."""
+    router = _router_with_failover({
+        'ifWan1': {'up': True, 'status': 'online'},
+        'wan': {'up': True, 'status': 'online'},
+    }, monkeypatch)
+    await router._check_connection()  # pylint: disable=protected-access
+    assert router.connection_status is ConnectionStatus.ETHER
+
+
+async def test_connection_offline_and_disabled_is_disconnected(rosys_integration, monkeypatch):
     """A linked-but-offline interface (no internet) is not counted as connected."""
     router = _router_with_failover({
         'wan': {'up': False, 'status': 'disabled'},
         'ifWan1': {'up': True, 'status': 'offline'},
-    })
+    }, monkeypatch)
     await router._check_connection()  # pylint: disable=protected-access
     assert router.connection_status is ConnectionStatus.DISCONNECTED
