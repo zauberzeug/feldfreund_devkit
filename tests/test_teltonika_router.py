@@ -3,7 +3,7 @@ import json
 import httpx
 import rosys
 
-from feldfreund_devkit.hardware.teltonika_router import TeltonikaRouter
+from feldfreund_devkit.hardware.teltonika_router import ConnectionStatus, TeltonikaRouter
 
 BASE_PATH = '/api/wireless/multi_ap/config'
 
@@ -148,3 +148,53 @@ def test_parse_falls_back_to_disabled_field():
     # pylint: disable=protected-access
     assert TeltonikaRouter._parse_wifi_client({'id': 'x', 'ssid': 'A', 'disabled': '0'}).enabled is True
     assert TeltonikaRouter._parse_wifi_client({'id': 'x', 'ssid': 'A', 'disabled': '1'}).enabled is False
+
+
+def _router_with_failover(interfaces: dict) -> TeltonikaRouter:
+    """Create a router whose ``failover/status`` endpoint returns ``interfaces``, with a preset token.
+
+    :param interfaces: the raw mwan3 failover interfaces, keyed by name.
+    :return: the ready-to-use router.
+    """
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == '/api/failover/status':
+            return httpx.Response(200, json={'data': interfaces})
+        return httpx.Response(404, json={'error': 'not found'})
+    router = TeltonikaRouter('http://router/api', 'password')
+    # pylint: disable=protected-access
+    router._client = httpx.AsyncClient(transport=httpx.MockTransport(handler),
+                                       headers={'Content-Type': 'application/json'})
+    router._auth_token = 'test-token'
+    router._token_time = rosys.time()
+    return router
+
+
+async def test_connection_wifi_up_but_untracked_is_connected(rosys_integration):
+    """An up WiFi-WAN interface reporting mwan3 'notracking' (no track IPs) counts as connected."""
+    router = _router_with_failover({
+        'wan': {'up': False, 'status': 'disabled'},
+        'mob1s1a1': {'up': False, 'status': 'disabled'},
+        'ifWan1': {'up': True, 'status': 'notracking'},
+    })
+    await router._check_connection()  # pylint: disable=protected-access
+    assert router.connection_status is ConnectionStatus.WIFI
+
+
+async def test_connection_online_ethernet_wins(rosys_integration):
+    """A tracked ethernet interface reporting 'online' is reported as the ether connection."""
+    router = _router_with_failover({
+        'wan': {'up': True, 'status': 'online'},
+        'ifWan1': {'up': True, 'status': 'notracking'},
+    })
+    await router._check_connection()  # pylint: disable=protected-access
+    assert router.connection_status is ConnectionStatus.ETHER
+
+
+async def test_connection_offline_and_disabled_is_disconnected(rosys_integration):
+    """A linked-but-offline interface (tracking says no internet) is not counted as connected."""
+    router = _router_with_failover({
+        'wan': {'up': False, 'status': 'disabled'},
+        'ifWan1': {'up': True, 'status': 'offline'},
+    })
+    await router._check_connection()  # pylint: disable=protected-access
+    assert router.connection_status is ConnectionStatus.DISCONNECTED

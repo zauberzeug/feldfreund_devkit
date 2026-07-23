@@ -82,7 +82,8 @@ class TeltonikaRouter:
         self._device_info: DeviceInfo | None = None
         self._wifi_info: WifiInfo | None = None
         self._wifi_client_networks: list[WifiClientNetwork] = []
-        self._client = httpx.AsyncClient(headers={'Content-Type': 'application/json'}, timeout=20.0)
+        self._client = httpx.AsyncClient(headers={'Content-Type': 'application/json'}, timeout=20.0,
+                                         follow_redirects=True, verify=False)
         self._auth_token: str = ''
         self._token_time: float = 0.0
         self._token_lock = asyncio.Lock()
@@ -97,6 +98,8 @@ class TeltonikaRouter:
 
         rosys.on_repeat(self._check_connection, 5.0)
         rosys.on_repeat(self._poll_info, 30.0)
+        rosys.on_startup(self._check_connection)
+        rosys.on_startup(self._poll_info)
         rosys.on_startup(self._poll_device_info)
         rosys.on_startup(self.refresh_wifi_client_networks)
         rosys.on_shutdown(self._client.aclose)
@@ -333,11 +336,11 @@ class TeltonikaRouter:
             return
         self._connection_failures = 0
         self.log.debug('Raw failover/status response: %s', data)
-        up_connection = 'disconnected'
-        for key, value in data.items():
-            if value.get('status') == 'online':
-                up_connection = key
-                break
+        up_connection = next(
+            (key for key, value in data.items()
+             if value.get('status') == 'online'
+             or (value.get('status') == 'notracking' and value.get('up'))),
+            'disconnected')
         previous = self._connection_status
         if up_connection == self.FAILOVER_KEY_ETHER:
             self._connection_status = ConnectionStatus.ETHER
