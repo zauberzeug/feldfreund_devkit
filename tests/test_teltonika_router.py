@@ -151,7 +151,7 @@ def test_parse_falls_back_to_disabled_field():
     assert TeltonikaRouter._parse_wifi_client({'id': 'x', 'ssid': 'A', 'disabled': '1'}).enabled is False
 
 
-def _router_with_failover(interfaces: dict, monkeypatch: pytest.MonkeyPatch) -> TeltonikaRouter:
+async def _router_with_failover(interfaces: dict, monkeypatch: pytest.MonkeyPatch) -> TeltonikaRouter:
     """Create a router whose ``failover/status`` endpoint returns ``interfaces``, with a preset token.
 
     Neutralizes the rosys lifecycle hooks so that constructing the router does not schedule
@@ -172,6 +172,7 @@ def _router_with_failover(interfaces: dict, monkeypatch: pytest.MonkeyPatch) -> 
         return httpx.Response(404, json={'error': 'not found'})
     router = TeltonikaRouter('http://router/api', 'password')
     # pylint: disable=protected-access
+    await router._client.aclose()  # discard the real client from __init__ before swapping in the mock
     router._client = httpx.AsyncClient(transport=httpx.MockTransport(handler),
                                        headers={'Content-Type': 'application/json'})
     router._auth_token = 'test-token'
@@ -181,7 +182,7 @@ def _router_with_failover(interfaces: dict, monkeypatch: pytest.MonkeyPatch) -> 
 
 async def test_connection_online_wifi_is_connected(rosys_integration, monkeypatch):
     """An online WiFi-WAN interface is reported as the wifi connection."""
-    router = _router_with_failover({
+    router = await _router_with_failover({
         'wan': {'up': False, 'status': 'disabled'},
         'mob1s1a1': {'up': False, 'status': 'disabled'},
         'ifWan1': {'up': True, 'status': 'online'},
@@ -192,7 +193,7 @@ async def test_connection_online_wifi_is_connected(rosys_integration, monkeypatc
 
 async def test_connection_online_ethernet_is_connected(rosys_integration, monkeypatch):
     """An online ethernet interface is reported as the ether connection."""
-    router = _router_with_failover({
+    router = await _router_with_failover({
         'wan': {'up': True, 'status': 'online'},
         'ifWan1': {'up': False, 'status': 'offline'},
     }, monkeypatch)
@@ -200,9 +201,20 @@ async def test_connection_online_ethernet_is_connected(rosys_integration, monkey
     assert router.connection_status is ConnectionStatus.ETHER
 
 
+async def test_connection_online_mobile_is_connected(rosys_integration, monkeypatch):
+    """An online cellular interface is reported as the mobile connection."""
+    router = await _router_with_failover({
+        'wan': {'up': False, 'status': 'disabled'},
+        'ifWan1': {'up': False, 'status': 'disabled'},
+        'mob1s1a1': {'up': True, 'status': 'online'},
+    }, monkeypatch)
+    await router._check_connection()  # pylint: disable=protected-access
+    assert router.connection_status is ConnectionStatus.MOBILE
+
+
 async def test_connection_prefers_ethernet_over_simultaneous_wifi(rosys_integration, monkeypatch):
     """With both a WiFi and the wired uplink online, the wired connection wins regardless of order."""
-    router = _router_with_failover({
+    router = await _router_with_failover({
         'ifWan1': {'up': True, 'status': 'online'},
         'wan': {'up': True, 'status': 'online'},
     }, monkeypatch)
@@ -210,9 +222,19 @@ async def test_connection_prefers_ethernet_over_simultaneous_wifi(rosys_integrat
     assert router.connection_status is ConnectionStatus.ETHER
 
 
+async def test_connection_prefers_wifi_over_simultaneous_mobile(rosys_integration, monkeypatch):
+    """With both a WiFi and a cellular uplink online, WiFi wins over cellular regardless of order."""
+    router = await _router_with_failover({
+        'mob1s1a1': {'up': True, 'status': 'online'},
+        'ifWan1': {'up': True, 'status': 'online'},
+    }, monkeypatch)
+    await router._check_connection()  # pylint: disable=protected-access
+    assert router.connection_status is ConnectionStatus.WIFI
+
+
 async def test_connection_offline_and_disabled_is_disconnected(rosys_integration, monkeypatch):
     """A linked-but-offline interface (no internet) is not counted as connected."""
-    router = _router_with_failover({
+    router = await _router_with_failover({
         'wan': {'up': False, 'status': 'disabled'},
         'ifWan1': {'up': True, 'status': 'offline'},
     }, monkeypatch)

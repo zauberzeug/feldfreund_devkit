@@ -320,6 +320,7 @@ class TeltonikaRouter:
                     self._auth_token = ''
                     self._token_time = 0.0
                 return None
+            self._reject_redirect(response)
             response.raise_for_status()
             return response
         except httpx.HTTPStatusError as e:
@@ -328,6 +329,15 @@ class TeltonikaRouter:
         except httpx.HTTPError as e:
             self.log.warning('%s /%s failed: %s', method, endpoint, e or type(e).__name__)
             return None
+
+    @staticmethod
+    def _reject_redirect(response: httpx.Response) -> None:
+        """Reject an unfollowed redirect: we talk HTTPS to the router directly, so a 3xx is unexpected
+        and would otherwise slip through ``raise_for_status`` (which ignores 3xx) as a bodyless success.
+        """
+        if 300 <= response.status_code < 400:
+            raise httpx.HTTPStatusError(f'unexpected redirect to {response.headers.get("location")!r}',
+                                        request=response.request, response=response)
 
     async def _check_connection(self) -> None:
         data = await self._get('failover/status')
@@ -341,9 +351,10 @@ class TeltonikaRouter:
             return
         self._connection_failures = 0
         self.log.debug('Raw failover/status response: %s', data)
-        online = {self._classify_interface(key)
+        online = {status
                   for key, value in data.items()
-                  if isinstance(value, dict) and value.get('status') == 'online'}
+                  if isinstance(value, dict) and value.get('status') == 'online'
+                  if (status := self._classify_interface(key)) is not None}
         previous = self._connection_status
         self._connection_status = next((status for status in self.CONNECTION_PRIORITY if status in online),
                                        ConnectionStatus.DISCONNECTED)
@@ -368,6 +379,7 @@ class TeltonikaRouter:
                 f'{self._url}/login',
                 json={'username': 'admin', 'password': self._admin_password},
             )
+            self._reject_redirect(response)
             response.raise_for_status()
         except httpx.HTTPError:
             self.log.exception('Authentication request failed')
