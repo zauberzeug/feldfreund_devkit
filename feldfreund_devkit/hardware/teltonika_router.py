@@ -353,13 +353,24 @@ class TeltonikaRouter:
         self.log.debug('Raw failover/status response: %s', data)
         online = {status
                   for key, value in data.items()
-                  if isinstance(value, dict) and value.get('status') == 'online'
+                  if isinstance(value, dict) and self._is_uplink_up(value)
                   if (status := self._classify_interface(key)) is not None}
         previous = self._connection_status
         self._connection_status = next((status for status in self.CONNECTION_PRIORITY if status in online),
                                        ConnectionStatus.DISCONNECTED)
         if previous != self._connection_status:
             self.CONNECTION_CHANGED.emit(self._connection_status)
+
+    @staticmethod
+    def _is_uplink_up(interface: dict) -> bool:
+        """Whether an mwan3 failover interface currently provides a live uplink.
+
+        Besides the tracked ``online`` state, an interface counts as up when it is ``notracking`` but
+        physically up: our WiFi-WAN has no track IPs configured, so the router never promotes it to
+        ``online`` even while it carries traffic.
+        """
+        status = interface.get('status')
+        return status == 'online' or (status == 'notracking' and bool(interface.get('up')))
 
     @classmethod
     def _classify_interface(cls, key: str) -> ConnectionStatus | None:
