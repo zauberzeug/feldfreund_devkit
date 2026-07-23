@@ -169,29 +169,29 @@ def _router_with_failover(interfaces: dict) -> TeltonikaRouter:
     return router
 
 
-async def test_connection_wifi_up_but_untracked_is_connected(rosys_integration):
-    """An up WiFi-WAN interface reporting mwan3 'notracking' (no track IPs) counts as connected."""
+async def test_connection_online_wifi_is_connected(rosys_integration):
+    """An online WiFi-WAN interface is reported as the wifi connection."""
     router = _router_with_failover({
         'wan': {'up': False, 'status': 'disabled'},
         'mob1s1a1': {'up': False, 'status': 'disabled'},
-        'ifWan1': {'up': True, 'status': 'notracking'},
+        'ifWan1': {'up': True, 'status': 'online'},
     })
     await router._check_connection()  # pylint: disable=protected-access
     assert router.connection_status is ConnectionStatus.WIFI
 
 
-async def test_connection_online_ethernet_wins(rosys_integration):
-    """A tracked ethernet interface reporting 'online' is reported as the ether connection."""
+async def test_connection_online_ethernet_is_connected(rosys_integration):
+    """An online ethernet interface is reported as the ether connection."""
     router = _router_with_failover({
         'wan': {'up': True, 'status': 'online'},
-        'ifWan1': {'up': True, 'status': 'notracking'},
+        'ifWan1': {'up': False, 'status': 'offline'},
     })
     await router._check_connection()  # pylint: disable=protected-access
     assert router.connection_status is ConnectionStatus.ETHER
 
 
 async def test_connection_offline_and_disabled_is_disconnected(rosys_integration):
-    """A linked-but-offline interface (tracking says no internet) is not counted as connected."""
+    """A linked-but-offline interface (no internet) is not counted as connected."""
     router = _router_with_failover({
         'wan': {'up': False, 'status': 'disabled'},
         'ifWan1': {'up': True, 'status': 'offline'},
