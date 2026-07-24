@@ -681,7 +681,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "nicegui", specifier = ">=3.13.0,<4.0.0" },
     { name = "psutil" },
-    { name = "rosys", git = "https://github.com/zauberzeug/rosys.git?rev=36b01c185e8efed735d5d5ed663bfdddc3a017f7" },
+    { name = "rosys", git = "https://github.com/zauberzeug/rosys.git?rev=34264a4b79f9e848cafb099977b6a137394c4dc3" },
 ]
 
 [package.metadata.requires-dev]
@@ -2840,8 +2840,8 @@ wheels = [
 
 [[package]]
 name = "rosys"
-version = "0.34.0.post14.dev0+36b01c18"
-source = { git = "https://github.com/zauberzeug/rosys.git?rev=36b01c185e8efed735d5d5ed663bfdddc3a017f7#36b01c185e8efed735d5d5ed663bfdddc3a017f7" }
+version = "0.34.0.post16.dev0+34264a4b"
+source = { git = "https://github.com/zauberzeug/rosys.git?rev=34264a4b79f9e848cafb099977b6a137394c4dc3#34264a4b79f9e848cafb099977b6a137394c4dc3" }
 dependencies = [
     { name = "aiohttp" },
     { name = "cairosvg" },
