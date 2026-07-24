@@ -33,7 +33,7 @@ class System(rosys.persistence.Persistable):
         self.teltonika_router: TeltonikaRouter | None = None
         self.feldfreund = self._setup_feldfreund(use_acceleration=use_acceleration)
         if not rosys.is_simulation():
-            self.teltonika_router = TeltonikaRouter('http://192.168.42.1/api', self.secrets.TELTONIKA_PASSWORD)
+            self.teltonika_router = TeltonikaRouter('https://192.168.42.1/api', self.secrets.TELTONIKA_PASSWORD)
             rosys.on_repeat(self.log_status, 60 * 5)
         self.odometer = Odometer(self.feldfreund.wheels)
         self.camera_provider = self._create_camera_provider()

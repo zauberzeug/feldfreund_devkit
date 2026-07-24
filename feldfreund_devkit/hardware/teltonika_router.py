@@ -67,6 +67,9 @@ class TeltonikaRouter:
     FAILOVER_KEY_ETHER = 'wan'
     FAILOVER_KEY_WIFI_PREFIXES = frozenset(('ifWan', 'wifi'))
     FAILOVER_KEYS_MOBILE = frozenset(('mob1s1a1', 'mob1s2a1'))
+    # Preference order when several interfaces report a live uplink at once (mwan3 lists them
+    # unordered, so we must not just take the first): a wired uplink beats WiFi, WiFi beats cellular.
+    CONNECTION_PRIORITY = (ConnectionStatus.ETHER, ConnectionStatus.WIFI, ConnectionStatus.MOBILE)
     INTERNET_CHECK_HOSTS = frozenset(('8.8.8.8', '1.1.1.1'))
     DNS_CHECK_HOSTNAMES = frozenset(('www.google.de', 'zauberzeug.com'))
     MULTI_AP_ENDPOINT = 'wireless/multi_ap/config'  # the MultiAP candidate AP list (one section per SSID)
@@ -82,7 +85,11 @@ class TeltonikaRouter:
         self._device_info: DeviceInfo | None = None
         self._wifi_info: WifiInfo | None = None
         self._wifi_client_networks: list[WifiClientNetwork] = []
-        self._client = httpx.AsyncClient(headers={'Content-Type': 'application/json'}, timeout=20.0)
+        # The router serves a device certificate from an internal CA (chain not served, SAN is
+        # 192.168.1.1) that cannot be verified normally, so skip verification for this router-only
+        # client on the robot's private 192.168.42.x subnet — not globally.
+        self._client = httpx.AsyncClient(headers={'Content-Type': 'application/json'}, timeout=20.0,
+                                         verify=False)
         self._auth_token: str = ''
         self._token_time: float = 0.0
         self._token_lock = asyncio.Lock()
@@ -97,7 +104,8 @@ class TeltonikaRouter:
 
         rosys.on_repeat(self._check_connection, 5.0)
         rosys.on_repeat(self._poll_info, 30.0)
-        rosys.on_startup(self._poll_device_info)
+        rosys.on_startup(self._check_connection)
+        rosys.on_startup(self._poll_info)
         rosys.on_startup(self.refresh_wifi_client_networks)
         rosys.on_shutdown(self._client.aclose)
 
@@ -312,6 +320,7 @@ class TeltonikaRouter:
                     self._auth_token = ''
                     self._token_time = 0.0
                 return None
+            self._reject_redirect(response)
             response.raise_for_status()
             return response
         except httpx.HTTPStatusError as e:
@@ -320,6 +329,15 @@ class TeltonikaRouter:
         except httpx.HTTPError as e:
             self.log.warning('%s /%s failed: %s', method, endpoint, e or type(e).__name__)
             return None
+
+    @staticmethod
+    def _reject_redirect(response: httpx.Response) -> None:
+        """Reject an unfollowed redirect: we talk HTTPS to the router directly, so a 3xx is unexpected
+        and would otherwise slip through ``raise_for_status`` (which ignores 3xx) as a bodyless success.
+        """
+        if 300 <= response.status_code < 400:
+            raise httpx.HTTPStatusError(f'unexpected redirect to {response.headers.get("location")!r}',
+                                        request=response.request, response=response)
 
     async def _check_connection(self) -> None:
         data = await self._get('failover/status')
@@ -333,22 +351,26 @@ class TeltonikaRouter:
             return
         self._connection_failures = 0
         self.log.debug('Raw failover/status response: %s', data)
-        up_connection = 'disconnected'
-        for key, value in data.items():
-            if value.get('status') == 'online':
-                up_connection = key
-                break
+        online = {status
+                  for key, value in data.items()
+                  if isinstance(value, dict) and value.get('status') == 'online'
+                  if (status := self._classify_interface(key)) is not None}
         previous = self._connection_status
-        if up_connection == self.FAILOVER_KEY_ETHER:
-            self._connection_status = ConnectionStatus.ETHER
-        elif any(prefix in up_connection for prefix in self.FAILOVER_KEY_WIFI_PREFIXES):
-            self._connection_status = ConnectionStatus.WIFI
-        elif up_connection in self.FAILOVER_KEYS_MOBILE:
-            self._connection_status = ConnectionStatus.MOBILE
-        else:
-            self._connection_status = ConnectionStatus.DISCONNECTED
+        self._connection_status = next((status for status in self.CONNECTION_PRIORITY if status in online),
+                                       ConnectionStatus.DISCONNECTED)
         if previous != self._connection_status:
             self.CONNECTION_CHANGED.emit(self._connection_status)
+
+    @classmethod
+    def _classify_interface(cls, key: str) -> ConnectionStatus | None:
+        """Map an mwan3 failover interface key to its connection type (``None`` if unknown)."""
+        if key == cls.FAILOVER_KEY_ETHER:
+            return ConnectionStatus.ETHER
+        if any(prefix in key for prefix in cls.FAILOVER_KEY_WIFI_PREFIXES):
+            return ConnectionStatus.WIFI
+        if key in cls.FAILOVER_KEYS_MOBILE:
+            return ConnectionStatus.MOBILE
+        return None
 
     async def _get_token(self) -> None:
         self.log.debug('Requesting authentication token...')
@@ -357,6 +379,7 @@ class TeltonikaRouter:
                 f'{self._url}/login',
                 json={'username': 'admin', 'password': self._admin_password},
             )
+            self._reject_redirect(response)
             response.raise_for_status()
         except httpx.HTTPError:
             self.log.exception('Authentication request failed')
