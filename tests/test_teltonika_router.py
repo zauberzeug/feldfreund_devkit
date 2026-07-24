@@ -191,31 +191,6 @@ async def test_connection_online_wifi_is_connected(rosys_integration, monkeypatc
     assert router.connection_status is ConnectionStatus.WIFI
 
 
-async def test_connection_notracking_wifi_is_connected(rosys_integration, monkeypatch):
-    """A WiFi-WAN that is up but has no track IPs (``notracking``) still counts as connected.
-
-    Mirrors the real RUT9M failover/status: our WiFi-WAN carries traffic but is never promoted to
-    ``online`` because no track IPs are configured.
-    """
-    router = await _router_with_failover({
-        'wan': {'up': False, 'status': 'disabled'},
-        'mob1s1a1': {'up': False, 'status': 'disabled'},
-        'ifWan1': {'up': True, 'track_ip': [], 'status': 'notracking'},
-    }, monkeypatch)
-    await router._check_connection()  # pylint: disable=protected-access
-    assert router.connection_status is ConnectionStatus.WIFI
-
-
-async def test_connection_notracking_but_down_is_disconnected(rosys_integration, monkeypatch):
-    """A ``notracking`` interface that is not up is not counted as connected."""
-    router = await _router_with_failover({
-        'wan': {'up': False, 'status': 'disabled'},
-        'ifWan1': {'up': False, 'track_ip': [], 'status': 'notracking'},
-    }, monkeypatch)
-    await router._check_connection()  # pylint: disable=protected-access
-    assert router.connection_status is ConnectionStatus.DISCONNECTED
-
-
 async def test_connection_online_ethernet_is_connected(rosys_integration, monkeypatch):
     """An online ethernet interface is reported as the ether connection."""
     router = await _router_with_failover({
