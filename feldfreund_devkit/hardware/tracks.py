@@ -131,24 +131,20 @@ class ODriveTracksHardware(TracksHardware):
                 rosys.notify('Motor Error', 'negative')
 
     def developer_ui(self) -> None:
-        @ui.refreshable
-        def _ui() -> None:
-            ui.label('ODrive Tracks').classes('text-center text-bold')
-            if self.config.odrive_version == self.ERROR_FLAG_VERSION:
-                with ui.grid(columns=2).classes('gap-0'):
-                    ui.label(f'L0: {"Error" if self._l0_error else "No error"}')
-                    ui.label(f'L1: {"Error" if self._l1_error else "No error"}')
-                    ui.label(f'R0: {"Error" if self._r0_error else "No error"}')
-                    ui.label(f'R1: {"Error" if self._r1_error else "No error"}')
-                ui.button('Reset motor errors', on_click=self.reset_motors).set_enabled(self.motor_error)
-            if self.config.has_temperature_sensor:
-                with ui.grid(columns=2).classes('gap-0'):
-                    ui.label(f'L0: {self._l0_temperature:.1f}°C')
-                    ui.label(f'L1: {self._l1_temperature:.1f}°C')
-                    ui.label(f'R0: {self._r0_temperature:.1f}°C')
-                    ui.label(f'R1: {self._r1_temperature:.1f}°C')
-        _ui()
-        ui.timer(rosys.config.ui_update_interval, _ui.refresh)
+        ui.label('ODrive Tracks').classes('text-center text-bold')
+        if self.config.odrive_version == self.ERROR_FLAG_VERSION:
+            with ui.grid(columns=2).classes('gap-0'):
+                ui.label().bind_text_from(self, '_l0_error', lambda error: f'L0: {"Error" if error else "No error"}')
+                ui.label().bind_text_from(self, '_l1_error', lambda error: f'L1: {"Error" if error else "No error"}')
+                ui.label().bind_text_from(self, '_r0_error', lambda error: f'R0: {"Error" if error else "No error"}')
+                ui.label().bind_text_from(self, '_r1_error', lambda error: f'R1: {"Error" if error else "No error"}')
+            ui.button('Reset motor errors', on_click=self.reset_motors).bind_enabled_from(self, 'motor_error')
+        if self.config.has_temperature_sensor:
+            with ui.grid(columns=2).classes('gap-0'):
+                ui.label().bind_text_from(self, '_l0_temperature', lambda temperature: f'L0: {temperature:.1f}°C')
+                ui.label().bind_text_from(self, '_l1_temperature', lambda temperature: f'L1: {temperature:.1f}°C')
+                ui.label().bind_text_from(self, '_r0_temperature', lambda temperature: f'R0: {temperature:.1f}°C')
+                ui.label().bind_text_from(self, '_r1_temperature', lambda temperature: f'R1: {temperature:.1f}°C')
 
 
 class TracksSimulation(WheelsSimulation):  # pylint: disable=too-many-ancestors
