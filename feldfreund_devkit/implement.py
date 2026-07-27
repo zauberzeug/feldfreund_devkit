@@ -3,7 +3,7 @@ from typing import Any
 
 import rosys
 from rosys.analysis import track
-from rosys.geometry import Frame3d, Point, Pose3d
+from rosys.geometry import Point, Pose3d
 
 from .config import ImplementConfiguration
 
@@ -18,15 +18,10 @@ class Implement(rosys.persistence.Persistable):
     def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
         self._config = config
-        self._frame = self._config.offset.as_frame('implement')
 
     @property
     def name(self) -> str:
         return self._config.display_name
-
-    @property
-    def frame(self) -> Frame3d:
-        return self._frame
 
     @property
     def offset(self) -> Pose3d:
