@@ -3,7 +3,13 @@ from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvide
 from .recorded_track_navigation import RecordedTrackNavigation
 from .straight_line_navigation import StraightLineNavigation
 from .track_recording_controller import TrackRecordingController
-from .utils import generate_three_point_turn, is_reference_valid, skip_completed_segments, sub_spline
+from .utils import (
+    generate_three_point_turn,
+    is_reference_valid,
+    pose_with_tool_at,
+    skip_completed_segments,
+    sub_spline,
+)
 from .waypoint_navigation import WaypointNavigation
 
 __all__ = [
@@ -18,6 +24,7 @@ __all__ = [
     'WaypointNavigation',
     'generate_three_point_turn',
     'is_reference_valid',
+    'pose_with_tool_at',
     'skip_completed_segments',
     'sub_spline'
 ]

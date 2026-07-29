@@ -1,4 +1,5 @@
 import logging
+import math
 
 import numpy as np
 from rosys.geometry import GeoReference, Point, Pose, Spline
@@ -110,3 +111,41 @@ def skip_completed_segments(start_pose: Pose,
     log.debug('skip_completed_segments: no segment matched from %s among %d candidates',
               start_pose, len(path_segments))
     return []
+
+
+def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
+                      t_min: float = -0.2, t_max: float = 1.2, iterations: int = 25) -> Pose:
+    """The pose on ``spline`` from which a tool ``tool_offset_x`` ahead sits on ``target``.
+
+    Solves ``spline.pose(t).relative_point(target).x == tool_offset_x`` -- the target is exactly a
+    tool's length ahead in the robot's own frame. Exact on curves, unlike projecting the target
+    onto the path and stepping back along it, which ignores that a laterally offset target is
+    reached at a different arc position. The forward distance decreases monotonically along the
+    spline, so a bisection converges; the result is clamped to ``[t_min, t_max]`` when the target
+    lies beyond either end.
+
+    :param spline: the path being driven
+    :param target: the world point the tool should end up on
+    :param tool_offset_x: how far ahead of the robot origin the tool sits
+    :return: the pose the robot origin must reach
+    """
+    def forward_distance(t: float) -> float:
+        """How far ahead of ``spline.pose(t)`` the target lies, in that pose's own frame."""
+        gx, gy = spline.gx(t), spline.gy(t)
+        length = math.hypot(gx, gy)
+        if length == 0.0:
+            return 0.0
+        return ((target.x - spline.x(t)) * gx + (target.y - spline.y(t)) * gy) / length
+
+    if forward_distance(t_min) <= tool_offset_x:
+        return spline.pose(t_min)
+    if forward_distance(t_max) >= tool_offset_x:
+        return spline.pose(t_max)
+    low, high = t_min, t_max
+    for _ in range(iterations):
+        middle = (low + high) / 2
+        if forward_distance(middle) > tool_offset_x:
+            low = middle
+        else:
+            high = middle
+    return spline.pose((low + high) / 2)

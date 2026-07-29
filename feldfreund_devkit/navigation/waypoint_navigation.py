@@ -12,7 +12,7 @@ from rosys.geometry import Point, Pose, PoseStep
 
 from ..implement import Implement
 from .drive_segment import DriveSegment
-from .utils import sub_spline
+from .utils import pose_with_tool_at, sub_spline
 
 
 class WaypointNavigation(rosys.persistence.Persistable):
@@ -222,11 +222,9 @@ class WaypointNavigation(rosys.persistence.Persistable):
         return True
 
     def _target_pose_on_current_segment(self, target: Point) -> Pose:
+        """The pose to drive to so the implement's tool ends up on ``target``."""
         assert self.current_segment is not None
-        spline = self.current_segment.spline
-        target_t = spline.closest_point(target.x, target.y, t_min=-0.2, t_max=1.2)
-        target_pose = spline.pose(target_t)
-        return target_pose + PoseStep(linear=-self.implement.offset.x, angular=0, time=0)
+        return pose_with_tool_at(self.current_segment.spline, target, self.implement.offset.x)
 
     async def _get_valid_implement_target(self) -> Point | None:
         if self.current_segment is None or not self.current_segment.use_implement:
