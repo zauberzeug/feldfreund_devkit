@@ -1,4 +1,5 @@
 from .drive_segment import DriveSegment
+from .path_driver import PathDriver
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider, RecordedWaypoint
 from .recorded_track_navigation import RecordedTrackNavigation
 from .straight_line_navigation import StraightLineNavigation
@@ -15,6 +16,7 @@ from .waypoint_navigation import WaypointNavigation
 __all__ = [
     'DriveSegment',
     'GnssRequirement',
+    'PathDriver',
     'RecordedTrack',
     'RecordedTrackNavigation',
     'RecordedTrackProvider',

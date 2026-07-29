@@ -1,6 +1,7 @@
 import gc
 import logging
 from abc import abstractmethod
+from dataclasses import replace
 from typing import Any
 
 import rosys
@@ -12,6 +13,7 @@ from rosys.geometry import Point, Pose, PoseStep
 
 from ..implement import Implement
 from .drive_segment import DriveSegment
+from .path_driver import PathDriver
 from .utils import pose_with_tool_at, sub_spline
 
 
@@ -25,6 +27,7 @@ class WaypointNavigation(rosys.persistence.Persistable):
         self.log = logging.getLogger('feldfreund.navigation')
         self.implement = implement
         self.driver = driver
+        self.path_driver = PathDriver(driver, speed_limit=lambda: self.linear_speed_limit)
         self.pose_provider = pose_provider
         self.name = name
         self._default_min_speed = driver.parameters.throttle_at_end_min_speed
@@ -143,21 +146,13 @@ class WaypointNavigation(rosys.persistence.Persistable):
         segment = self.current_segment
         if segment is None:
             return
-        stop_at_end = segment.stop_at_end or len(self._upcoming_path) == 1
-        with self.driver.parameters.set(linear_speed_limit=self._speed_limit(segment),
-                                        can_drive_backwards=segment.backward):
-            await self.driver.drive_spline(segment.spline, flip_hook=segment.backward, throttle_at_end=stop_at_end, stop_at_end=stop_at_end)
+        await self.path_driver.drive(replace(segment, stop_at_end=segment.stop_at_end
+                                             or len(self._upcoming_path) == 1))
         self._upcoming_path.pop(0)
         self.SEGMENT_COMPLETED.emit(segment)
         if self.has_waypoints:
             assert self.current_segment is not None
             self.SEGMENT_STARTED.emit(self.current_segment)
-
-    def _speed_limit(self, segment: DriveSegment) -> float:
-        """The slowest of what the segment asks for and what the user allows."""
-        if segment.speed_limit is None:
-            return self.linear_speed_limit
-        return min(self.linear_speed_limit, segment.speed_limit)
 
     async def _block_until_implement_has_target(self) -> Point:
         while True:
@@ -212,13 +207,11 @@ class WaypointNavigation(rosys.persistence.Persistable):
                     break
                 advance_distance += 0.00001
             self.log.debug('Target behind robot, continue for %.6f meters', advance_distance)
-            with self.driver.parameters.set(linear_speed_limit=self._speed_limit(current_segment)):
-                await self.driver.drive_spline(advance_spline, throttle_at_end=False, stop_at_end=False)
+            await self.path_driver.drive(replace(current_segment, spline=advance_spline, stop_at_end=False))
             return False
         self.log.debug('Driving to %s from target %s', work_x_corrected_pose, target)
         target_spline = sub_spline(spline, current_t, target_t)
-        with self.driver.parameters.set(linear_speed_limit=self._speed_limit(current_segment)):
-            await self.driver.drive_spline(target_spline)
+        await self.path_driver.drive(replace(current_segment, spline=target_spline, stop_at_end=True))
         return True
 
     def _target_pose_on_current_segment(self, target: Point) -> Pose:
