@@ -133,9 +133,11 @@ class CameraProvider:
     def auto_connect(self) -> dict[str, bool]:
         """Desired connection state per camera id, initialized from the slot configurations.
 
-        The state is runtime-only: it is not persisted and falls back to the configuration on restart.
+        The returned dictionary is a copy; use ``set_auto_connect`` to change a state so that the
+        camera is connected or disconnected accordingly. The state is runtime-only: it is not
+        persisted and falls back to the configuration on restart.
         """
-        return self._auto_connect
+        return dict(self._auto_connect)
 
     def set_frame_provider(self, frame_provider: FrameProvider) -> None:
         """Link all calibrated cameras to the given frame provider."""
@@ -280,9 +282,17 @@ class CameraProvider:
 
                         async def toggle_auto_connect(event: events.ValueChangeEventArguments,
                                                       camera_id: str = current_camera_id) -> None:
-                            await self.set_auto_connect(camera_id, event.value)
+                            if event.value == self._auto_connect[camera_id]:
+                                return  # the binding pushed a state that is already applied
+                            try:
+                                await self.set_auto_connect(camera_id, event.value)
+                            except Exception as error:
+                                action = 'connect' if event.value else 'disconnect'
+                                self.log.warning('Failed to %s camera %s', action, camera_id, exc_info=True)
+                                rosys.notify(f'Failed to {action} camera {camera_id}: {error}', 'negative')
 
-                        ui.switch(value=self._auto_connect[current_camera_id], on_change=toggle_auto_connect)
+                        ui.switch(value=self._auto_connect[current_camera_id], on_change=toggle_auto_connect) \
+                            .bind_value_from(self._auto_connect, current_camera_id)
                         resolution = ui.label('—')
 
                         def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera | None = camera) -> None:
