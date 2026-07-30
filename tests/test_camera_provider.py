@@ -158,3 +158,50 @@ async def test_cameras_connect_on_update(robot_locator):
     assert not provider.main.is_connected
     await forward(provider.RECONNECT_INTERVAL + 1)
     assert provider.main.is_connected
+
+
+async def test_camera_without_auto_connect_stays_disconnected(robot_locator):
+    """A camera configured with auto_connect=False is created but never connected by the repeat loop."""
+    provider = _create_provider(robot_locator, auto_connect=False)
+    assert 'usb-0' in provider.cameras
+    assert provider.should_be_connected == {'usb-0': False}
+    await forward(provider.RECONNECT_INTERVAL + 1)
+    assert not provider.cameras['usb-0'].is_connected
+
+
+async def test_connecting_a_camera_keeps_it_connected(robot_locator):
+    """Connecting a camera that does not auto-connect makes the repeat loop keep it connected."""
+    provider = _create_provider(robot_locator, auto_connect=False)
+    await provider.set_connected('usb-0', True)
+    assert provider.should_be_connected['usb-0']
+    assert provider.cameras['usb-0'].is_connected
+    await forward(provider.RECONNECT_INTERVAL + 1)
+    assert provider.cameras['usb-0'].is_connected
+
+
+async def test_disconnecting_a_camera_keeps_it_disconnected(robot_locator):
+    """Disconnecting a camera stops the repeat loop from reconnecting it, even with auto_connect=True."""
+    provider = _create_provider(robot_locator, auto_connect=True)
+    await forward(provider.RECONNECT_INTERVAL + 1)
+    assert provider.cameras['usb-0'].is_connected
+    await provider.set_connected('usb-0', False)
+    assert not provider.should_be_connected['usb-0']
+    assert not provider.cameras['usb-0'].is_connected
+    await forward(provider.RECONNECT_INTERVAL + 1)
+    assert not provider.cameras['usb-0'].is_connected
+
+
+def _create_provider(robot_locator: RobotLocator, *, auto_connect: bool) -> CameraProvider:
+    """Create a provider with a single main camera.
+
+    :param robot_locator: Frame provider to link the camera extrinsics to.
+    :param auto_connect: Whether the camera is configured to connect automatically.
+    :return: The camera provider.
+    """
+    config = CameraConfiguration(
+        main=UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720),
+                             auto_connect=auto_connect),
+        front=None,
+        back=None,
+    )
+    return CameraProvider(config, frame_provider=robot_locator)

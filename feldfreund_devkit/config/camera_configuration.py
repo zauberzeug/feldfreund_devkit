@@ -45,12 +45,16 @@ class CameraSlotConfig:
 
     rotation and crop are only applied for display purposes and do not affect the actual captured images.
 
+    ``auto_connect`` set to ``False`` keeps the camera disconnected until the connection is
+    requested explicitly, for example with the switch in the camera developer UI.
+
     Defaults:
         fps: 10
         rotation: ImageRotation.NONE
         crop: None
         calibration: None
         image_size: None
+        auto_connect: True
     """
     camera_id: str
     fps: int = 10
@@ -58,6 +62,7 @@ class CameraSlotConfig:
     crop: Rectangle | None = None
     calibration: Calibration | None = None
     image_size: ImageSize | None = None
+    auto_connect: bool = True
 
     def __post_init__(self) -> None:
         if self.calibration is None and self.image_size is None:
@@ -65,7 +70,7 @@ class CameraSlotConfig:
 
     @property
     def camera_kwargs(self) -> dict:
-        return {'id': self.camera_id, 'fps': self.fps}
+        return {'id': self.camera_id, 'fps': self.fps, 'connect_after_init': self.auto_connect}
 
     @property
     def width(self) -> int:
