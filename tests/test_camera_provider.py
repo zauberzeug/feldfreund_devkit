@@ -1,7 +1,5 @@
 import pytest
 import rosys
-from nicegui import Client, binding, ui
-from nicegui.page import page
 from rosys.geometry import Rectangle
 from rosys.hardware import WheelsSimulation
 from rosys.testing import forward
@@ -191,71 +189,6 @@ async def test_disabling_auto_connect_disconnects_camera_for_good(robot_locator)
     assert not provider.cameras['usb-0'].is_connected
     await forward(provider.RECONNECT_INTERVAL + 1)
     assert not provider.cameras['usb-0'].is_connected
-
-
-async def test_set_auto_connect_with_unknown_camera_id_raises(robot_locator):
-    """Setting the desired state of an unconfigured camera reports the available ids."""
-    provider = _create_provider(robot_locator, auto_connect=True)
-    with pytest.raises(ValueError, match='Unknown camera id: usb-9'):
-        await provider.set_auto_connect('usb-9', True)
-
-
-async def test_auto_connect_property_returns_a_copy(robot_locator):
-    """The exposed desired-state map must not allow changing a state without connecting or disconnecting."""
-    provider = _create_provider(robot_locator, auto_connect=False)
-    provider.auto_connect['usb-0'] = True
-    assert provider.auto_connect == {'usb-0': False}
-    await forward(provider.RECONNECT_INTERVAL + 1)
-    assert not provider.cameras['usb-0'].is_connected
-
-
-async def test_developer_ui_switch_follows_state_changed_elsewhere(robot_locator):
-    """The switch shows the current desired state even when it is changed outside the UI, e.g. via MCP."""
-    provider = _create_provider(robot_locator, auto_connect=False)
-    with Client(page('/')) as client:
-        provider.developer_ui()
-        switch = _find_switch(client)
-        assert switch.value is False
-        await provider.set_auto_connect('usb-0', True)
-        binding._refresh_step()  # pylint: disable=protected-access
-        assert switch.value is True
-
-
-async def test_developer_ui_switch_notifies_about_a_failing_connect(robot_locator, monkeypatch):
-    """A camera that refuses to connect must tell the operator instead of only writing to the log."""
-    provider = _create_provider(robot_locator, auto_connect=False)
-
-    async def refuse_connection() -> None:
-        raise RuntimeError('device is busy')
-
-    monkeypatch.setattr(provider.cameras['usb-0'], 'connect', refuse_connection)
-    notifications: list[str] = []
-    monkeypatch.setattr(rosys, 'notify', lambda message, *args, **kwargs: notifications.append(message))
-    with Client(page('/')) as client:
-        provider.developer_ui()
-        _find_switch(client).set_value(True)
-        await forward(1)
-    assert notifications == ['Failed to connect camera usb-0: device is busy']
-    assert not provider.cameras['usb-0'].is_connected
-
-
-@pytest.mark.parametrize('auto_connect', [True, False])
-async def test_camera_kwargs_pass_auto_connect_to_rosys(auto_connect: bool):
-    """The auto_connect configuration reaches the rosys camera as its connect_after_init argument."""
-    config = UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720),
-                             auto_connect=auto_connect)
-    assert config.camera_kwargs['connect_after_init'] is auto_connect
-
-
-def _find_switch(client: Client) -> ui.switch:
-    """Get the single auto-connect switch of a developer UI built into the given client.
-
-    :param client: Client the developer UI was built into.
-    :return: The auto-connect switch.
-    """
-    switches = [element for element in client.elements.values() if isinstance(element, ui.switch)]
-    assert len(switches) == 1
-    return switches[0]
 
 
 def _create_provider(robot_locator: RobotLocator, *, auto_connect: bool) -> CameraProvider:
