@@ -45,7 +45,7 @@ def test_the_slowest_of_everything_asked_for_wins() -> None:
 
 async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
     """The robot comes to rest with the tool on the target, waits, then drives on to the end."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator)
+    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator, work=never)
     at_rest: list[float] = []
 
     async def work() -> None:
@@ -65,7 +65,7 @@ async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
 
 
 async def test_a_stop_is_refused_when_nothing_is_driving(devkit_system) -> None:
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator)
+    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator, work=never)
 
     with pytest.raises(CannotStop):
         async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
@@ -74,7 +74,7 @@ async def test_a_stop_is_refused_when_nothing_is_driving(devkit_system) -> None:
 
 async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
     """Refused rather than reversed: the caller carries on and the robot keeps driving."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator)
+    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator, work=never)
     refused: list[bool] = []
 
     async def work() -> None:
@@ -95,7 +95,7 @@ async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
 
 async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None:
     """The release is in a ``finally``, so a raising tool can never strand the robot stopped."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator)
+    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator, work=never)
 
     async def work() -> None:
         await until(lambda: devkit_system.driver.pose.x > 0.2)
@@ -112,7 +112,7 @@ async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None
 
 async def test_a_second_stop_at_the_same_time_is_unsupported(devkit_system) -> None:
     """One stop at a time; a second holder would silently take over the single stop slot."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator)
+    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator, work=never)
     crashed: list[bool] = []
 
     async def work() -> None:

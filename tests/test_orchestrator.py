@@ -2,16 +2,18 @@
 from collections.abc import AsyncIterator
 
 import pytest
-import rosys
 from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
+from route_helpers import TOOL_OFFSET, RowTurnRowNavigation
 
+from feldfreund_devkit.implement import ImplementException
 from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
     Navigation,
     Orchestrator,
     StaticNavigation,
+    never,
 )
 
 
@@ -48,7 +50,7 @@ class RefusingNavigation(Navigation):
 
 
 async def test_drives_the_whole_route(devkit_system) -> None:
-    orchestrator = Orchestrator(TwoLegNavigation(), devkit_system.driver)
+    orchestrator = Orchestrator(TwoLegNavigation(), devkit_system.driver, devkit_system.robot_locator, work=never)
     driven: list[DriveSegment] = []
     orchestrator.SEGMENT_COMPLETED.subscribe(driven.append)
     completed: list[bool] = []
@@ -61,12 +63,11 @@ async def test_drives_the_whole_route(devkit_system) -> None:
     assert_pose(2, 0, deg=0, position_tolerance=0.1)
     assert len(driven) == 2
     assert completed == [True]
-    assert orchestrator.current_segment is None
 
 
 async def test_reports_the_segment_being_driven(devkit_system) -> None:
     navigation = TwoLegNavigation()
-    orchestrator = Orchestrator(navigation, devkit_system.driver)
+    orchestrator = Orchestrator(navigation, devkit_system.driver, devkit_system.robot_locator, work=never)
     seen: list[tuple[float, int]] = []
     orchestrator.SEGMENT_STARTED.subscribe(lambda s: seen.append((s.end.x, len(navigation.path))))
 
@@ -79,7 +80,7 @@ async def test_reports_the_segment_being_driven(devkit_system) -> None:
 
 
 async def test_an_empty_route_finishes_without_driving(devkit_system) -> None:
-    orchestrator = Orchestrator(EmptyNavigation(), devkit_system.driver)
+    orchestrator = Orchestrator(EmptyNavigation(), devkit_system.driver, devkit_system.robot_locator, work=never)
     completed: list[bool] = []
     orchestrator.RUN_COMPLETED.subscribe(lambda: completed.append(True))
 
@@ -91,114 +92,81 @@ async def test_an_empty_route_finishes_without_driving(devkit_system) -> None:
 
 async def test_a_navigation_may_refuse_to_start(devkit_system) -> None:
     """Refusing is an exception, not an empty route -- the two must stay distinguishable."""
-    orchestrator = Orchestrator(RefusingNavigation(), devkit_system.driver)
+    orchestrator = Orchestrator(RefusingNavigation(), devkit_system.driver, devkit_system.robot_locator, work=never)
 
     with pytest.raises(RuntimeError, match='no route from here'):
         await orchestrator.run()
 
-    assert orchestrator.current_segment is None
+
+async def test_work_spans_a_stretch_and_never_a_turn(devkit_system) -> None:
+    """Work covers consecutive workable segments as one stretch, and is cancelled before the turn."""
+    navigation = RowTurnRowNavigation()
+    working: list[str] = []
+
+    async def work(ctx) -> None:
+        working.append('start')
+        try:
+            await never()
+        finally:
+            working.append(f'end at x={ctx.pose.pose.x:.0f}')
+
+    orchestrator = Orchestrator(navigation, devkit_system.driver, devkit_system.robot_locator, work=work)
+    devkit_system.automator.start(orchestrator.run())
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert working == ['start', 'end at x=2', 'start', 'end at x=4'], \
+        'one stretch per run of workable segments, not one per segment'
+    assert_pose(4, 0, deg=0, position_tolerance=0.1)
 
 
-class OneLegNavigation(StaticNavigation):
-    """Two metres straight ahead, in one go."""
+async def test_a_work_loop_that_returns_is_an_error(devkit_system) -> None:
+    """Returning early would silently halt the drive, so it is reported instead."""
+    async def work(ctx) -> None:
+        return
 
-    def __init__(self) -> None:
-        super().__init__(name='One Leg')
+    orchestrator = Orchestrator(RowTurnRowNavigation(), devkit_system.driver,
+                               devkit_system.robot_locator, work=work)
 
-    def generate_path(self) -> list[DriveSegment]:
-        return [DriveSegment.from_poses(Pose(), Pose(x=2.0))]
-
-
-TOOL_OFFSET = 0.1
-
-
-async def _until(condition) -> None:
-    while not condition():
-        await rosys.sleep(0.1)
+    with pytest.raises(ImplementException, match='must run until the stretch ends'):
+        await orchestrator.run()
 
 
-async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
-    """The robot comes to rest with the tool on the target, waits, then drives on to the end."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver)
+async def test_work_stops_the_robot_where_the_tool_needs_it(devkit_system) -> None:
+    """The whole point: a tool can hold the robot at a target from inside its own loop."""
+    navigation = RowTurnRowNavigation()
     at_rest: list[float] = []
 
-    async def work() -> None:
-        await _until(lambda: devkit_system.driver.pose.x > 0.2)
-        async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
-            at_rest.append(devkit_system.driver.pose.x)
-            await rosys.sleep(1.0)
-            at_rest.append(devkit_system.driver.pose.x)
-
-    devkit_system.automator.start(rosys.automation.parallelize(orchestrator.run(), work()))
-    await forward(until=lambda: devkit_system.automator.is_running)
-    await forward(until=lambda: devkit_system.automator.is_stopped)
-
-    assert at_rest[0] == pytest.approx(1.0 - TOOL_OFFSET, abs=0.05), 'the tool, not the origin, lands on the target'
-    assert at_rest[1] == pytest.approx(at_rest[0], abs=0.005), 'the robot stays put while the tool works'
-    assert_pose(2, 0, deg=0, position_tolerance=0.1)
-
-
-async def test_a_stop_is_refused_when_nothing_is_driving(devkit_system) -> None:
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver)
-
-    with pytest.raises(CannotStop):
-        async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
-            pass
-
-
-async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
-    """Refused rather than reversed: the caller carries on and the robot keeps driving."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver)
-    refused: list[bool] = []
-
-    async def work() -> None:
-        await _until(lambda: devkit_system.driver.pose.x > 1.0)
+    async def work(ctx) -> None:
         try:
-            async with orchestrator.path_driver.stop_over(Point(x=0.5, y=0.0), TOOL_OFFSET):
-                refused.append(False)
+            async with ctx.motion.stop_over(Point(x=0.5, y=0.0), TOOL_OFFSET):
+                at_rest.append(ctx.pose.pose.x)
         except CannotStop:
-            refused.append(True)
+            pass  # NOTE: the second stretch starts past this target, as a real loop must tolerate
+        await never()
 
-    devkit_system.automator.start(rosys.automation.parallelize(orchestrator.run(), work()))
+    orchestrator = Orchestrator(navigation, devkit_system.driver, devkit_system.robot_locator, work=work)
+    devkit_system.automator.start(orchestrator.run())
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
-    assert refused == [True]
-    assert_pose(2, 0, deg=0, position_tolerance=0.1)
+    assert at_rest[0] == pytest.approx(0.5 - TOOL_OFFSET, abs=0.05)
+    assert_pose(4, 0, deg=0, position_tolerance=0.1)
 
 
-async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None:
-    """The release is in a ``finally``, so a raising tool can never strand the robot stopped."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver)
+async def test_a_driven_segment_is_not_repeated_after_a_splice() -> None:
+    """Splicing ahead of the segment being driven must not make that segment be driven twice.
 
-    async def work() -> None:
-        await _until(lambda: devkit_system.driver.pose.x > 0.2)
-        with pytest.raises(RuntimeError):
-            async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
-                raise RuntimeError('actuation failed')
+    Navigations insert into the route while it is being driven -- to dock, or to turn onto a row --
+    which moves the segment in flight away from the head of the list.
+    """
+    navigation = TwoLegNavigation()
+    detour = DriveSegment.from_poses(Pose(x=0.2), Pose(x=0.3))
 
-    devkit_system.automator.start(rosys.automation.parallelize(orchestrator.run(), work()))
-    await forward(until=lambda: devkit_system.automator.is_running)
-    await forward(until=lambda: devkit_system.automator.is_stopped)
+    segments = navigation.segments()
+    first = await anext(segments)
+    navigation.path.insert(0, detour)
 
-    assert_pose(2, 0, deg=0, position_tolerance=0.1)
-
-
-async def test_a_second_stop_at_the_same_time_is_unsupported(devkit_system) -> None:
-    """One stop at a time; a second holder would silently take over the single stop slot."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver)
-    crashed: list[bool] = []
-
-    async def work() -> None:
-        await _until(lambda: devkit_system.driver.pose.x > 0.2)
-        async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
-            with pytest.raises(AssertionError):
-                async with orchestrator.path_driver.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
-                    pass
-            crashed.append(True)
-
-    devkit_system.automator.start(rosys.automation.parallelize(orchestrator.run(), work()))
-    await forward(until=lambda: devkit_system.automator.is_running)
-    await forward(until=lambda: devkit_system.automator.is_stopped)
-
-    assert crashed == [True]
+    assert await anext(segments) is detour
+    assert all(segment is not first for segment in navigation.path), 'the driven segment is gone'
+    assert (await anext(segments)).end.x == 2.0, 'and the route carries on where it left off'

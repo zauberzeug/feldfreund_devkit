@@ -12,8 +12,10 @@ from .utils import (
     pose_with_tool_at,
     skip_completed_segments,
     sub_spline,
+    tool_t,
 )
 from .waypoint_navigation import WaypointNavigation
+from .work_context import WorkContext, WorkFunction, never
 
 __all__ = [
     'CannotStop',
@@ -30,9 +32,13 @@ __all__ = [
     'StraightLineNavigation',
     'TrackRecordingController',
     'WaypointNavigation',
+    'WorkContext',
+    'WorkFunction',
     'generate_three_point_turn',
     'is_reference_valid',
+    'never',
     'pose_with_tool_at',
     'skip_completed_segments',
-    'sub_spline'
+    'sub_spline',
+    'tool_t'
 ]
