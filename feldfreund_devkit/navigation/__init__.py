@@ -1,7 +1,7 @@
 from .drive_segment import DriveSegment
 from .navigation import Navigation, StaticNavigation
 from .orchestrator import Orchestrator
-from .path_driver import PathDriver
+from .path_driver import CannotStop, PathDriver
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider, RecordedWaypoint
 from .recorded_track_navigation import RecordedTrackNavigation
 from .straight_line_navigation import StraightLineNavigation
@@ -16,6 +16,7 @@ from .utils import (
 from .waypoint_navigation import WaypointNavigation
 
 __all__ = [
+    'CannotStop',
     'DriveSegment',
     'GnssRequirement',
     'Navigation',
