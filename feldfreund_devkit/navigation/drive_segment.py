@@ -9,6 +9,9 @@ from rosys.geometry import Point, Pose, Spline
 class DriveSegment(PathSegment):
     """A path segment with implement usage, stop behavior and speed configuration.
 
+    :param stop_at_end: whether to come to rest at the end of this segment. Set it to ``False``
+        only where the robot should flow on into the next one; a navigation should also set it on
+        the last segment it produces, rather than relying on the drive to notice the route ended.
     :param speed_limit: forward speed cap while on this segment, or ``None`` for no constraint of
         its own. Set it where the segment itself demands a speed -- docking, turns. It caps rather
         than overrides: the robot never drives faster than the navigation's own limit.
