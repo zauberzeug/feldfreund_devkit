@@ -65,18 +65,20 @@ async def test_drives_the_whole_route(devkit_system) -> None:
     assert completed == [True]
 
 
-async def test_reports_the_segment_being_driven(devkit_system) -> None:
+async def test_reports_the_route_as_it_shrinks(devkit_system) -> None:
     navigation = TwoLegNavigation()
     orchestrator = Orchestrator(navigation, devkit_system.driver, devkit_system.robot_locator, work=never)
-    seen: list[tuple[float, int]] = []
-    orchestrator.SEGMENT_STARTED.subscribe(lambda s: seen.append((s.end.x, len(navigation.path))))
+    started: list[float] = []
+    orchestrator.SEGMENT_STARTED.subscribe(lambda segment: started.append(segment.end.x))
+    remaining: list[int] = []
+    navigation.PATH_CHANGED.subscribe(lambda path: remaining.append(len(path)))
 
     devkit_system.automator.start(orchestrator.run())
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
-    assert seen == [(1.0, 2), (2.0, 1)], 'each segment is announced as it starts, and popped after'
-    assert navigation.path == []
+    assert started == [1.0, 2.0]
+    assert remaining == [2, 1, 0], 'a segment leaves the route once it has been driven'
 
 
 async def test_an_empty_route_finishes_without_driving(devkit_system) -> None:
@@ -152,21 +154,3 @@ async def test_work_stops_the_robot_where_the_tool_needs_it(devkit_system) -> No
 
     assert at_rest[0] == pytest.approx(0.5 - TOOL_OFFSET, abs=0.05)
     assert_pose(4, 0, deg=0, position_tolerance=0.1)
-
-
-async def test_a_driven_segment_is_not_repeated_after_a_splice() -> None:
-    """Splicing ahead of the segment being driven must not make that segment be driven twice.
-
-    Navigations insert into the route while it is being driven -- to dock, or to turn onto a row --
-    which moves the segment in flight away from the head of the list.
-    """
-    navigation = TwoLegNavigation()
-    detour = DriveSegment.from_poses(Pose(x=0.2), Pose(x=0.3))
-
-    segments = navigation.segments()
-    first = await anext(segments)
-    navigation.path.insert(0, detour)
-
-    assert await anext(segments) is detour
-    assert all(segment is not first for segment in navigation.path), 'the driven segment is gone'
-    assert (await anext(segments)).end.x == 2.0, 'and the route carries on where it left off'

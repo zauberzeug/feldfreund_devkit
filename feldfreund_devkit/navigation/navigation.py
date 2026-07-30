@@ -33,29 +33,29 @@ class Navigation(ABC):
 class StaticNavigation(Navigation):
     """A navigation whose route is planned before the drive starts.
 
-    The remaining route stays visible in :attr:`path` for the 3D view, and stays *editable*: a
-    navigation may splice segments in while driving -- to dock, or to turn onto a row -- and the
-    next pull picks them up.
+    The route is kept private: a caller that could splice into it would race with the segment being
+    driven. A navigation that needs to change its mind while driving -- to dock, or to turn onto a
+    row -- writes its own :meth:`Navigation.segments` and yields those segments where they belong.
     """
 
     def __init__(self, *, name: str) -> None:
         super().__init__(name=name)
-        self.path: list[DriveSegment] = []
-        """The segments not driven yet, the first one being the one currently driven."""
+        self._path: list[DriveSegment] = []
 
         self.PATH_CHANGED = Event[list[DriveSegment]]()
-        """The remaining route has changed (argument: ``list[DriveSegment]``)."""
+        """The segments still to drive have changed (argument: ``list[DriveSegment]``)."""
 
     @abstractmethod
     def generate_path(self) -> list[DriveSegment]:
         """Plan the whole route. Returning an empty list means there is nothing to drive."""
 
     async def segments(self) -> AsyncIterator[DriveSegment]:
-        self.path = self.generate_path()
-        self.PATH_CHANGED.emit(self.path)
-        while self.path:
-            segment = self.path[0]
-            yield segment
-            if self.path and self.path[0] is segment:  # NOTE: a splice may have replaced the head
-                self.path.pop(0)
-                self.PATH_CHANGED.emit(self.path)
+        self._path = self.generate_path()
+        self._announce()
+        while self._path:
+            yield self._path[0]
+            self._path.pop(0)
+            self._announce()
+
+    def _announce(self) -> None:
+        self.PATH_CHANGED.emit(list(self._path))
