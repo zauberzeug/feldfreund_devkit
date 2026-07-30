@@ -5,6 +5,7 @@ from rosys.hardware import CanHardware, EStopHardware, ModuleHardware, RobotBrai
 from rosys.helpers import remove_indentation
 
 from ..config import ODriveTracksConfiguration, TracksConfiguration
+from ..interface.components.status_bulb import StatusBulb as status_bulb
 
 
 class TracksHardware(Wheels, ModuleHardware):
@@ -49,6 +50,7 @@ class ODriveTracksHardware(TracksHardware):
                  estop: EStopHardware, *,
                  can: CanHardware) -> None:
         self._estop = estop
+        self._locked = False
         self._l0_error = False
         self._r0_error = False
         self._l1_error = False
@@ -78,7 +80,9 @@ class ODriveTracksHardware(TracksHardware):
             {config.name}_front.width = {config.width}
             {config.name}.shadow({config.name}_front)
         ''')
-        core_message_fields = [f'{config.name}.linear_speed:3', f'{config.name}.angular_speed:3']
+        core_message_fields = [f'{config.name}.linear_speed:3',
+                               f'{config.name}.angular_speed:3',
+                               f'{config.name}.locked']
         if config.has_temperature_sensor:
             core_message_fields.extend(['l0.motor_temperature', 'r0.motor_temperature',
                                         'l1.motor_temperature', 'r1.motor_temperature'])
@@ -88,6 +92,10 @@ class ODriveTracksHardware(TracksHardware):
         super().__init__(config, robot_brain, lizard_code=lizard_code, core_message_fields=core_message_fields)
         if config.odrive_version != self.ERROR_FLAG_VERSION:
             self.log.warning('ODrive firmware is deprecated. Please update to benefit from the motor error detection.')
+
+    @property
+    def locked(self) -> bool:
+        return self._locked
 
     @property
     def motor_error(self) -> bool:
@@ -116,6 +124,7 @@ class ODriveTracksHardware(TracksHardware):
             self.VELOCITY_MEASURED.emit([velocity])
         else:
             self.log.error('Velocity is too high: (%s, %s)', velocity.linear, velocity.angular)
+        self._locked = words.pop(0) == 'true'
         if self.config.has_temperature_sensor:
             self._l0_temperature = float(words.pop(0))
             self._r0_temperature = float(words.pop(0))
@@ -132,6 +141,9 @@ class ODriveTracksHardware(TracksHardware):
 
     def developer_ui(self) -> None:
         ui.label('ODrive Tracks').classes('text-center text-bold')
+        with ui.row().classes('justify-center gap-2'):
+            status_bulb().bind_value_from(self, 'locked')
+            ui.label('Locked')
         if self.config.odrive_version == self.ERROR_FLAG_VERSION:
             with ui.grid(columns=2).classes('gap-0'):
                 ui.label().bind_text_from(self, '_l0_error', lambda error: f'L0: {"Error" if error else "No error"}')
