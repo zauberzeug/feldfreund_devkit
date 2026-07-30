@@ -164,28 +164,28 @@ async def test_camera_without_auto_connect_stays_disconnected(robot_locator):
     """A camera configured with auto_connect=False is created but never connected by the repeat loop."""
     provider = _create_provider(robot_locator, auto_connect=False)
     assert 'usb-0' in provider.cameras
-    assert provider.auto_connect == {'usb-0': False}
+    assert provider.should_be_connected == {'usb-0': False}
     await forward(provider.RECONNECT_INTERVAL + 1)
     assert not provider.cameras['usb-0'].is_connected
 
 
-async def test_enabling_auto_connect_connects_and_keeps_camera_connected(robot_locator):
-    """Enabling auto-connect connects the camera immediately and the repeat loop keeps it connected."""
+async def test_connecting_a_camera_keeps_it_connected(robot_locator):
+    """Connecting a camera that does not auto-connect makes the repeat loop keep it connected."""
     provider = _create_provider(robot_locator, auto_connect=False)
-    await provider.set_auto_connect('usb-0', True)
-    assert provider.auto_connect['usb-0']
+    await provider.set_connected('usb-0', True)
+    assert provider.should_be_connected['usb-0']
     assert provider.cameras['usb-0'].is_connected
     await forward(provider.RECONNECT_INTERVAL + 1)
     assert provider.cameras['usb-0'].is_connected
 
 
-async def test_disabling_auto_connect_disconnects_camera_for_good(robot_locator):
-    """Disabling auto-connect disconnects the camera and the repeat loop does not reconnect it."""
+async def test_disconnecting_a_camera_keeps_it_disconnected(robot_locator):
+    """Disconnecting a camera stops the repeat loop from reconnecting it, even with auto_connect=True."""
     provider = _create_provider(robot_locator, auto_connect=True)
     await forward(provider.RECONNECT_INTERVAL + 1)
     assert provider.cameras['usb-0'].is_connected
-    await provider.set_auto_connect('usb-0', False)
-    assert not provider.auto_connect['usb-0']
+    await provider.set_connected('usb-0', False)
+    assert not provider.should_be_connected['usb-0']
     assert not provider.cameras['usb-0'].is_connected
     await forward(provider.RECONNECT_INTERVAL + 1)
     assert not provider.cameras['usb-0'].is_connected
@@ -195,7 +195,7 @@ def _create_provider(robot_locator: RobotLocator, *, auto_connect: bool) -> Came
     """Create a provider with a single main camera.
 
     :param robot_locator: Frame provider to link the camera extrinsics to.
-    :param auto_connect: Desired connection state to configure for the camera.
+    :param auto_connect: Whether the camera is configured to connect automatically.
     :return: The camera provider.
     """
     config = CameraConfiguration(

@@ -4,7 +4,7 @@ import logging
 from typing import Literal
 
 import rosys
-from nicegui import events, ui
+from nicegui import ui
 from rosys.geometry import FrameProvider, Pose3d, Rotation
 from rosys.vision import CalibratableCamera
 from rosys.vision.mjpeg_camera.vendors import VendorType as MjpegVendorType
@@ -65,7 +65,7 @@ class CameraProvider:
         """
         self.log = logging.getLogger('feldfreund.camera_provider')
         self._config = config
-        self._auto_connect: dict[str, bool] = {}
+        self._should_be_connected: dict[str, bool] = {}
         self.mains: list[rosys.vision.CalibratableCamera] = self._setup_mains()
         self.front = self._setup('front')
         self.back = self._setup('back')
@@ -130,14 +130,14 @@ class CameraProvider:
         return {k: v for k, v in slots.items() if v is not None}
 
     @property
-    def auto_connect(self) -> dict[str, bool]:
-        """Desired connection state per camera id, initialized from the slot configurations.
+    def should_be_connected(self) -> dict[str, bool]:
+        """Whether each camera is supposed to be connected, initialized from the slot configurations.
 
-        The returned dictionary is a copy; use ``set_auto_connect`` to change a state so that the
+        The returned dictionary is a copy; use ``set_connected`` to change a state so that the
         camera is connected or disconnected accordingly. The state is runtime-only: it is not
         persisted and falls back to the configuration on restart.
         """
-        return dict(self._auto_connect)
+        return dict(self._should_be_connected)
 
     def set_frame_provider(self, frame_provider: FrameProvider) -> None:
         """Link all calibrated cameras to the given frame provider."""
@@ -146,18 +146,18 @@ class CameraProvider:
                 continue
             camera.calibration.extrinsics.in_frame(frame_provider.frame)
 
-    async def set_auto_connect(self, camera_id: str, enabled: bool) -> None:
-        """Set the desired connection state of a camera and apply it immediately.
+    async def set_connected(self, camera_id: str, connected: bool) -> None:
+        """Connect or disconnect a camera and remember that this is how it should stay.
 
-        :param camera_id: Id of the camera to change.
-        :param enabled: Whether the camera should be connected and kept connected.
+        :param camera_id: Id of the camera to connect or disconnect.
+        :param connected: Whether the camera should be connected.
         :raises ValueError: If no camera with the given id is configured.
         """
         if camera_id not in self._cameras:
             raise ValueError(f'Unknown camera id: {camera_id} (available: {", ".join(sorted(self._cameras))})')
-        self._auto_connect[camera_id] = enabled
+        self._should_be_connected[camera_id] = connected
         camera = self._cameras[camera_id]
-        if enabled:
+        if connected:
             await camera.connect()
         else:
             await camera.disconnect()
@@ -176,7 +176,7 @@ class CameraProvider:
         camera = self._create_camera(slot_config)
         if slot_config.calibration is not None:
             camera.calibration = slot_config.calibration
-        self._auto_connect[camera.id] = slot_config.auto_connect
+        self._should_be_connected[camera.id] = slot_config.auto_connect
         return camera
 
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
@@ -209,7 +209,7 @@ class CameraProvider:
     async def update_device_list(self) -> None:
         """Attempt to connect all disconnected cameras that are supposed to be connected."""
         for camera in self.cameras.values():
-            if camera.is_connected or not self._auto_connect[camera.id]:
+            if camera.is_connected or not self._should_be_connected[camera.id]:
                 continue
             try:
                 await camera.connect()
@@ -263,10 +263,9 @@ class CameraProvider:
         ])
         with ui.column():
             ui.label('Cameras').classes('text-center text-bold')
-            with ui.grid(columns='auto auto auto auto auto').classes('items-center'):
+            with ui.grid(columns='auto auto auto auto').classes('items-center'):
                 ui.label('Slot').classes('font-bold')
                 ui.label('Connected').classes('font-bold')
-                ui.label('Auto-connect').classes('font-bold')
                 ui.label('Resolution').classes('font-bold')
                 ui.label('Type').classes('font-bold')
                 for name, camera, slot_cfg in slots:
@@ -275,24 +274,10 @@ class CameraProvider:
                         status_bulb()
                         ui.label('—').classes('text-center')
                         ui.label('—').classes('text-center')
-                        ui.label('—').classes('text-center')
                     else:
-                        current_camera_id = camera.id
-                        status_bulb().bind_value_from(camera, 'is_connected')
-
-                        async def toggle_auto_connect(event: events.ValueChangeEventArguments,
-                                                      camera_id: str = current_camera_id) -> None:
-                            if event.value == self._auto_connect[camera_id]:
-                                return  # the binding pushed a state that is already applied
-                            try:
-                                await self.set_auto_connect(camera_id, event.value)
-                            except Exception as error:
-                                action = 'connect' if event.value else 'disconnect'
-                                self.log.warning('Failed to %s camera %s', action, camera_id, exc_info=True)
-                                rosys.notify(f'Failed to {action} camera {camera_id}: {error}', 'negative')
-
-                        ui.switch(value=self._auto_connect[current_camera_id], on_change=toggle_auto_connect) \
-                            .bind_value_from(self._auto_connect, current_camera_id)
+                        with ui.row().classes('items-center gap-1'):
+                            status_bulb().bind_value_from(camera, 'is_connected')
+                            self._connection_button(camera.id)
                         resolution = ui.label('—')
 
                         def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera | None = camera) -> None:
@@ -304,3 +289,26 @@ class CameraProvider:
                         ui.timer(5.0, update_resolution)
                         ui.label(self._camera_config_name(slot_cfg))
             ui.button('Scan for cameras', on_click=self.scan)
+
+    def _connection_button(self, camera_id: str) -> None:
+        """Add a button that connects or disconnects a camera, labeled with the action it offers.
+
+        The icon shows what a click does, so the camera's desired state stays visible next to the
+        status bulb: a button offering "Disconnect" on a grey bulb means the connection is failing.
+
+        :param camera_id: Id of the camera to connect or disconnect.
+        """
+        async def toggle() -> None:
+            connected = not self._should_be_connected[camera_id]
+            try:
+                await self.set_connected(camera_id, connected)
+            except Exception as error:
+                action = 'connect' if connected else 'disconnect'
+                self.log.warning('Failed to %s camera %s', action, camera_id, exc_info=True)
+                rosys.notify(f'Failed to {action} camera {camera_id}: {error}', 'negative')
+
+        with ui.button(on_click=toggle).props('flat dense round size=sm') \
+                .bind_icon_from(self._should_be_connected, camera_id,
+                                backward=lambda connected: 'link_off' if connected else 'link'):
+            ui.tooltip().bind_text_from(self._should_be_connected, camera_id,
+                                        backward=lambda connected: 'Disconnect' if connected else 'Connect')
