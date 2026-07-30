@@ -4,7 +4,7 @@ import logging
 from typing import Literal
 
 import rosys
-from nicegui import ui
+from nicegui import events, ui
 from rosys.geometry import FrameProvider, Pose3d, Rotation
 from rosys.vision import CalibratableCamera
 from rosys.vision.mjpeg_camera.vendors import VendorType as MjpegVendorType
@@ -65,6 +65,7 @@ class CameraProvider:
         """
         self.log = logging.getLogger('feldfreund.camera_provider')
         self._config = config
+        self._auto_connect: dict[str, bool] = {}
         self.mains: list[rosys.vision.CalibratableCamera] = self._setup_mains()
         self.front = self._setup('front')
         self.back = self._setup('back')
@@ -128,12 +129,36 @@ class CameraProvider:
         slots = {'front': self.front, 'back': self.back, 'left': self.left, 'right': self.right}
         return {k: v for k, v in slots.items() if v is not None}
 
+    @property
+    def auto_connect(self) -> dict[str, bool]:
+        """Desired connection state per camera id, initialized from the slot configurations.
+
+        The state is runtime-only: it is not persisted and falls back to the configuration on restart.
+        """
+        return self._auto_connect
+
     def set_frame_provider(self, frame_provider: FrameProvider) -> None:
         """Link all calibrated cameras to the given frame provider."""
         for camera in self.cameras.values():
             if camera.calibration is None:
                 continue
             camera.calibration.extrinsics.in_frame(frame_provider.frame)
+
+    async def set_auto_connect(self, camera_id: str, enabled: bool) -> None:
+        """Set the desired connection state of a camera and apply it immediately.
+
+        :param camera_id: Id of the camera to change.
+        :param enabled: Whether the camera should be connected and kept connected.
+        :raises ValueError: If no camera with the given id is configured.
+        """
+        if camera_id not in self._cameras:
+            raise ValueError(f'Unknown camera id: {camera_id} (available: {", ".join(sorted(self._cameras))})')
+        self._auto_connect[camera_id] = enabled
+        camera = self._cameras[camera_id]
+        if enabled:
+            await camera.connect()
+        else:
+            await camera.disconnect()
 
     def _setup(self, name: CameraPosition) -> rosys.vision.CalibratableCamera | None:
         """Create a camera for the given position, and apply calibration if available."""
@@ -149,6 +174,7 @@ class CameraProvider:
         camera = self._create_camera(slot_config)
         if slot_config.calibration is not None:
             camera.calibration = slot_config.calibration
+        self._auto_connect[camera.id] = slot_config.auto_connect
         return camera
 
     def _create_camera(self, slot: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
@@ -161,6 +187,7 @@ class CameraProvider:
                 height=slot.height,
                 fps=slot.fps,
                 color='#cccccc',
+                connect_after_init=slot.auto_connect,
             )
         elif isinstance(slot, UsbCameraConfig):
             camera = CalibratableUsbCamera(**slot.camera_kwargs)
@@ -178,9 +205,9 @@ class CameraProvider:
         return type(config).__name__.removesuffix('CameraConfig').title() if config else 'Unknown'
 
     async def update_device_list(self) -> None:
-        """Attempt to connect to all disconnected cameras."""
+        """Attempt to connect all disconnected cameras that are supposed to be connected."""
         for camera in self.cameras.values():
-            if camera.is_connected:
+            if camera.is_connected or not self._auto_connect[camera.id]:
                 continue
             try:
                 await camera.connect()
@@ -234,9 +261,10 @@ class CameraProvider:
         ])
         with ui.column():
             ui.label('Cameras').classes('text-center text-bold')
-            with ui.grid(columns='auto auto auto auto').classes('items-center'):
+            with ui.grid(columns='auto auto auto auto auto').classes('items-center'):
                 ui.label('Slot').classes('font-bold')
                 ui.label('Connected').classes('font-bold')
+                ui.label('Auto-connect').classes('font-bold')
                 ui.label('Resolution').classes('font-bold')
                 ui.label('Type').classes('font-bold')
                 for name, camera, slot_cfg in slots:
@@ -245,8 +273,16 @@ class CameraProvider:
                         status_bulb()
                         ui.label('—').classes('text-center')
                         ui.label('—').classes('text-center')
+                        ui.label('—').classes('text-center')
                     else:
+                        current_camera_id = camera.id
                         status_bulb().bind_value_from(camera, 'is_connected')
+
+                        async def toggle_auto_connect(event: events.ValueChangeEventArguments,
+                                                      camera_id: str = current_camera_id) -> None:
+                            await self.set_auto_connect(camera_id, event.value)
+
+                        ui.switch(value=self._auto_connect[current_camera_id], on_change=toggle_auto_connect)
                         resolution = ui.label('—')
 
                         def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera | None = camera) -> None:
