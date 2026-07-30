@@ -114,20 +114,42 @@ def skip_completed_segments(start_pose: Pose,
 
 
 def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
-                      t_min: float = -0.2, t_max: float = 1.2, iterations: int = 25) -> Pose:
+                      t_min: float = -0.2, t_max: float = 1.2) -> Pose:
     """The pose on ``spline`` from which a tool ``tool_offset_x`` ahead sits on ``target``.
 
-    Solves ``spline.pose(t).relative_point(target).x == tool_offset_x`` -- the target is exactly a
-    tool's length ahead in the robot's own frame. Exact on curves, unlike projecting the target
-    onto the path and stepping back along it, which ignores that a laterally offset target is
-    reached at a different arc position. The forward distance decreases monotonically along the
-    spline, so a bisection converges; the result is clamped to ``[t_min, t_max]`` when the target
-    lies beyond either end.
+    Clamped to ``[t_min, t_max]`` when the target lies beyond either end -- so the result is only
+    meaningful for a target the spline actually reaches. Use :func:`tool_t` where that matters.
 
     :param spline: the path being driven
     :param target: the world point the tool should end up on
     :param tool_offset_x: how far ahead of the robot origin the tool sits
     :return: the pose the robot origin must reach
+    """
+    t, _ = _solve_tool_t(spline, target, tool_offset_x, t_min, t_max)
+    return spline.pose(t)
+
+
+def tool_t(spline: Spline, target: Point, tool_offset_x: float) -> float | None:
+    """Where along ``spline`` a tool ``tool_offset_x`` ahead of the robot sits on ``target``.
+
+    :return: the spline parameter, or ``None`` if this spline does not reach the target -- the
+        solution then lies before its start or beyond its end, and extrapolating would answer for a
+        path the robot is not going to drive.
+    """
+    t, inside = _solve_tool_t(spline, target, tool_offset_x, 0.0, 1.0)
+    return t if inside else None
+
+
+def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
+                  t_min: float, t_max: float, iterations: int = 25) -> tuple[float, bool]:
+    """Solve ``spline.pose(t).relative_point(target).x == tool_offset_x`` by bisection.
+
+    The target is then exactly a tool's length ahead in the robot's own frame -- exact on curves,
+    unlike projecting the target onto the path and stepping back along it, which ignores that a
+    laterally offset target is reached at a different arc position. The forward distance decreases
+    monotonically along the spline, so a bisection converges.
+
+    :return: the parameter clamped to ``[t_min, t_max]``, and whether the solution was inside it
     """
     def forward_distance(t: float) -> float:
         """How far ahead of ``spline.pose(t)`` the target lies, in that pose's own frame."""
@@ -138,9 +160,9 @@ def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
         return ((target.x - spline.x(t)) * gx + (target.y - spline.y(t)) * gy) / length
 
     if forward_distance(t_min) <= tool_offset_x:
-        return spline.pose(t_min)
+        return t_min, False
     if forward_distance(t_max) >= tool_offset_x:
-        return spline.pose(t_max)
+        return t_max, False
     low, high = t_min, t_max
     for _ in range(iterations):
         middle = (low + high) / 2
@@ -148,4 +170,4 @@ def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
             low = middle
         else:
             high = middle
-    return spline.pose((low + high) / 2)
+    return (low + high) / 2, True

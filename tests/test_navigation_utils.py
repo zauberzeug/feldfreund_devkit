@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from rosys.geometry import Point, Pose, PoseStep, Spline
 
-from feldfreund_devkit.navigation import pose_with_tool_at
+from feldfreund_devkit.navigation import pose_with_tool_at, tool_t
 
 TOOL_OFFSET = 0.09
 
@@ -66,3 +66,21 @@ def test_target_behind_the_start_clamps_to_the_lower_bound() -> None:
     spline = _straight()
     assert pose_with_tool_at(spline, Point(x=-99.0, y=0.0), TOOL_OFFSET, t_min=-0.2).x \
         == pytest.approx(spline.pose(-0.2).x, abs=1e-6)
+
+
+def test_tool_t_finds_the_parameter_within_the_spline() -> None:
+    spline = _straight()
+    t = tool_t(spline, Point(x=1.0, y=0.0), TOOL_OFFSET)
+
+    assert t is not None
+    assert spline.pose(t).relative_point(Point(x=1.0, y=0.0)).x == pytest.approx(TOOL_OFFSET, abs=1e-6)
+
+
+@pytest.mark.parametrize('target_x', (2.5, -1.0))
+def test_tool_t_refuses_a_target_the_spline_does_not_reach(target_x: float) -> None:
+    """Extrapolating would answer for a path the robot is not going to drive.
+
+    ``Spline.pose`` happily evaluates outside ``[0, 1]``, and does so non-linearly, so a clamped or
+    extrapolated answer looks plausible while being metres wrong.
+    """
+    assert tool_t(_straight(), Point(x=target_x, y=0.0), TOOL_OFFSET) is None

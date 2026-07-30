@@ -1,17 +1,33 @@
 import asyncio
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
+from dataclasses import dataclass, field
 
 from rosys.analysis import track
 from rosys.driving import Driver, DrivingAbortedException
-from rosys.geometry import Point, Pose, Spline
+from rosys.geometry import Point, Spline
 
 from .drive_segment import DriveSegment
-from .utils import pose_with_tool_at, sub_spline
+from .utils import sub_spline, tool_t
 
 
 class CannotStop(Exception):
     """Raised when a requested stop cannot be made, so the caller should skip its target."""
+
+
+@dataclass
+class _Stop:
+    """A stop a tool is waiting for: what to come to rest over, and the handshake around it.
+
+    Holds the target rather than a pose, because where the robot must stand for the tool to reach it
+    can only be worked out against the segment that actually passes it -- which may not be the one
+    being driven when the stop is asked for.
+    """
+
+    target: Point
+    tool_offset_x: float
+    reached: asyncio.Event = field(default_factory=asyncio.Event)
+    released: asyncio.Event = field(default_factory=asyncio.Event)
 
 
 class PathDriver:
@@ -30,14 +46,17 @@ class PathDriver:
     :param speed_limit: the ambient limit, read live because it is a user setting
     """
 
+    STOP_LOOKAHEAD: float = 1.0
+    """How far (in metres) from the segment being driven a target may lie and still be stopped at.
+    Only that segment is known, so a target further out cannot be checked against the route --
+    accepting one would risk leaving a tool waiting for a place the robot never reaches."""
+
     def __init__(self, driver: Driver, *, speed_limit: Callable[[], float]) -> None:
         self.driver = driver
         self._ambient_limit = speed_limit
         self._caps: list[float] = []
         self._segment: DriveSegment | None = None
-        self._stop_pose: Pose | None = None
-        self._arrived = asyncio.Event()
-        self._released = asyncio.Event()
+        self._stop: _Stop | None = None
 
     @contextmanager
     def limit(self, speed: float) -> Iterator[None]:
@@ -64,60 +83,61 @@ class PathDriver:
     async def stop_over(self, target: Point, tool_offset_x: float) -> AsyncIterator[None]:
         """Come to rest with the tool on ``target`` and hold there for the body of the scope.
 
-        The running drive is aborted and re-issued as a piece ending at the stop pose. The abort is
-        noticed within one driver tick, so a target closer than about a tick's worth of travel is
-        reached with an abrupt stop rather than a planned ramp -- ask for stops with some lead.
+        The stop stays pending until the robot reaches it, so a target beyond the end of the segment
+        being driven is honoured once the segment containing it starts -- the tool simply waits
+        longer. The running drive is aborted and re-issued as a piece ending at the stop pose; the
+        abort is noticed within one driver tick, so a target closer than about a tick's worth of
+        travel is reached with an abrupt stop rather than a planned ramp.
 
-        :raises CannotStop: nothing is driving, or the target is not ahead on the segment being
-            driven. The robot keeps going; skip this target.
+        :raises CannotStop: nothing is being driven, the target is already behind the robot, or it
+            lies further than :attr:`STOP_LOOKAHEAD` from the segment being driven. The robot keeps
+            going; skip this target.
         """
         segment = self._segment
         if segment is None:
             raise CannotStop('nothing is being driven')
-        pose = pose_with_tool_at(segment.spline, target, tool_offset_x)
-        if not self._is_ahead(segment.spline, pose):
-            raise CannotStop(f'{target} is not ahead on the segment being driven')
-        assert self._stop_pose is None, 'only one stop at a time is supported'
-        self._stop_pose = pose
-        self._arrived.clear()
-        self._released.clear()
+        if not self._is_within_reach(segment.spline, target):
+            raise CannotStop(f'{target} is more than {self.STOP_LOOKAHEAD} m off the segment being driven')
+        if not self._is_ahead(target, tool_offset_x):
+            raise CannotStop(f'{target} is already behind the robot')
+        assert self._stop is None, 'only one stop at a time is supported'
+        stop = self._stop = _Stop(target, tool_offset_x)
         self.driver.abort()  # NOTE: only ever while driving; an armed flag would hit the next drive
         try:
-            await self._arrived.wait()
+            await stop.reached.wait()
             yield
         finally:
-            self._stop_pose = None
-            self._released.set()
+            self._stop = None
+            stop.released.set()
 
     @track
     async def drive(self, segment: DriveSegment) -> None:
         """Drive the segment: its spline, at its speed, in its direction, resting at its end if it says so.
 
         Returns once the segment has been driven to its end, however many stops were held on the
-        way. To drive only part of a segment, pass a copy carrying that piece as its spline:
+        way. A stop pending somewhere further along the route is left pending. To drive only part of
+        a segment, pass a copy carrying that piece as its spline:
         ``replace(segment, spline=part, stop_at_end=False)``.
         """
         self._segment = segment
         remaining = segment.spline
         try:
             while True:
-                stop_pose = self._stop_pose
-                piece = self._up_to(remaining, stop_pose) if stop_pose is not None else remaining
+                stop = self._stop
+                stop_t = None if stop is None else tool_t(remaining, stop.target, stop.tool_offset_x)
+                piece = remaining if stop_t is None else sub_spline(remaining, 0.0, stop_t)
                 try:
-                    await self._drive(segment, piece, stop_at_end=stop_pose is not None or segment.stop_at_end)
+                    await self._drive(segment, piece, stop_at_end=stop_t is not None or segment.stop_at_end)
                 except DrivingAbortedException:
                     remaining = self._remaining(segment)  # a stop was asked for, or released
                     continue
-                if stop_pose is None:
-                    return
-                self._arrived.set()
-                await self._released.wait()
-                self._released.clear()
-                self._arrived.clear()
+                if stop is None or stop_t is None:
+                    return  # the segment is done; a stop further along stays pending
+                stop.reached.set()
+                await stop.released.wait()
                 remaining = self._remaining(segment)
         finally:
             self._segment = None
-            self._arrived.set()  # NOTE: nothing will arrive anymore; let a waiting tool proceed
 
     async def _drive(self, segment: DriveSegment, spline: Spline, *, stop_at_end: bool) -> None:
         with self.driver.parameters.set(linear_speed_limit=self.speed_limit(segment),
@@ -125,14 +145,26 @@ class PathDriver:
             await self.driver.drive_spline(spline, flip_hook=segment.backward,
                                            throttle_at_end=stop_at_end, stop_at_end=stop_at_end)
 
-    def _is_ahead(self, spline: Spline, pose: Pose) -> bool:
-        """Whether ``pose`` can still be driven to: ahead of the robot and not past the spline's end."""
-        here = spline.closest_point(self.driver.pose.x, self.driver.pose.y)
-        stop = spline.closest_point(pose.x, pose.y)
-        return here <= stop < 1.0
+    def _is_ahead(self, target: Point, tool_offset_x: float) -> bool:
+        """Whether the robot can still bring its tool onto ``target`` by driving on.
 
-    def _up_to(self, spline: Spline, pose: Pose) -> Spline:
-        return sub_spline(spline, 0.0, spline.closest_point(pose.x, pose.y))
+        Asked in the robot's own frame, so it holds whichever segment the target belongs to. The
+        tolerance keeps a target the tool is already over workable: the piece left to drive is then
+        shorter than the driver bothers with, and it simply comes to rest where it is.
+        """
+        ahead = self.driver.pose.relative_point(target).x - tool_offset_x
+        return ahead > -self.driver.parameters.minimum_drive_distance
+
+    def _is_within_reach(self, spline: Spline, target: Point) -> bool:
+        """Whether ``target`` is close enough to the segment being driven to be worth stopping for.
+
+        Measured from the segment, so it covers both a target beyond its end and one far off to the
+        side. Checked on the target itself rather than on the reduced stop pose, because the
+        reduction clamps to the segment's own parameter range: a target metres beyond the end would
+        otherwise come back as a pose just past it and be stopped at, nowhere near what was asked.
+        """
+        t = spline.closest_point(target.x, target.y)
+        return spline.pose(t).point.distance(target) <= self.STOP_LOOKAHEAD
 
     def _remaining(self, segment: DriveSegment) -> Spline:
         """What is left of the segment, starting where the robot stands.
