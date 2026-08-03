@@ -14,6 +14,7 @@ from feldfreund_devkit.navigation import (
     Orchestrator,
     StaticNavigation,
     never,
+    no_work,
 )
 
 
@@ -51,7 +52,7 @@ class RefusingNavigation(Navigation):
 
 async def test_drives_the_whole_route(devkit_system) -> None:
     orchestrator = Orchestrator(TwoLegNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=never)
+                                detection=NoDetection(), work=no_work)
     driven: list[DriveSegment] = []
     orchestrator.SEGMENT_COMPLETED.subscribe(driven.append)
     completed: list[bool] = []
@@ -69,7 +70,7 @@ async def test_drives_the_whole_route(devkit_system) -> None:
 async def test_reports_the_route_as_it_shrinks(devkit_system) -> None:
     navigation = TwoLegNavigation()
     orchestrator = Orchestrator(navigation, devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=never)
+                                detection=NoDetection(), work=no_work)
     started: list[float] = []
     orchestrator.SEGMENT_STARTED.subscribe(lambda segment: started.append(segment.end.x))
     remaining: list[int] = []
@@ -85,7 +86,7 @@ async def test_reports_the_route_as_it_shrinks(devkit_system) -> None:
 
 async def test_an_empty_route_finishes_without_driving(devkit_system) -> None:
     orchestrator = Orchestrator(EmptyNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=never)
+                                detection=NoDetection(), work=no_work)
     completed: list[bool] = []
     orchestrator.RUN_COMPLETED.subscribe(lambda: completed.append(True))
 
@@ -98,7 +99,7 @@ async def test_an_empty_route_finishes_without_driving(devkit_system) -> None:
 async def test_a_navigation_may_refuse_to_start(devkit_system) -> None:
     """Refusing is an exception, not an empty route -- the two must stay distinguishable."""
     orchestrator = Orchestrator(RefusingNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=never)
+                                detection=NoDetection(), work=no_work)
 
     with pytest.raises(RuntimeError, match='no route from here'):
         await orchestrator.run()

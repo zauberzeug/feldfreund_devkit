@@ -30,7 +30,7 @@ class Orchestrator:
     :param driver: the low-level driver executing velocities
     :param pose_provider: where the robot is, handed to the tool
     :param detection: controls when the robot looks for what it works on
-    :param work: the tool's work loop; pass :func:`never` for a run that only drives
+    :param work: the tool's work loop; pass :func:`no_work` for a run that only drives
     """
 
     def __init__(self, navigation: Navigation, driver: Driver, pose_provider: PoseProvider, *,

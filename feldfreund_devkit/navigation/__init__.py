@@ -15,7 +15,7 @@ from .utils import (
     tool_t,
 )
 from .waypoint_navigation import WaypointNavigation
-from .work_context import Detection, WorkContext, WorkFunction, never
+from .work_context import Detection, WorkContext, WorkFunction, never, no_work
 
 __all__ = [
     'CannotStop',
@@ -38,6 +38,7 @@ __all__ = [
     'generate_three_point_turn',
     'is_reference_valid',
     'never',
+    'no_work',
     'pose_with_tool_at',
     'skip_completed_segments',
     'sub_spline',

@@ -41,3 +41,12 @@ async def never() -> None:
     from activation to deactivation, or a tool that only needs to act when the stretch ends.
     """
     await asyncio.Event().wait()
+
+
+async def no_work(ctx: WorkContext) -> None:
+    """The work loop for a run that only drives.
+
+    Distinct from :func:`never`, which takes no context: a :data:`WorkFunction` is always called
+    with one, and a run over workable segments would otherwise fail on the first of them.
+    """
+    await never()
