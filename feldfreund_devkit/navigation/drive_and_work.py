@@ -7,10 +7,10 @@ from rosys.analysis import track
 from rosys.driving.pose_provider import PoseProvider
 
 from ..implement import ImplementException
+from ..work_context import Detection, WorkContext, WorkFunction
 from .drive_segment import DriveSegment
 from .navigation import Navigation
 from .path_driver import PathDriver
-from .work_context import Detection, WorkContext, WorkFunction
 
 log = logging.getLogger('feldfreund.drive_and_work')
 

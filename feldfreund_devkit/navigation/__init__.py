@@ -15,11 +15,9 @@ from .utils import (
     tool_t,
 )
 from .waypoint_navigation import WaypointNavigation
-from .work_context import Detection, WorkContext, WorkFunction, never, no_work
 
 __all__ = [
     'CannotStop',
-    'Detection',
     'DriveSegment',
     'GnssRequirement',
     'Navigation',
@@ -32,13 +30,9 @@ __all__ = [
     'StraightLineNavigation',
     'TrackRecordingController',
     'WaypointNavigation',
-    'WorkContext',
-    'WorkFunction',
     'drive_and_work',
     'generate_three_point_turn',
     'is_reference_valid',
-    'never',
-    'no_work',
     'pose_with_tool_at',
     'skip_completed_segments',
     'sub_spline',

@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
+from typing import Any
 
-from nicegui import Event
+import rosys
+from nicegui import Event, ui
 
 from .drive_segment import DriveSegment
 
 
-class Navigation(ABC):
+class Navigation(rosys.persistence.Persistable, ABC):
     """Produces the route to drive, one segment at a time.
 
     A navigation says *where* to go, not how the driving is done -- except where a segment itself
@@ -17,6 +19,7 @@ class Navigation(ABC):
     LINEAR_SPEED_LIMIT: float = 0.13
 
     def __init__(self, *, name: str) -> None:
+        super().__init__()
         self.name = name
         self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
         """Forward speed the user allows; segments may ask for less, never for more."""
@@ -28,6 +31,21 @@ class Navigation(ABC):
         Raise to refuse to start at all; yielding nothing means there was legitimately nothing to
         do. The consumer closes the iterator, so cleanup belongs in a ``finally``.
         """
+
+    def settings_ui(self) -> None:
+        """Controls for the route, shown while the mission driving it is selected."""
+        ui.number('Linear Speed', step=0.01, min=0.01, max=1.0, format='%.2f', suffix='m/s',
+                  on_change=self.request_backup) \
+            .bind_value(self, 'linear_speed_limit') \
+            .props('dense outlined') \
+            .classes('w-24') \
+            .tooltip(f'Forward speed limit (default: {self.LINEAR_SPEED_LIMIT:.2f} m/s)')
+
+    def backup_to_dict(self) -> dict[str, Any]:
+        return {'linear_speed_limit': self.linear_speed_limit}
+
+    def restore_from_dict(self, data: dict[str, Any]) -> None:
+        self.linear_speed_limit = data.get('linear_speed_limit', self.linear_speed_limit)
 
 
 class StaticNavigation(Navigation):

@@ -6,6 +6,7 @@ from rosys.analysis import track
 from rosys.geometry import Point, Pose3d
 
 from .config import ImplementConfiguration
+from .work_context import WorkContext, never
 
 
 class ImplementException(Exception):
@@ -44,6 +45,14 @@ class Implement(rosys.persistence.Persistable):
     @track
     async def deactivate(self) -> None:
         """Deactivate the implement and clean up after use"""
+
+    @abstractmethod
+    async def work(self, ctx: WorkContext) -> None:
+        """Do whatever this implement does, for as long as the robot is on workable ground.
+
+        Started when a working stretch begins and cancelled when it ends, so it must not return on
+        its own. A tool that acts continuously from activation has nothing to do here but wait.
+        """
 
     @track
     async def start_workflow(self) -> None:
@@ -97,6 +106,10 @@ class ImplementDummy(Implement):
 
     async def is_ready(self) -> bool:
         return True
+
+    async def work(self, ctx: WorkContext) -> None:
+        """Nothing to do: this implement exists so the robot can drive without one."""
+        await never()
 
     def can_reach(self, local_point: Point) -> bool:
         return True

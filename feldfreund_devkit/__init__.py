@@ -6,9 +6,11 @@ from .robot_locator import RobotLocator
 from .system import System
 from .target_locator import TargetLocator
 from .version import __version__
+from .work_context import Detection, WorkContext, WorkFunction, never, no_work
 
 __all__ = [
     'CameraProvider',
+    'Detection',
     'Feldfreund',
     'FeldfreundHardware',
     'FeldfreundSimulation',
@@ -19,6 +21,10 @@ __all__ = [
     'RobotLocator',
     'System',
     'TargetLocator',
+    'WorkContext',
+    'WorkFunction',
     '__version__',
     'log_configuration',
+    'never',
+    'no_work',
 ]

@@ -6,14 +6,13 @@ from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
 from route_helpers import TOOL_OFFSET, RowTurnRowNavigation, route_run
 
+from feldfreund_devkit import never, no_work
 from feldfreund_devkit.implement import ImplementException
 from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
     Navigation,
     StaticNavigation,
-    never,
-    no_work,
 )
 
 

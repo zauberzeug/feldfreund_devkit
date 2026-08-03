@@ -1,11 +1,12 @@
-"""Routes and waiting helpers shared by the orchestrator and path-driver tests."""
+"""Routes and waiting helpers shared by the run-loop and path-driver tests."""
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import rosys
 from rosys.geometry import Pose
 
-from feldfreund_devkit.navigation import DriveSegment, PathDriver, StaticNavigation, drive_and_work, no_work
+from feldfreund_devkit import no_work
+from feldfreund_devkit.navigation import DriveSegment, PathDriver, StaticNavigation, drive_and_work
 
 TOOL_OFFSET = 0.1
 """How far ahead of the robot origin the pretend tool sits."""

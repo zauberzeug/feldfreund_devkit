@@ -1,12 +1,15 @@
+from __future__ import annotations
+
 import asyncio
 from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from rosys.driving.pose_provider import PoseProvider
 
-from .path_driver import PathDriver
+if TYPE_CHECKING:
+    from .navigation.path_driver import PathDriver
 
 
 class Detection(Protocol):
