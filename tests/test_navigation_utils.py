@@ -84,3 +84,18 @@ def test_tool_t_refuses_a_target_the_spline_does_not_reach(target_x: float) -> N
     extrapolated answer looks plausible while being metres wrong.
     """
     assert tool_t(_straight(), Point(x=target_x, y=0.0), TOOL_OFFSET) is None
+
+
+def test_tool_t_accepts_a_target_already_at_the_tool() -> None:
+    """The robot is already there: the stop is at t=0, not out of range.
+
+    A tool that works where it stands -- stop-and-go, or a weed reached while decelerating -- would
+    otherwise have every one of its stops silently discarded.
+    """
+    spline = _straight()
+    target = spline.pose(0.0).transform(Point(x=TOOL_OFFSET, y=0.0))
+
+    t = tool_t(spline, target, TOOL_OFFSET)
+
+    assert t is not None
+    assert t == pytest.approx(0.0, abs=1e-6)

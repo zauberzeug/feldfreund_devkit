@@ -159,9 +159,11 @@ def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
             return 0.0
         return ((target.x - spline.x(t)) * gx + (target.y - spline.y(t)) * gy) / length
 
-    if forward_distance(t_min) <= tool_offset_x:
+    # NOTE: strict, so a target sitting exactly at the tool counts as solved here rather than as
+    # out of range -- that is the "already there, work without advancing" case
+    if forward_distance(t_min) < tool_offset_x:
         return t_min, False
-    if forward_distance(t_max) >= tool_offset_x:
+    if forward_distance(t_max) > tool_offset_x:
         return t_max, False
     low, high = t_min, t_max
     for _ in range(iterations):
