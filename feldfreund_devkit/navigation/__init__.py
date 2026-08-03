@@ -7,12 +7,13 @@ from .recorded_track_navigation import RecordedTrackNavigation
 from .straight_line_navigation import StraightLineNavigation
 from .track_recording_controller import TrackRecordingController
 from .utils import (
+    Reach,
     generate_three_point_turn,
     is_reference_valid,
     pose_with_tool_at,
     skip_completed_segments,
     sub_spline,
-    tool_t,
+    tool_reach,
 )
 from .waypoint_navigation import WaypointNavigation
 
@@ -22,6 +23,7 @@ __all__ = [
     'GnssRequirement',
     'Navigation',
     'PathDriver',
+    'Reach',
     'RecordedTrack',
     'RecordedTrackNavigation',
     'RecordedTrackProvider',
@@ -36,5 +38,5 @@ __all__ = [
     'pose_with_tool_at',
     'skip_completed_segments',
     'sub_spline',
-    'tool_t'
+    'tool_reach',
 ]

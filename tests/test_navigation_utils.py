@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from rosys.geometry import Point, Pose, PoseStep, Spline
 
-from feldfreund_devkit.navigation import pose_with_tool_at, tool_t
+from feldfreund_devkit.navigation import Reach, pose_with_tool_at, tool_reach
 
 TOOL_OFFSET = 0.09
 
@@ -68,25 +68,25 @@ def test_target_behind_the_start_clamps_to_the_lower_bound() -> None:
         == pytest.approx(spline.pose(-0.2).x, abs=1e-6)
 
 
-def test_tool_t_finds_the_parameter_within_the_spline() -> None:
+def test_the_tool_reaches_a_target_on_the_spline() -> None:
     spline = _straight()
-    t = tool_t(spline, Point(x=1.0, y=0.0), TOOL_OFFSET)
+    reach = tool_reach(spline, Point(x=1.0, y=0.0), TOOL_OFFSET)
 
-    assert t is not None
-    assert spline.pose(t).relative_point(Point(x=1.0, y=0.0)).x == pytest.approx(TOOL_OFFSET, abs=1e-6)
+    assert reach.where is Reach.ON
+    assert spline.pose(reach.t).relative_point(Point(x=1.0, y=0.0)).x == pytest.approx(TOOL_OFFSET, abs=1e-6)
 
 
-@pytest.mark.parametrize('target_x', (2.5, -1.0))
-def test_tool_t_refuses_a_target_the_spline_does_not_reach(target_x: float) -> None:
-    """Extrapolating would answer for a path the robot is not going to drive.
+@pytest.mark.parametrize(('target_x', 'expected'), [(2.5, Reach.BEYOND), (-1.0, Reach.BEHIND)])
+def test_a_target_off_either_end_is_told_apart(target_x: float, expected: Reach) -> None:
+    """The two call for opposite reactions: wait for the segment that contains it, or give up.
 
     ``Spline.pose`` happily evaluates outside ``[0, 1]``, and does so non-linearly, so a clamped or
     extrapolated answer looks plausible while being metres wrong.
     """
-    assert tool_t(_straight(), Point(x=target_x, y=0.0), TOOL_OFFSET) is None
+    assert tool_reach(_straight(), Point(x=target_x, y=0.0), TOOL_OFFSET).where is expected
 
 
-def test_tool_t_accepts_a_target_already_at_the_tool() -> None:
+def test_a_target_already_at_the_tool_is_reached_where_the_robot_stands() -> None:
     """The robot is already there: the stop is at t=0, not out of range.
 
     A tool that works where it stands -- stop-and-go, or a weed reached while decelerating -- would
@@ -95,7 +95,16 @@ def test_tool_t_accepts_a_target_already_at_the_tool() -> None:
     spline = _straight()
     target = spline.pose(0.0).transform(Point(x=TOOL_OFFSET, y=0.0))
 
-    t = tool_t(spline, target, TOOL_OFFSET)
+    reach = tool_reach(spline, target, TOOL_OFFSET)
 
-    assert t is not None
-    assert t == pytest.approx(0.0, abs=1e-6)
+    assert reach.where is Reach.ON
+    assert reach.t == pytest.approx(0.0, abs=1e-6)
+
+
+def test_a_target_just_behind_the_tool_is_reached_within_the_tolerance() -> None:
+    """What the robot can work without moving must not read as unreachable."""
+    spline = _straight()
+    target = spline.pose(0.0).transform(Point(x=TOOL_OFFSET - 0.005, y=0.0))
+
+    assert tool_reach(spline, target, TOOL_OFFSET).where is Reach.BEHIND
+    assert tool_reach(spline, target, TOOL_OFFSET, tolerance=0.01).where is Reach.ON

@@ -9,7 +9,7 @@ from rosys.driving import Driver, DrivingAbortedException
 from rosys.geometry import Point, Spline
 
 from .drive_segment import DriveSegment
-from .utils import is_behind, sub_spline, tool_t
+from .utils import Reach, ToolReach, sub_spline, tool_reach
 
 
 class CannotStop(Exception):
@@ -107,8 +107,7 @@ class PathDriver:
             raise CannotStop('nothing is being driven')
         if not self._is_ahead(target, tool_offset_x):
             raise CannotStop(f'{target} is already behind the robot')
-        if is_behind(segment.spline, target, tool_offset_x,
-                     tolerance=self.driver.parameters.minimum_drive_distance):
+        if self._reach(segment.spline, target, tool_offset_x).where is Reach.BEHIND:
             raise CannotStop(f'{target} lies behind the segment being driven, which no later one reaches back to')
         if not self._is_within_reach(segment.spline, target):
             raise CannotStop(f'{target} is more than {self.STOP_LOOKAHEAD} m off the segment being driven')
@@ -139,13 +138,16 @@ class PathDriver:
         try:
             while True:
                 stop = self._stop
-                if stop is not None and self._has_fallen_behind(remaining, stop):
-                    stop.refused = True
-                    stop.reached.set()
-                    self._stop = stop = None
-                stop_t = None if stop is None else \
-                    tool_t(remaining, stop.target, stop.tool_offset_x,
-                           tolerance=self.driver.parameters.minimum_drive_distance)
+                stop_t: float | None = None
+                if stop is not None:
+                    reach = self._reach(remaining, stop.target, stop.tool_offset_x)
+                    if reach.where is Reach.BEHIND:
+                        # NOTE: rolled past while the abort took effect; let the tool go, do not wait
+                        stop.refused = True
+                        stop.reached.set()
+                        self._stop = stop = None
+                    elif reach.where is Reach.ON:
+                        stop_t = reach.t
                 piece = remaining if stop_t is None else sub_spline(remaining, 0.0, stop_t)
                 try:
                     await self._drive(segment, piece, stop_at_end=stop_t is not None or segment.stop_at_end)
@@ -187,15 +189,15 @@ class PathDriver:
         ahead = self.driver.pose.relative_point(target).x - tool_offset_x
         return ahead > -self.driver.parameters.minimum_drive_distance
 
-    def _has_fallen_behind(self, remaining: Spline, stop: _Stop) -> bool:
-        """Whether the robot has rolled past the stop, so waiting for it would never end.
+    def _reach(self, spline: Spline, target: Point, tool_offset_x: float) -> ToolReach:
+        """Whether ``spline`` brings the tool onto ``target``, allowing for a robot already on it.
 
-        A stop is admitted while the target is still ahead, but the drive only notices the abort a
-        tick later and by then the robot may have passed it. Checked against what is left to drive,
-        so the waiter is let go instead of holding the tool for the rest of the route.
+        The one place the tolerance is supplied, so admitting a stop and resolving it later cannot
+        disagree about what counts as reachable -- a stop admitted but never resolvable would hold
+        the tool for the rest of the route.
         """
-        return is_behind(remaining, stop.target, stop.tool_offset_x,
-                         tolerance=self.driver.parameters.minimum_drive_distance)
+        return tool_reach(spline, target, tool_offset_x,
+                          tolerance=self.driver.parameters.minimum_drive_distance)
 
     def _is_within_reach(self, spline: Spline, target: Point) -> bool:
         """Whether ``target`` is close enough to the segment being driven to be worth stopping for.

@@ -1,5 +1,7 @@
 import logging
 import math
+from dataclasses import dataclass
+from enum import Enum, auto
 
 import numpy as np
 from rosys.geometry import GeoReference, Point, Pose, Spline
@@ -118,7 +120,7 @@ def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
     """The pose on ``spline`` from which a tool ``tool_offset_x`` ahead sits on ``target``.
 
     Clamped to ``[t_min, t_max]`` when the target lies beyond either end -- so the result is only
-    meaningful for a target the spline actually reaches. Use :func:`tool_t` where that matters.
+    meaningful for a target the spline actually reaches. Use :func:`tool_reach` where that matters.
 
     :param spline: the path being driven
     :param target: the world point the tool should end up on
@@ -129,34 +131,45 @@ def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
     return spline.pose(t)
 
 
-def tool_t(spline: Spline, target: Point, tool_offset_x: float, *, tolerance: float = 0.0) -> float | None:
+class Reach(Enum):
+    """Where a spline can bring the tool, relative to a target."""
+
+    ON = auto()
+    """Onto the target, somewhere along this spline."""
+    BEHIND = auto()
+    """Nowhere: the tool is already past it at the spline's start, and a route only goes forward."""
+    BEYOND = auto()
+    """Not on this spline, but a later part of the route may still contain it."""
+
+
+@dataclass(frozen=True)
+class ToolReach:
+    """Whether a spline brings the tool onto a target, and where along it."""
+
+    where: Reach
+    t: float
+    """The spline parameter -- only meaningful when :attr:`where` is :attr:`Reach.ON`."""
+
+
+def tool_reach(spline: Spline, target: Point, tool_offset_x: float, *, tolerance: float = 0.0) -> ToolReach:
     """Where along ``spline`` a tool ``tool_offset_x`` ahead of the robot sits on ``target``.
 
-    :param tolerance: how far behind the spline's start the solution may fall and still answer 0 --
-        the robot is then close enough to work the target where it stands
-    :return: the spline parameter, or ``None`` if this spline does not reach the target -- the
-        solution then lies before its start or beyond its end, and extrapolating would answer for a
-        path the robot is not going to drive. Use :func:`is_behind` to tell those two apart.
+    Answers the three cases apart, because they call for opposite reactions: drive to it, give up on
+    it, or wait for the segment that contains it. Extrapolating instead would answer for a path the
+    robot is not going to drive.
+
+    :param tolerance: how far behind the spline's start the solution may fall and still count as
+        reached at ``t = 0`` -- the robot is then close enough to work the target where it stands
     """
     t, inside = _solve_tool_t(spline, target, tool_offset_x, 0.0, 1.0)
     if inside:
-        return t
-    if t == 0.0 and not is_behind(spline, target, tool_offset_x, tolerance=tolerance):
-        return 0.0
-    return None
+        return ToolReach(Reach.ON, t)
+    if t > 0.0:
+        return ToolReach(Reach.BEYOND, t)
+    if _forward_distance(spline, target, 0.0) < tool_offset_x - tolerance:
+        return ToolReach(Reach.BEHIND, t)
+    return ToolReach(Reach.ON, 0.0)
 
-
-def is_behind(spline: Spline, target: Point, tool_offset_x: float, *, tolerance: float = 0.0) -> bool:
-    """Whether the tool is already past ``target`` at the very start of ``spline``.
-
-    Distinguishes the two ways :func:`tool_t` can come back empty. A target beyond the end may still
-    be reached once a later part of the route is driven; one behind the start never will be, because
-    a route only goes forward.
-
-    :param tolerance: how far behind the tool a target may sit and still count as reachable, for the
-        robot that is already standing on it and only has to work where it is
-    """
-    return _forward_distance(spline, target, 0.0) < tool_offset_x - tolerance
 
 
 def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
