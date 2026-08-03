@@ -1,22 +1,32 @@
 import asyncio
 from collections.abc import Awaitable, Callable
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
+from typing import Protocol
 
 from rosys.driving.pose_provider import PoseProvider
 
 from .path_driver import PathDriver
 
 
+class Detection(Protocol):
+    """Controls when the robot is looking for what it works on."""
+
+    def running(self) -> AbstractAsyncContextManager[None]:
+        """Keep detection running for the duration of the scope, and stop it on the way out."""
+
+
 @dataclass(frozen=True)
 class WorkContext:
-    """What a tool may use while it works: how to move, and where the robot is.
+    """What a tool may use while it works: how to move, where the robot is, and what it can see.
 
-    Run-scoped, so it carries only what a tool cannot own itself. Hardware, plant provider and the
-    like stay wired into the implement at construction.
+    Run-scoped, so it carries only what a tool cannot own itself. Hardware and the like stay wired
+    into the implement at construction.
     """
 
     motion: PathDriver
     pose: PoseProvider
+    detection: Detection
 
 
 WorkFunction = Callable[[WorkContext], Awaitable[None]]

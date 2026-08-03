@@ -12,7 +12,7 @@ from ..implement import ImplementException
 from .drive_segment import DriveSegment
 from .navigation import Navigation
 from .path_driver import PathDriver
-from .work_context import WorkContext, WorkFunction
+from .work_context import Detection, WorkContext, WorkFunction
 
 
 class Orchestrator:
@@ -29,15 +29,17 @@ class Orchestrator:
     :param navigation: produces the route
     :param driver: the low-level driver executing velocities
     :param pose_provider: where the robot is, handed to the tool
+    :param detection: controls when the robot looks for what it works on
     :param work: the tool's work loop; pass :func:`never` for a run that only drives
     """
 
     def __init__(self, navigation: Navigation, driver: Driver, pose_provider: PoseProvider, *,
-                 work: WorkFunction) -> None:
+                 detection: Detection, work: WorkFunction) -> None:
         self.log = logging.getLogger('feldfreund.orchestrator')
         self.navigation = navigation
         self.path_driver = PathDriver(driver, speed_limit=lambda: navigation.linear_speed_limit)
         self._pose_provider = pose_provider
+        self._detection = detection
         self._work = work
 
         self.SEGMENT_STARTED = Event[DriveSegment]()
@@ -87,7 +89,8 @@ class Orchestrator:
         Returning early would look to ``parallelize`` like the stretch being over and halt the drive
         mid-row, so it is reported rather than obeyed.
         """
-        await self._work(WorkContext(motion=self.path_driver, pose=self._pose_provider))
+        await self._work(WorkContext(motion=self.path_driver, pose=self._pose_provider,
+                                     detection=self._detection))
         raise ImplementException('the work loop returned; it must run until the stretch ends')
 
     async def _drive(self, segment: DriveSegment) -> None:

@@ -1,4 +1,7 @@
 """Routes and waiting helpers shared by the orchestrator and path-driver tests."""
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 import rosys
 from rosys.geometry import Pose
 
@@ -37,3 +40,11 @@ async def until(condition) -> None:
     """Wait for ``condition`` from inside a running automation."""
     while not condition():
         await rosys.sleep(0.1)
+
+
+class NoDetection:
+    """The detection channel for tools that look for nothing; the scope does nothing."""
+
+    @asynccontextmanager
+    async def running(self) -> AsyncIterator[None]:
+        yield

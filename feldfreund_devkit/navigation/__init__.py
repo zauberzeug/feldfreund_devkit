@@ -15,10 +15,11 @@ from .utils import (
     tool_t,
 )
 from .waypoint_navigation import WaypointNavigation
-from .work_context import WorkContext, WorkFunction, never
+from .work_context import Detection, WorkContext, WorkFunction, never
 
 __all__ = [
     'CannotStop',
+    'Detection',
     'DriveSegment',
     'GnssRequirement',
     'Navigation',
