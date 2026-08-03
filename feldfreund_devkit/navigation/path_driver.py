@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 
+from nicegui import Event
 from rosys.analysis import track
 from rosys.driving import Driver, DrivingAbortedException
 from rosys.geometry import Point, Spline
@@ -57,6 +58,12 @@ class PathDriver:
         self._caps: list[float] = []
         self._segment: DriveSegment | None = None
         self._stop: _Stop | None = None
+
+        self.SEGMENT_STARTED = Event[DriveSegment]()
+        """driving a segment has begun (argument: ``DriveSegment``)"""
+
+        self.SEGMENT_COMPLETED = Event[DriveSegment]()
+        """a segment has been driven to its end (argument: ``DriveSegment``)"""
 
     @contextmanager
     def limit(self, speed: float) -> Iterator[None]:
@@ -121,6 +128,7 @@ class PathDriver:
         """
         self._segment = segment
         remaining = segment.spline
+        self.SEGMENT_STARTED.emit(segment)
         try:
             while True:
                 stop = self._stop
@@ -132,6 +140,7 @@ class PathDriver:
                     remaining = self._remaining(segment)  # a stop was asked for, or released
                     continue
                 if stop is None or stop_t is None:
+                    self.SEGMENT_COMPLETED.emit(segment)
                     return  # the segment is done; a stop further along stays pending
                 stop.reached.set()
                 await stop.released.wait()

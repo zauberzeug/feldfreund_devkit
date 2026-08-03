@@ -1,6 +1,6 @@
+from .drive_and_work import drive_and_work
 from .drive_segment import DriveSegment
 from .navigation import Navigation, StaticNavigation
-from .orchestrator import Orchestrator
 from .path_driver import CannotStop, PathDriver
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider, RecordedWaypoint
 from .recorded_track_navigation import RecordedTrackNavigation
@@ -23,7 +23,6 @@ __all__ = [
     'DriveSegment',
     'GnssRequirement',
     'Navigation',
-    'Orchestrator',
     'PathDriver',
     'RecordedTrack',
     'RecordedTrackNavigation',
@@ -35,6 +34,7 @@ __all__ = [
     'WaypointNavigation',
     'WorkContext',
     'WorkFunction',
+    'drive_and_work',
     'generate_three_point_turn',
     'is_reference_valid',
     'never',

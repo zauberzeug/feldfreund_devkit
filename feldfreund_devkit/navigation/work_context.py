@@ -31,7 +31,7 @@ class WorkContext:
 
 WorkFunction = Callable[[WorkContext], Awaitable[None]]
 """A tool's work loop. Runs while the robot drives a working stretch and is cancelled at its end,
-so it must not return on its own -- see :meth:`Orchestrator.run`."""
+so it must not return on its own -- see :func:`drive_and_work`."""
 
 
 async def never() -> None:

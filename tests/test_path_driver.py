@@ -1,18 +1,17 @@
 """Speed-cap composition, and holding the robot at a stop while a tool works.
 
-The stop tests need a robot that is actually driving, so they run a real ``Orchestrator`` -- but
-what they pin is ``PathDriver`` behaviour.
+The stop tests need a robot that is actually driving, so they run a real route -- but what they
+pin is ``PathDriver`` behaviour.
 """
 import pytest
 import rosys
 from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
-from route_helpers import TOOL_OFFSET, NoDetection, OneLegNavigation, RowTurnRowNavigation, until
+from route_helpers import TOOL_OFFSET, OneLegNavigation, RowTurnRowNavigation, route_run, until
 
 from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
-    Orchestrator,
     PathDriver,
     never,
     no_work,
@@ -52,18 +51,17 @@ def test_the_slowest_of_everything_asked_for_wins() -> None:
 
 async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
     """The robot comes to rest with the tool on the target, waits, then drives on to the end."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
+    path_driver, run = route_run(devkit_system, OneLegNavigation(), work=no_work)
     at_rest: list[float] = []
 
     async def work() -> None:
         await until(lambda: devkit_system.driver.pose.x > 0.2)
-        async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
+        async with path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
             at_rest.append(devkit_system.driver.pose.x)
             await rosys.sleep(1.0)
             at_rest.append(devkit_system.driver.pose.x)
 
-    devkit_system.automator.start(rosys.automation.parallelize(orchestrator.run(), work()))
+    devkit_system.automator.start(rosys.automation.parallelize(run, work()))
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -73,29 +71,27 @@ async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
 
 
 async def test_a_stop_is_refused_when_nothing_is_driving(devkit_system) -> None:
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
+    path_driver, _ = route_run(devkit_system, OneLegNavigation(), work=no_work)
 
     with pytest.raises(CannotStop):
-        async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
+        async with path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
             pass
 
 
 async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
     """Refused rather than reversed: the caller carries on and the robot keeps driving."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
+    path_driver, run = route_run(devkit_system, OneLegNavigation(), work=no_work)
     refused: list[bool] = []
 
     async def work() -> None:
         await until(lambda: devkit_system.driver.pose.x > 1.0)
         try:
-            async with orchestrator.path_driver.stop_over(Point(x=0.5, y=0.0), TOOL_OFFSET):
+            async with path_driver.stop_over(Point(x=0.5, y=0.0), TOOL_OFFSET):
                 refused.append(False)
         except CannotStop:
             refused.append(True)
 
-    devkit_system.automator.start(rosys.automation.parallelize(orchestrator.run(), work()))
+    devkit_system.automator.start(rosys.automation.parallelize(run, work()))
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -105,16 +101,15 @@ async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
 
 async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None:
     """The release is in a ``finally``, so a raising tool can never strand the robot stopped."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
+    path_driver, run = route_run(devkit_system, OneLegNavigation(), work=no_work)
 
     async def work() -> None:
         await until(lambda: devkit_system.driver.pose.x > 0.2)
         with pytest.raises(RuntimeError):
-            async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
+            async with path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
                 raise RuntimeError('actuation failed')
 
-    devkit_system.automator.start(rosys.automation.parallelize(orchestrator.run(), work()))
+    devkit_system.automator.start(rosys.automation.parallelize(run, work()))
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -123,19 +118,18 @@ async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None
 
 async def test_a_second_stop_at_the_same_time_is_unsupported(devkit_system) -> None:
     """One stop at a time; a second holder would silently take over the single stop slot."""
-    orchestrator = Orchestrator(OneLegNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
+    path_driver, run = route_run(devkit_system, OneLegNavigation(), work=no_work)
     crashed: list[bool] = []
 
     async def work() -> None:
         await until(lambda: devkit_system.driver.pose.x > 0.2)
-        async with orchestrator.path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
+        async with path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
             with pytest.raises(AssertionError):
-                async with orchestrator.path_driver.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
+                async with path_driver.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
                     pass
             crashed.append(True)
 
-    devkit_system.automator.start(rosys.automation.parallelize(orchestrator.run(), work()))
+    devkit_system.automator.start(rosys.automation.parallelize(run, work()))
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -158,9 +152,8 @@ async def test_a_stop_on_a_later_segment_is_honoured_when_it_starts(devkit_syste
             pass
         await never()
 
-    orchestrator = Orchestrator(RowTurnRowNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=work)
-    devkit_system.automator.start(orchestrator.run())
+    _, run = route_run(devkit_system, RowTurnRowNavigation(), work=work)
+    devkit_system.automator.start(run)
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -187,9 +180,8 @@ async def test_a_stop_far_off_the_segment_is_refused(devkit_system) -> None:
             refused.append(str(e))
         await never()
 
-    orchestrator = Orchestrator(RowTurnRowNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=work)
-    devkit_system.automator.start(orchestrator.run())
+    _, run = route_run(devkit_system, RowTurnRowNavigation(), work=work)
+    devkit_system.automator.start(run)
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -214,9 +206,8 @@ async def test_a_stop_behind_the_start_of_the_segment_is_refused(devkit_system) 
             refused.append(str(e))
         await never()
 
-    orchestrator = Orchestrator(RowTurnRowNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=work)
-    devkit_system.automator.start(orchestrator.run())
+    _, run = route_run(devkit_system, RowTurnRowNavigation(), work=work)
+    devkit_system.automator.start(run)
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 
 from nicegui import Event
 
@@ -22,7 +22,7 @@ class Navigation(ABC):
         """Forward speed the user allows; segments may ask for less, never for more."""
 
     @abstractmethod
-    def segments(self) -> AsyncIterator[DriveSegment]:
+    def segments(self) -> AsyncGenerator[DriveSegment, None]:
         """Yield the segments to drive, in order, until the route ends.
 
         Raise to refuse to start at all; yielding nothing means there was legitimately nothing to
@@ -49,7 +49,7 @@ class StaticNavigation(Navigation):
     def generate_path(self) -> list[DriveSegment]:
         """Plan the whole route. Returning an empty list means there is nothing to drive."""
 
-    async def segments(self) -> AsyncIterator[DriveSegment]:
+    async def segments(self) -> AsyncGenerator[DriveSegment, None]:
         self._path = self.generate_path()
         self._announce()
         while self._path:

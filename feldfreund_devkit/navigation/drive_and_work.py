@@ -3,9 +3,7 @@ from collections.abc import AsyncIterator
 from contextlib import aclosing
 
 import rosys
-from nicegui import Event
 from rosys.analysis import track
-from rosys.driving import Driver
 from rosys.driving.pose_provider import PoseProvider
 
 from ..implement import ImplementException
@@ -14,12 +12,16 @@ from .navigation import Navigation
 from .path_driver import PathDriver
 from .work_context import Detection, WorkContext, WorkFunction
 
+log = logging.getLogger('feldfreund.drive_and_work')
 
-class Orchestrator:
-    """Runs one automation: pulls the navigation's route, drives it, and lets a tool work along it.
+
+@track
+async def drive_and_work(navigation: Navigation, path_driver: PathDriver, pose_provider: PoseProvider, *,
+                         detection: Detection, work: WorkFunction) -> None:
+    """Drive a whole route, letting a tool work the stretches that are workable.
 
     Owns the run rather than the route, so the navigation stays a planner and the ``PathDriver``
-    stays a driver.
+    stays a driver. Returns once the route has ended and the robot has come to rest.
 
     The tool's work runs alongside the drive for as long as the route stays workable -- a *working
     stretch* -- and is cancelled when the first non-working segment comes up. A tool therefore never
@@ -27,76 +29,44 @@ class Orchestrator:
     segment boundary in the middle of a row.
 
     :param navigation: produces the route
-    :param driver: the low-level driver executing velocities
+    :param path_driver: drives the segments, at the slowest speed anyone is asking for
     :param pose_provider: where the robot is, handed to the tool
     :param detection: controls when the robot looks for what it works on
     :param work: the tool's work loop; pass :func:`no_work` for a run that only drives
     """
-
-    def __init__(self, navigation: Navigation, driver: Driver, pose_provider: PoseProvider, *,
-                 detection: Detection, work: WorkFunction) -> None:
-        self.log = logging.getLogger('feldfreund.orchestrator')
-        self.navigation = navigation
-        self.path_driver = PathDriver(driver, speed_limit=lambda: navigation.linear_speed_limit)
-        self._pose_provider = pose_provider
-        self._detection = detection
-        self._work = work
-
-        self.SEGMENT_STARTED = Event[DriveSegment]()
-        """driving a segment has begun (argument: ``DriveSegment``)"""
-
-        self.SEGMENT_COMPLETED = Event[DriveSegment]()
-        """a segment has been driven to its end (argument: ``DriveSegment``)"""
-
-        self.RUN_COMPLETED = Event[[]]()
-        """the route ended and the robot came to rest"""
-
-    @track
-    async def run(self) -> None:
-        """Drive the whole route, working the stretches that are workable.
-
-        Stopping the wheels happens here rather than in a branch of the drive, because that is the
-        one place cleanup may still await: on the error path ``parallelize`` closes its branches
-        with ``GeneratorExit``, under which awaiting is illegal.
-        """
-        try:
-            async with aclosing(self.navigation.segments()) as segments:
-                route = _Route(segments)
-                while (segment := await route.current()) is not None:
-                    if segment.use_implement:
-                        await rosys.automation.parallelize(
-                            self._drive_stretch(route),
-                            self._work_until_cancelled(),
-                            return_when_first_completed=True,
-                        )
-                        continue
-                    await self._drive(segment)
-                    route.advance()
-            self.RUN_COMPLETED.emit()
-            rosys.notify('Automation finished', 'positive')
-        finally:
-            await self.path_driver.driver.wheels.stop()
-
-    async def _drive_stretch(self, route: '_Route') -> None:
+    async def drive_stretch(route: '_Route') -> None:
         """Drive workable segments until the one after them is not."""
         while (segment := await route.current()) is not None and segment.use_implement:
-            await self._drive(segment)
+            await path_driver.drive(segment)
             route.advance()
 
-    async def _work_until_cancelled(self) -> None:
+    async def work_until_cancelled() -> None:
         """Run the tool's work loop for one stretch, and refuse to let it end the stretch itself.
 
         Returning early would look to ``parallelize`` like the stretch being over and halt the drive
         mid-row, so it is reported rather than obeyed.
         """
-        await self._work(WorkContext(motion=self.path_driver, pose=self._pose_provider,
-                                     detection=self._detection))
+        await work(WorkContext(motion=path_driver, pose=pose_provider, detection=detection))
         raise ImplementException('the work loop returned; it must run until the stretch ends')
 
-    async def _drive(self, segment: DriveSegment) -> None:
-        self.SEGMENT_STARTED.emit(segment)
-        await self.path_driver.drive(segment)
-        self.SEGMENT_COMPLETED.emit(segment)
+    # NOTE: stopping the wheels happens here rather than in a branch of the drive, because that is
+    # the one place cleanup may still await: on the error path `parallelize` closes its branches
+    # with `GeneratorExit`, under which awaiting is illegal.
+    try:
+        async with aclosing(navigation.segments()) as segments:
+            route = _Route(segments)
+            while (segment := await route.current()) is not None:
+                if segment.use_implement:
+                    await rosys.automation.parallelize(
+                        drive_stretch(route),
+                        work_until_cancelled(),
+                        return_when_first_completed=True,
+                    )
+                    continue
+                await path_driver.drive(segment)
+                route.advance()
+    finally:
+        await path_driver.driver.wheels.stop()
 
 
 class _Route:

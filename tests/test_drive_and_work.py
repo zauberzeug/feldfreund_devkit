@@ -1,17 +1,16 @@
-"""The orchestrator drives whatever the navigation hands out, one segment at a time."""
+"""A route run drives whatever the navigation hands out, one segment at a time."""
 from collections.abc import AsyncIterator
 
 import pytest
 from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
-from route_helpers import TOOL_OFFSET, NoDetection, RowTurnRowNavigation
+from route_helpers import TOOL_OFFSET, RowTurnRowNavigation, route_run
 
 from feldfreund_devkit.implement import ImplementException
 from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
     Navigation,
-    Orchestrator,
     StaticNavigation,
     never,
     no_work,
@@ -51,32 +50,27 @@ class RefusingNavigation(Navigation):
 
 
 async def test_drives_the_whole_route(devkit_system) -> None:
-    orchestrator = Orchestrator(TwoLegNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
+    path_driver, run = route_run(devkit_system, TwoLegNavigation(), work=no_work)
     driven: list[DriveSegment] = []
-    orchestrator.SEGMENT_COMPLETED.subscribe(driven.append)
-    completed: list[bool] = []
-    orchestrator.RUN_COMPLETED.subscribe(lambda: completed.append(True))
+    path_driver.SEGMENT_COMPLETED.subscribe(driven.append)
 
-    devkit_system.automator.start(orchestrator.run())
+    devkit_system.automator.start(run)
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
     assert_pose(2, 0, deg=0, position_tolerance=0.1)
     assert len(driven) == 2
-    assert completed == [True]
 
 
 async def test_reports_the_route_as_it_shrinks(devkit_system) -> None:
     navigation = TwoLegNavigation()
-    orchestrator = Orchestrator(navigation, devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
+    path_driver, run = route_run(devkit_system, navigation, work=no_work)
     started: list[float] = []
-    orchestrator.SEGMENT_STARTED.subscribe(lambda segment: started.append(segment.end.x))
+    path_driver.SEGMENT_STARTED.subscribe(lambda segment: started.append(segment.end.x))
     remaining: list[int] = []
     navigation.PATH_CHANGED.subscribe(lambda path: remaining.append(len(path)))
 
-    devkit_system.automator.start(orchestrator.run())
+    devkit_system.automator.start(run)
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -85,24 +79,19 @@ async def test_reports_the_route_as_it_shrinks(devkit_system) -> None:
 
 
 async def test_an_empty_route_finishes_without_driving(devkit_system) -> None:
-    orchestrator = Orchestrator(EmptyNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
-    completed: list[bool] = []
-    orchestrator.RUN_COMPLETED.subscribe(lambda: completed.append(True))
+    _, run = route_run(devkit_system, EmptyNavigation(), work=no_work)
 
-    await orchestrator.run()
+    await run  # an empty route is a finished run, not a refusal
 
     assert_pose(0, 0, deg=0)
-    assert completed == [True], 'an empty route is a finished run, not a refusal'
 
 
 async def test_a_navigation_may_refuse_to_start(devkit_system) -> None:
     """Refusing is an exception, not an empty route -- the two must stay distinguishable."""
-    orchestrator = Orchestrator(RefusingNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=no_work)
+    _, run = route_run(devkit_system, RefusingNavigation(), work=no_work)
 
     with pytest.raises(RuntimeError, match='no route from here'):
-        await orchestrator.run()
+        await run
 
 
 async def test_work_spans_a_stretch_and_never_a_turn(devkit_system) -> None:
@@ -117,9 +106,8 @@ async def test_work_spans_a_stretch_and_never_a_turn(devkit_system) -> None:
         finally:
             working.append(f'end at x={ctx.pose.pose.x:.0f}')
 
-    orchestrator = Orchestrator(navigation, devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=work)
-    devkit_system.automator.start(orchestrator.run())
+    _, run = route_run(devkit_system, navigation, work=work)
+    devkit_system.automator.start(run)
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -133,11 +121,10 @@ async def test_a_work_loop_that_returns_is_an_error(devkit_system) -> None:
     async def work(ctx) -> None:
         return
 
-    orchestrator = Orchestrator(RowTurnRowNavigation(), devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=work)
+    _, run = route_run(devkit_system, RowTurnRowNavigation(), work=work)
 
     with pytest.raises(ImplementException, match='must run until the stretch ends'):
-        await orchestrator.run()
+        await run
 
 
 async def test_work_stops_the_robot_where_the_tool_needs_it(devkit_system) -> None:
@@ -153,9 +140,8 @@ async def test_work_stops_the_robot_where_the_tool_needs_it(devkit_system) -> No
             pass  # NOTE: the second stretch starts past this target, as a real loop must tolerate
         await never()
 
-    orchestrator = Orchestrator(navigation, devkit_system.driver, devkit_system.robot_locator,
-                                detection=NoDetection(), work=work)
-    devkit_system.automator.start(orchestrator.run())
+    _, run = route_run(devkit_system, navigation, work=work)
+    devkit_system.automator.start(run)
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
