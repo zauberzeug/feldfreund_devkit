@@ -3,42 +3,51 @@ from __future__ import annotations
 import contextlib
 import logging
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
-import rosys
 from nicegui import ui
 from rosys.automation import Automator
+from rosys.driving import Driver
+from rosys.driving.pose_provider import PoseProvider
 from rosys.geometry import Pose, Spline
 from rosys.hardware import Gnss
 
 from .drive_segment import DriveSegment
+from .navigation import RouteRefused, StaticNavigation
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider
 from .track_recording_controller import TrackRecordingController
 from .utils import skip_completed_segments
-from .waypoint_navigation import WaypointNavigation
 
 if TYPE_CHECKING:
     from ..interface.components.track_recorder_dialog import TrackRecorderDialog
 
+class RecordedTrackRoute(StaticNavigation):
+    """The waypoints of a previously recorded track, as segments to drive.
 
-class RecordedTrackNavigation(WaypointNavigation):
-    """Drives along a previously recorded track of waypoints."""
+    Owns the track's own settings -- which track, and which way round -- and the recorder UI that
+    produces them.
+    """
 
-    # Boundaries when starting the mid of track is allowed.
-    RESUME_MAX_OFFSET: float = 2.0           # meters, perpendicular to path
+    RESUME_MAX_OFFSET: float = 2.0
+    """How far (m) off the track the robot may stand and still join it part-way."""
     RESUME_MAX_HEADING: float = np.deg2rad(45)
+    """How far (rad) off the track's heading the robot may stand and still join it part-way."""
 
     def __init__(self, *,
                  recorded_track_provider: RecordedTrackProvider,
                  track_recording_controller: TrackRecordingController,
+                 pose_provider: PoseProvider,
+                 driver: Driver,
                  gnss: Gnss | None = None,
                  automator: Automator | None = None,
-                 robot_marker_icon_url: str | None = None,
-                 **kwargs) -> None:
-        super().__init__(**kwargs, name='Recorded Track Navigation')
+                 robot_marker_icon_url: str | None = None) -> None:
+        super().__init__(name='Recorded Track')
+        self.log = logging.getLogger('feldfreund.recorded_track')
         self.recorded_track_provider = recorded_track_provider
         self.track_recording_controller = track_recording_controller
+        self.pose_provider = pose_provider
+        self.driver = driver
         self.gnss = gnss
         self.automator = automator
         # Robot marker image shown on the recorder map; None falls back to Leaflet's default marker.
@@ -59,22 +68,16 @@ class RecordedTrackNavigation(WaypointNavigation):
         self.track_recording_controller.RECORDING_STOPPED.subscribe(lambda: self._set_settings_visible(True))
         self.track_recording_controller.WAYPOINT_ADDED.subscribe(self._update_banner_count)
 
-    async def prepare(self) -> bool:
-        if not await super().prepare():
-            return False
-        selected_track = self.recorded_track_provider.selected_track
-        if selected_track is not None and selected_track.gnss_requirement != GnssRequirement.NONE:
-            measurement = self.gnss.last_measurement if self.gnss else None
-            if not selected_track.meets_gnss_requirement(measurement.gps_quality if measurement else None):
-                rosys.notify('GNSS quality insufficient for this track', 'negative')
-                self.log.warning('Navigation not started: GNSS requirement %s not met', selected_track.gnss_requirement)
-                return False
-        return True
+    @property
+    def gnss_requirement(self) -> GnssRequirement | None:
+        track = self.recorded_track_provider.selected_track
+        return None if track is None else track.gnss_requirement
 
     def generate_path(self) -> list[DriveSegment]:
         recorded_track = self.recorded_track_provider.selected_track
         if recorded_track is None:
-            raise ValueError('No track selected')
+            raise RouteRefused('no track selected')
+        self._check_gnss(recorded_track)
         waypoints = recorded_track.waypoints
         path_segments: list[DriveSegment] = []
         for i in range(1, len(waypoints)):
@@ -106,11 +109,23 @@ class RecordedTrackNavigation(WaypointNavigation):
         path_segments = skip_completed_segments(self.pose_provider.pose, path_segments,
                                                 max_distance=self.RESUME_MAX_OFFSET, max_angle=self.RESUME_MAX_HEADING)
         if not path_segments:
-            rosys.notify(
-                f'Align the robot with the track (within {self.RESUME_MAX_OFFSET:.1f} m and '
-                f'{np.rad2deg(self.RESUME_MAX_HEADING):.0f}°)',
-                'negative', log_level=logging.ERROR)
+            raise RouteRefused(f'align the robot with the track (within {self.RESUME_MAX_OFFSET:.1f} m and '
+                               f'{np.rad2deg(self.RESUME_MAX_HEADING):.0f}°)')
         return path_segments
+
+    def _check_gnss(self, track: RecordedTrack) -> None:
+        if track.gnss_requirement == GnssRequirement.NONE:
+            return
+        measurement = self.gnss.last_measurement if self.gnss else None
+        if not track.meets_gnss_requirement(measurement.gps_quality if measurement else None):
+            raise RouteRefused(f'GNSS quality is insufficient for this track ({track.gnss_requirement})')
+
+    def backup_to_dict(self) -> dict[str, Any]:
+        return super().backup_to_dict() | {'reverse': self.reverse}
+
+    def restore_from_dict(self, data: dict[str, Any]) -> None:
+        super().restore_from_dict(data)
+        self.reverse = data.get('reverse', self.reverse)
 
     async def approach_start(self) -> None:
         """Approaches the start of the track directly.

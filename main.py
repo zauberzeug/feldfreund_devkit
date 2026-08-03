@@ -8,7 +8,6 @@ import feldfreund_devkit
 from feldfreund_devkit.config import FeldfreundConfiguration, Secrets, config_from_id
 from feldfreund_devkit.implement import ImplementDummy
 from feldfreund_devkit.navigation import (
-    RecordedTrackNavigation,
     RecordedTrackProvider,
     StraightLineNavigation,
     TrackRecordingController,
@@ -28,14 +27,11 @@ class System(feldfreund_devkit.System):
         self.track_recording_controller = TrackRecordingController(
             self.recorded_track_provider, pose_provider=self.odometer, gnss=self.feldfreund.gnss)
 
+        # NOTE: the recorded track is driven through a mission in feldfreund; this demo app still
+        # selects navigations, so it only offers the straight line until it follows.
         common = {'implement': ImplementDummy(), 'driver': self.driver, 'pose_provider': self.odometer}
         self.navigations: dict[str, WaypointNavigation] = {n.name: n for n in [
             StraightLineNavigation(**common),
-            RecordedTrackNavigation(recorded_track_provider=self.recorded_track_provider,
-                                    track_recording_controller=self.track_recording_controller,
-                                    gnss=self.feldfreund.gnss,
-                                    automator=self.automator,
-                                    **common),
         ]}
         self._current_navigation: WaypointNavigation = next(iter(self.navigations.values()))
         self.automator.default_automation = self._current_navigation.start

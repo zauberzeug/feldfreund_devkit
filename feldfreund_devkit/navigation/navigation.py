@@ -8,6 +8,10 @@ from nicegui import Event, ui
 from .drive_segment import DriveSegment
 
 
+class RouteRefused(Exception):
+    """Raised when a route cannot be planned at all, so the run never starts."""
+
+
 class Navigation(rosys.persistence.Persistable, ABC):
     """Produces the route to drive, one segment at a time.
 
