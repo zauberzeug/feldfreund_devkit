@@ -129,25 +129,34 @@ def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
     return spline.pose(t)
 
 
-def tool_t(spline: Spline, target: Point, tool_offset_x: float) -> float | None:
+def tool_t(spline: Spline, target: Point, tool_offset_x: float, *, tolerance: float = 0.0) -> float | None:
     """Where along ``spline`` a tool ``tool_offset_x`` ahead of the robot sits on ``target``.
 
+    :param tolerance: how far behind the spline's start the solution may fall and still answer 0 --
+        the robot is then close enough to work the target where it stands
     :return: the spline parameter, or ``None`` if this spline does not reach the target -- the
         solution then lies before its start or beyond its end, and extrapolating would answer for a
         path the robot is not going to drive. Use :func:`is_behind` to tell those two apart.
     """
     t, inside = _solve_tool_t(spline, target, tool_offset_x, 0.0, 1.0)
-    return t if inside else None
+    if inside:
+        return t
+    if t == 0.0 and not is_behind(spline, target, tool_offset_x, tolerance=tolerance):
+        return 0.0
+    return None
 
 
-def is_behind(spline: Spline, target: Point, tool_offset_x: float) -> bool:
+def is_behind(spline: Spline, target: Point, tool_offset_x: float, *, tolerance: float = 0.0) -> bool:
     """Whether the tool is already past ``target`` at the very start of ``spline``.
 
     Distinguishes the two ways :func:`tool_t` can come back empty. A target beyond the end may still
     be reached once a later part of the route is driven; one behind the start never will be, because
     a route only goes forward.
+
+    :param tolerance: how far behind the tool a target may sit and still count as reachable, for the
+        robot that is already standing on it and only has to work where it is
     """
-    return _forward_distance(spline, target, 0.0) < tool_offset_x
+    return _forward_distance(spline, target, 0.0) < tool_offset_x - tolerance
 
 
 def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,

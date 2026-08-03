@@ -29,6 +29,8 @@ class _Stop:
     tool_offset_x: float
     reached: asyncio.Event = field(default_factory=asyncio.Event)
     released: asyncio.Event = field(default_factory=asyncio.Event)
+    refused: bool = False
+    """Set when the robot rolled past the target before it could stop; the waiter then skips it."""
 
 
 class PathDriver:
@@ -105,7 +107,8 @@ class PathDriver:
             raise CannotStop('nothing is being driven')
         if not self._is_ahead(target, tool_offset_x):
             raise CannotStop(f'{target} is already behind the robot')
-        if is_behind(segment.spline, target, tool_offset_x):
+        if is_behind(segment.spline, target, tool_offset_x,
+                     tolerance=self.driver.parameters.minimum_drive_distance):
             raise CannotStop(f'{target} lies behind the segment being driven, which no later one reaches back to')
         if not self._is_within_reach(segment.spline, target):
             raise CannotStop(f'{target} is more than {self.STOP_LOOKAHEAD} m off the segment being driven')
@@ -114,6 +117,8 @@ class PathDriver:
         self.driver.abort()  # NOTE: only ever while driving; an armed flag would hit the next drive
         try:
             await stop.reached.wait()
+            if stop.refused:
+                raise CannotStop(f'{target} fell behind before the robot could come to rest on it')
             yield
         finally:
             self._stop = None
@@ -134,7 +139,13 @@ class PathDriver:
         try:
             while True:
                 stop = self._stop
-                stop_t = None if stop is None else tool_t(remaining, stop.target, stop.tool_offset_x)
+                if stop is not None and self._has_fallen_behind(remaining, stop):
+                    stop.refused = True
+                    stop.reached.set()
+                    self._stop = stop = None
+                stop_t = None if stop is None else \
+                    tool_t(remaining, stop.target, stop.tool_offset_x,
+                           tolerance=self.driver.parameters.minimum_drive_distance)
                 piece = remaining if stop_t is None else sub_spline(remaining, 0.0, stop_t)
                 try:
                     await self._drive(segment, piece, stop_at_end=stop_t is not None or segment.stop_at_end)
@@ -156,6 +167,16 @@ class PathDriver:
             await self.driver.drive_spline(spline, flip_hook=segment.backward,
                                            throttle_at_end=stop_at_end, stop_at_end=stop_at_end)
 
+    def is_reached(self, target: Point, tool_offset_x: float) -> bool:
+        """Whether the tool already sits on ``target``, so working it needs no driving at all.
+
+        Asked while the robot stands at a stop, to work everything within the tool's grasp before
+        rolling on: once it moves, even a tick's worth of travel puts a target level with the tool
+        out of :meth:`_is_ahead`'s tolerance and it is skipped for good.
+        """
+        ahead = self.driver.pose.relative_point(target).x - tool_offset_x
+        return abs(ahead) < self.driver.parameters.minimum_drive_distance
+
     def _is_ahead(self, target: Point, tool_offset_x: float) -> bool:
         """Whether the robot can still bring its tool onto ``target`` by driving on.
 
@@ -165,6 +186,16 @@ class PathDriver:
         """
         ahead = self.driver.pose.relative_point(target).x - tool_offset_x
         return ahead > -self.driver.parameters.minimum_drive_distance
+
+    def _has_fallen_behind(self, remaining: Spline, stop: _Stop) -> bool:
+        """Whether the robot has rolled past the stop, so waiting for it would never end.
+
+        A stop is admitted while the target is still ahead, but the drive only notices the abort a
+        tick later and by then the robot may have passed it. Checked against what is left to drive,
+        so the waiter is let go instead of holding the tool for the rest of the route.
+        """
+        return is_behind(remaining, stop.target, stop.tool_offset_x,
+                         tolerance=self.driver.parameters.minimum_drive_distance)
 
     def _is_within_reach(self, spline: Spline, target: Point) -> bool:
         """Whether ``target`` is close enough to the segment being driven to be worth stopping for.
