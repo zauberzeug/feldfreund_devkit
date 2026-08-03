@@ -134,10 +134,20 @@ def tool_t(spline: Spline, target: Point, tool_offset_x: float) -> float | None:
 
     :return: the spline parameter, or ``None`` if this spline does not reach the target -- the
         solution then lies before its start or beyond its end, and extrapolating would answer for a
-        path the robot is not going to drive.
+        path the robot is not going to drive. Use :func:`is_behind` to tell those two apart.
     """
     t, inside = _solve_tool_t(spline, target, tool_offset_x, 0.0, 1.0)
     return t if inside else None
+
+
+def is_behind(spline: Spline, target: Point, tool_offset_x: float) -> bool:
+    """Whether the tool is already past ``target`` at the very start of ``spline``.
+
+    Distinguishes the two ways :func:`tool_t` can come back empty. A target beyond the end may still
+    be reached once a later part of the route is driven; one behind the start never will be, because
+    a route only goes forward.
+    """
+    return _forward_distance(spline, target, 0.0) < tool_offset_x
 
 
 def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
@@ -151,25 +161,26 @@ def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
 
     :return: the parameter clamped to ``[t_min, t_max]``, and whether the solution was inside it
     """
-    def forward_distance(t: float) -> float:
-        """How far ahead of ``spline.pose(t)`` the target lies, in that pose's own frame."""
-        gx, gy = spline.gx(t), spline.gy(t)
-        length = math.hypot(gx, gy)
-        if length == 0.0:
-            return 0.0
-        return ((target.x - spline.x(t)) * gx + (target.y - spline.y(t)) * gy) / length
-
     # NOTE: strict, so a target sitting exactly at the tool counts as solved here rather than as
     # out of range -- that is the "already there, work without advancing" case
-    if forward_distance(t_min) < tool_offset_x:
+    if _forward_distance(spline, target, t_min) < tool_offset_x:
         return t_min, False
-    if forward_distance(t_max) > tool_offset_x:
+    if _forward_distance(spline, target, t_max) > tool_offset_x:
         return t_max, False
     low, high = t_min, t_max
     for _ in range(iterations):
         middle = (low + high) / 2
-        if forward_distance(middle) > tool_offset_x:
+        if _forward_distance(spline, target, middle) > tool_offset_x:
             low = middle
         else:
             high = middle
     return (low + high) / 2, True
+
+
+def _forward_distance(spline: Spline, target: Point, t: float) -> float:
+    """How far ahead of ``spline.pose(t)`` the target lies, in that pose's own frame."""
+    gx, gy = spline.gx(t), spline.gy(t)
+    length = math.hypot(gx, gy)
+    if length == 0.0:
+        return 0.0
+    return ((target.x - spline.x(t)) * gx + (target.y - spline.y(t)) * gy) / length

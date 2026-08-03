@@ -37,6 +37,16 @@ class RowTurnRowNavigation(StaticNavigation):
         ]
 
 
+class AheadOfTheRobotNavigation(StaticNavigation):
+    """A workable row that starts a metre in front of where the robot stands."""
+
+    def __init__(self) -> None:
+        super().__init__(name='Ahead Of The Robot')
+
+    def generate_path(self) -> list[DriveSegment]:
+        return [DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), use_implement=True)]
+
+
 async def until(condition) -> None:
     """Wait for ``condition`` from inside a running automation."""
     while not condition():

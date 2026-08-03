@@ -7,7 +7,14 @@ import pytest
 import rosys
 from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
-from route_helpers import TOOL_OFFSET, OneLegNavigation, RowTurnRowNavigation, route_run, until
+from route_helpers import (
+    TOOL_OFFSET,
+    AheadOfTheRobotNavigation,
+    OneLegNavigation,
+    RowTurnRowNavigation,
+    route_run,
+    until,
+)
 
 from feldfreund_devkit import never, no_work
 from feldfreund_devkit.navigation import (
@@ -188,7 +195,7 @@ async def test_a_stop_far_off_the_segment_is_refused(devkit_system) -> None:
     assert_pose(4, 0, deg=0, position_tolerance=0.1)
 
 
-async def test_a_stop_behind_the_start_of_the_segment_is_refused(devkit_system) -> None:
+async def test_a_stop_behind_the_robot_is_refused_off_the_segment_too(devkit_system) -> None:
     """A target behind the robot is refused even when it falls off the segment being driven.
 
     The reduction extrapolates past a segment's start, so such a pose is not "on" the segment and
@@ -212,3 +219,29 @@ async def test_a_stop_behind_the_start_of_the_segment_is_refused(devkit_system) 
 
     assert refused and 'behind the robot' in refused[0]
     assert_pose(4, 0, deg=0, position_tolerance=0.1)
+
+
+async def test_a_stop_behind_the_segment_is_refused(devkit_system) -> None:
+    """A target the route never reaches back to is refused, rather than waited on forever.
+
+    ``tool_t`` answers ``None`` both for a target beyond a segment's end and for one before its
+    start. The first is worth waiting for -- a later segment will contain it -- while the second
+    never comes, because a route only goes forward.
+    """
+    refused: list[str] = []
+
+    async def work(ctx) -> None:
+        try:
+            async with ctx.motion.stop_over(Point(x=0.5, y=0.0), TOOL_OFFSET):
+                pass
+        except CannotStop as e:
+            refused.append(str(e))
+        await never()
+
+    _, run = route_run(devkit_system, AheadOfTheRobotNavigation(), work=work)
+    devkit_system.automator.start(run)
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert refused and 'behind the segment' in refused[0], \
+        'the target is ahead of the robot, but behind the segment it is driving onto'

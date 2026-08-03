@@ -9,7 +9,7 @@ from rosys.driving import Driver, DrivingAbortedException
 from rosys.geometry import Point, Spline
 
 from .drive_segment import DriveSegment
-from .utils import sub_spline, tool_t
+from .utils import is_behind, sub_spline, tool_t
 
 
 class CannotStop(Exception):
@@ -96,17 +96,19 @@ class PathDriver:
         abort is noticed within one driver tick, so a target closer than about a tick's worth of
         travel is reached with an abrupt stop rather than a planned ramp.
 
-        :raises CannotStop: nothing is being driven, the target is already behind the robot, or it
-            lies further than :attr:`STOP_LOOKAHEAD` from the segment being driven. The robot keeps
-            going; skip this target.
+        :raises CannotStop: nothing is being driven, the target is behind the robot or behind the
+            segment being driven, or it lies further than :attr:`STOP_LOOKAHEAD` from that segment.
+            The robot keeps going; skip this target.
         """
         segment = self._segment
         if segment is None:
             raise CannotStop('nothing is being driven')
-        if not self._is_within_reach(segment.spline, target):
-            raise CannotStop(f'{target} is more than {self.STOP_LOOKAHEAD} m off the segment being driven')
         if not self._is_ahead(target, tool_offset_x):
             raise CannotStop(f'{target} is already behind the robot')
+        if is_behind(segment.spline, target, tool_offset_x):
+            raise CannotStop(f'{target} lies behind the segment being driven, which no later one reaches back to')
+        if not self._is_within_reach(segment.spline, target):
+            raise CannotStop(f'{target} is more than {self.STOP_LOOKAHEAD} m off the segment being driven')
         assert self._stop is None, 'only one stop at a time is supported'
         stop = self._stop = _Stop(target, tool_offset_x)
         self.driver.abort()  # NOTE: only ever while driving; an armed flag would hit the next drive
