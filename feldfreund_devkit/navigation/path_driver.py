@@ -46,7 +46,9 @@ class PathDriver:
     the deceleration backwards from it on its own.
 
     :param driver: the low-level driver executing velocities
-    :param speed_limit: the ambient limit, read live because it is a user setting
+    :param speed_limit: the ambient limit, read live because it is a user setting; defaults to what
+        the driver itself is configured for. Reassign :attr:`ambient_limit` to hand the robot to a
+        route with its own limit.
     """
 
     STOP_LOOKAHEAD: float = 1.0
@@ -54,9 +56,9 @@ class PathDriver:
     Only that segment is known, so a target further out cannot be checked against the route --
     accepting one would risk leaving a tool waiting for a place the robot never reaches."""
 
-    def __init__(self, driver: Driver, *, speed_limit: Callable[[], float]) -> None:
+    def __init__(self, driver: Driver, *, speed_limit: Callable[[], float] | None = None) -> None:
         self.driver = driver
-        self._ambient_limit = speed_limit
+        self.ambient_limit = speed_limit or (lambda: driver.parameters.linear_speed_limit)
         self._caps: list[float] = []
         self._segment: DriveSegment | None = None
         self._stop: _Stop | None = None
@@ -83,7 +85,7 @@ class PathDriver:
 
     def speed_limit(self, segment: DriveSegment) -> float:
         """The slowest speed the segment, the scoped caps and the user allow."""
-        limits = [self._ambient_limit(), *self._caps]
+        limits = [self.ambient_limit(), *self._caps]
         if segment.speed_limit is not None:
             limits.append(segment.speed_limit)
         return min(limits)
