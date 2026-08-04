@@ -6,6 +6,7 @@ import rosys
 from nicegui import Event, ui
 
 from .drive_segment import DriveSegment
+from .recorded_track import GnssRequirement
 
 
 class RouteRefused(Exception):
@@ -27,6 +28,11 @@ class Navigation(rosys.persistence.Persistable, ABC):
         self.name = name
         self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
         """Forward speed the user allows; segments may ask for less, never for more."""
+
+    @property
+    def gnss_requirement(self) -> GnssRequirement | None:
+        """The positioning quality this route needs, watched for as long as it is being driven."""
+        return None
 
     @abstractmethod
     def segments(self) -> AsyncGenerator[DriveSegment, None]:
