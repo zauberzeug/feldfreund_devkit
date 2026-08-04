@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
-from contextlib import AbstractAsyncContextManager
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -35,6 +35,14 @@ class WorkContext:
 WorkFunction = Callable[[WorkContext], Awaitable[None]]
 """A tool's work loop. Runs while the robot drives a working stretch and is cancelled at its end,
 so it must not return on its own -- see :func:`drive_and_work`."""
+
+
+class NoDetection:
+    """Detection for a run that works nothing, and so has nothing to look for."""
+
+    @asynccontextmanager
+    async def running(self) -> AsyncIterator[None]:
+        yield
 
 
 async def never() -> None:

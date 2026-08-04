@@ -6,7 +6,7 @@ from .robot_locator import RobotLocator
 from .system import System
 from .target_locator import TargetLocator
 from .version import __version__
-from .work_context import Detection, WorkContext, WorkFunction, never, no_work
+from .work_context import Detection, NoDetection, WorkContext, WorkFunction, never, no_work
 
 __all__ = [
     'CameraProvider',
@@ -17,6 +17,7 @@ __all__ = [
     'Implement',
     'ImplementDummy',
     'ImplementException',
+    'NoDetection',
     'PoseMetadataMixin',
     'RobotLocator',
     'System',

@@ -1,29 +1,31 @@
 from typing import Any
 
 from nicegui import ui
+from rosys.driving.pose_provider import PoseProvider
 from rosys.geometry import Pose
 
-from .waypoint_navigation import DriveSegment, WaypointNavigation
+from .drive_segment import DriveSegment
+from .navigation import StaticNavigation
 
 
-class StraightLineNavigation(WaypointNavigation):
-    """Navigation that drives a straight line for a given length."""
+class StraightLineRoute(StaticNavigation):
+    """A straight stretch ahead of wherever the robot currently stands.
+
+    Worked when driving forward; driving backward is for repositioning, so the tool stays off.
+    """
+
     LENGTH: float = 2.0
 
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs, name='Straight Line')
+    def __init__(self, pose_provider: PoseProvider) -> None:
+        super().__init__(name='Straight Line')
         self.length = self.LENGTH
         self.backward = False
+        self._pose_provider = pose_provider
 
     def generate_path(self) -> list[DriveSegment]:
-        last_pose = self.pose_provider.pose
-        x = -self.length if self.backward else self.length
-        target_pose = last_pose.transform_pose(Pose(x=x))
-        segment = DriveSegment.from_poses(last_pose,
-                                          target_pose,
-                                          use_implement=not self.backward,
-                                          backward=self.backward)
-        return [segment]
+        start = self._pose_provider.pose
+        end = start.transform_pose(Pose(x=-self.length if self.backward else self.length))
+        return [DriveSegment.from_poses(start, end, use_implement=not self.backward, backward=self.backward)]
 
     def settings_ui(self) -> None:
         super().settings_ui()
@@ -37,9 +39,7 @@ class StraightLineNavigation(WaypointNavigation):
             .tooltip('The robot will drive backwards if enabled')
 
     def backup_to_dict(self) -> dict[str, Any]:
-        return super().backup_to_dict() | {
-            'length': self.length,
-        }
+        return super().backup_to_dict() | {'length': self.length}
 
     def restore_from_dict(self, data: dict[str, Any]) -> None:
         super().restore_from_dict(data)

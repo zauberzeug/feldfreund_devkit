@@ -4,7 +4,7 @@ from .navigation import Navigation, RouteRefused, StaticNavigation
 from .path_driver import CannotStop, PathDriver
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider, RecordedWaypoint
 from .recorded_track_route import RecordedTrackRoute
-from .straight_line_navigation import StraightLineNavigation
+from .straight_line_route import StraightLineRoute
 from .track_recording_controller import TrackRecordingController
 from .utils import (
     Reach,
@@ -15,7 +15,6 @@ from .utils import (
     sub_spline,
     tool_reach,
 )
-from .waypoint_navigation import WaypointNavigation
 
 __all__ = [
     'CannotStop',
@@ -30,9 +29,8 @@ __all__ = [
     'RecordedWaypoint',
     'RouteRefused',
     'StaticNavigation',
-    'StraightLineNavigation',
+    'StraightLineRoute',
     'TrackRecordingController',
-    'WaypointNavigation',
     'drive_and_work',
     'generate_three_point_turn',
     'is_reference_valid',

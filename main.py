@@ -5,13 +5,14 @@ from rosys.automation import Automator, automation_controls
 from rosys.driving import Driver, Steerer, keyboard_control, robot_object
 
 import feldfreund_devkit
+from feldfreund_devkit import NoDetection, no_work
 from feldfreund_devkit.config import FeldfreundConfiguration, Secrets, config_from_id
-from feldfreund_devkit.implement import ImplementDummy
 from feldfreund_devkit.navigation import (
+    PathDriver,
     RecordedTrackProvider,
-    StraightLineNavigation,
+    StraightLineRoute,
     TrackRecordingController,
-    WaypointNavigation,
+    drive_and_work,
 )
 
 
@@ -27,23 +28,15 @@ class System(feldfreund_devkit.System):
         self.track_recording_controller = TrackRecordingController(
             self.recorded_track_provider, pose_provider=self.odometer, gnss=self.feldfreund.gnss)
 
-        # NOTE: the recorded track is driven through a mission in feldfreund; this demo app still
-        # selects navigations, so it only offers the straight line until it follows.
-        common = {'implement': ImplementDummy(), 'driver': self.driver, 'pose_provider': self.odometer}
-        self.navigations: dict[str, WaypointNavigation] = {n.name: n for n in [
-            StraightLineNavigation(**common),
-        ]}
-        self._current_navigation: WaypointNavigation = next(iter(self.navigations.values()))
-        self.automator.default_automation = self._current_navigation.start
+        self.path_driver = PathDriver(self.driver)
+        self.route = StraightLineRoute(self.odometer)
+        self.automator.default_automation = self._drive
 
-    @property
-    def current_navigation(self) -> WaypointNavigation:
-        return self._current_navigation
-
-    @current_navigation.setter
-    def current_navigation(self, navigation: WaypointNavigation) -> None:
-        self._current_navigation = navigation
-        self.automator.default_automation = navigation.start
+    async def _drive(self) -> None:
+        """Drive the route with no tool: the demo has none to work with."""
+        self.path_driver.ambient_limit = lambda: self.route.linear_speed_limit
+        await drive_and_work(self.route, self.path_driver, self.odometer,
+                             detection=NoDetection(), work=no_work)
 
 
 def startup() -> None:
@@ -57,20 +50,10 @@ def startup() -> None:
         with ui.scene():
             robot_object(system.shape, system.odometer)
 
-        @ui.refreshable
-        def navigation_settings() -> None:
-            system.current_navigation.settings_ui()
-
-        def select_navigation(name: str) -> None:
-            system.current_navigation = system.navigations[name]
-            navigation_settings.refresh()
-
         with ui.card():
             ui.label('hold SHIFT to steer with the keyboard arrow keys or use the automation controls')
-            ui.select(list(system.navigations), value=system.current_navigation.name, label='Navigation',
-                      on_change=lambda e: select_navigation(e.value)).classes('w-64')
             with ui.row():
-                navigation_settings()
+                system.route.settings_ui()
             with ui.row():
                 automation_controls(system.automator)
 

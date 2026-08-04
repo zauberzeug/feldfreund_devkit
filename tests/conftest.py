@@ -1,5 +1,4 @@
-from collections.abc import AsyncGenerator, AsyncIterator, Generator
-from contextlib import asynccontextmanager
+from collections.abc import AsyncGenerator, Generator
 
 import pytest
 import rosys
@@ -9,7 +8,7 @@ from rosys.geometry import GeoPoint, GeoReference, Pose
 from rosys.hardware import GnssSimulation, ImuSimulation, WheelsSimulation
 from rosys.testing import forward, helpers
 
-from feldfreund_devkit import no_work
+from feldfreund_devkit import NoDetection, no_work
 from feldfreund_devkit.config import Secrets, config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.implement import ImplementDummy
@@ -17,20 +16,12 @@ from feldfreund_devkit.navigation import (
     PathDriver,
     RecordedTrackProvider,
     RecordedTrackRoute,
-    StraightLineNavigation,
+    StraightLineRoute,
     TrackRecordingController,
     drive_and_work,
 )
 from feldfreund_devkit.robot_locator import RobotLocator
 from feldfreund_devkit.system import System
-
-
-class _NoDetection:
-    """The devkit has no plant detection; a route run still needs something to scope it."""
-
-    @asynccontextmanager
-    async def running(self) -> AsyncIterator[None]:
-        yield
 
 
 class FakeSecrets(Secrets):
@@ -66,10 +57,7 @@ class TestSystem(System):
         helpers.driver = self.driver
         helpers.automator = self.automator
         self.current_implement = ImplementDummy()
-        self.current_navigation = StraightLineNavigation(implement=self.current_implement,
-                                                         driver=self.driver,
-                                                         pose_provider=self.robot_locator)
-        self.automator.default_automation = self.current_navigation.start
+        self.straight_line = StraightLineRoute(self.robot_locator)
 
         self.recorded_track_provider = RecordedTrackProvider()
         self.track_recording_controller = TrackRecordingController(
@@ -81,13 +69,18 @@ class TestSystem(System):
             automator=self.automator,
             driver=self.driver,
             pose_provider=self.robot_locator)
-        self.path_driver = PathDriver(self.driver, speed_limit=lambda: self.recorded_track_route.linear_speed_limit)
+        self.path_driver = PathDriver(self.driver)
+        self.use_route(self.straight_line)
+
+    def use_route(self, route) -> None:
+        """Make driving *route* the default automation."""
+        self.path_driver.ambient_limit = lambda: route.linear_speed_limit
+        self.automator.default_automation = lambda: drive_and_work(
+            route, self.path_driver, self.robot_locator, detection=NoDetection(), work=no_work)
 
     def use_recorded_track_route(self) -> None:
         """Make driving the selected recorded track the default automation."""
-        self.automator.default_automation = lambda: drive_and_work(
-            self.recorded_track_route, self.path_driver, self.robot_locator,
-            detection=_NoDetection(), work=no_work)
+        self.use_route(self.recorded_track_route)
 
     def set_robot_pose(self, pose: Pose):
         # pylint: disable=protected-access

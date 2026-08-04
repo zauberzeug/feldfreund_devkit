@@ -6,18 +6,16 @@ from rosys.helpers import angle
 from rosys.testing import assert_point, forward
 
 from feldfreund_devkit.hardware.tracks import TracksSimulation
-from feldfreund_devkit.navigation import DriveSegment, StraightLineNavigation, skip_completed_segments
+from feldfreund_devkit.navigation import DriveSegment, skip_completed_segments
 
 
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
 async def test_stopping_at_different_distances(devkit_system, distance: float):
-    assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
-    devkit_system.current_navigation.length = distance
-    devkit_system.current_navigation.linear_speed_limit = 0.13
+    devkit_system.straight_line.length = distance
+    devkit_system.straight_line.linear_speed_limit = 0.13
+    assert devkit_system.straight_line.generate_path()[0].spline.estimated_length() == distance
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
-    assert devkit_system.current_navigation.current_segment is not None
-    assert devkit_system.current_navigation.current_segment.spline.estimated_length() == distance
     await forward(until=lambda: devkit_system.automator.is_stopped)
     assert devkit_system.robot_locator.pose.point.x == pytest.approx(distance, abs=0.0015)
 
@@ -27,25 +25,22 @@ async def test_straight_line_different_headings(devkit_system, heading_degrees: 
     heading = np.deg2rad(heading_degrees)
     current_pose = devkit_system.robot_locator.pose
     devkit_system.set_robot_pose(Pose(x=current_pose.x, y=current_pose.y, yaw=heading))
-    assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
+    segment = devkit_system.straight_line.generate_path()[0]
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
-    current_segment = devkit_system.current_navigation.current_segment
-    assert current_segment is not None
-    direction = current_segment.spline.start.direction(current_segment.spline.end)
+    direction = segment.spline.start.direction(segment.spline.end)
     assert angle(direction, heading) == pytest.approx(0, abs=0.1)
 
 
 async def test_straight_line_backward(devkit_system):
-    assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
-    devkit_system.current_navigation.length = 1.0
-    devkit_system.current_navigation.linear_speed_limit = 0.13
-    devkit_system.current_navigation.backward = True
+    devkit_system.straight_line.length = 1.0
+    devkit_system.straight_line.linear_speed_limit = 0.13
+    devkit_system.straight_line.backward = True
+    segment = devkit_system.straight_line.generate_path()[0]
+    assert segment.backward is True
+    assert segment.use_implement is False
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
-    assert devkit_system.current_navigation.current_segment is not None
-    assert devkit_system.current_navigation.current_segment.backward is True
-    assert devkit_system.current_navigation.current_segment.use_implement is False
     await forward(until=lambda: devkit_system.automator.is_stopped)
     assert devkit_system.robot_locator.pose.point.x == pytest.approx(-1.0, abs=0.0015)
     assert devkit_system.robot_locator.pose.point.y == pytest.approx(0.0, abs=0.0015)
@@ -54,9 +49,8 @@ async def test_straight_line_backward(devkit_system):
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
 async def test_deceleration_different_distances(devkit_system_with_acceleration, distance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
-    assert isinstance(devkit_system_with_acceleration.current_navigation, StraightLineNavigation)
-    devkit_system_with_acceleration.current_navigation.length = distance
-    devkit_system_with_acceleration.current_navigation.linear_speed_limit = 0.13
+    devkit_system_with_acceleration.straight_line.length = distance
+    devkit_system_with_acceleration.straight_line.linear_speed_limit = 0.13
     devkit_system_with_acceleration.automator.start()
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_running)
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_stopped)
@@ -72,9 +66,8 @@ async def test_deceleration_different_distances(devkit_system_with_acceleration,
 ])
 async def test_deceleration_different_speeds(devkit_system_with_acceleration, linear_speed_limit: float, tolerance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
-    assert isinstance(devkit_system_with_acceleration.current_navigation, StraightLineNavigation)
-    devkit_system_with_acceleration.current_navigation.length = 0.005
-    devkit_system_with_acceleration.current_navigation.linear_speed_limit = linear_speed_limit
+    devkit_system_with_acceleration.straight_line.length = 0.005
+    devkit_system_with_acceleration.straight_line.linear_speed_limit = linear_speed_limit
     devkit_system_with_acceleration.automator.start()
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_running)
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_stopped)
@@ -83,8 +76,7 @@ async def test_deceleration_different_speeds(devkit_system_with_acceleration, li
 
 async def test_slippage(devkit_system):
     assert isinstance(devkit_system.feldfreund.wheels, rosys.hardware.WheelsSimulation)
-    assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
-    devkit_system.current_navigation.length = 2.0
+    devkit_system.straight_line.length = 2.0
     devkit_system.feldfreund.wheels.slip_factor_right = 0.04
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
@@ -94,18 +86,19 @@ async def test_slippage(devkit_system):
 
 @pytest.mark.parametrize('start_offset', (0.5, 0.0, -0.25, -0.5, -0.75, -0.99))
 async def test_start_inbetween_waypoints(devkit_system, start_offset: float):
-    assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
-    # generate path which expands left and right from current pose
+    # a route which expands left and right from the current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=start_offset, y=0.0, yaw=0.0))
     end = start.transform_pose(Pose(x=1.0, y=0.0, yaw=0.0))
-    devkit_system.current_navigation.generate_path = lambda: [  # type: ignore[assignment]
+    devkit_system.straight_line.generate_path = lambda: [  # type: ignore[assignment]
         DriveSegment.from_poses(start, end)]
+    driven: list[DriveSegment] = []
+    devkit_system.path_driver.SEGMENT_STARTED.subscribe(driven.append)
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
-    assert devkit_system.current_navigation.current_segment is not None
-    assert devkit_system.current_navigation.current_segment.end.x == pytest.approx(end.x, abs=0.1)
-    assert devkit_system.current_navigation.current_segment.end.y == pytest.approx(end.y, abs=0.1)
-    assert devkit_system.current_navigation.current_segment.end.yaw_deg == pytest.approx(end.yaw_deg, abs=0.1)
+    await forward(until=lambda: driven, timeout=10)
+    assert driven[0].end.x == pytest.approx(end.x, abs=0.1)
+    assert driven[0].end.y == pytest.approx(end.y, abs=0.1)
+    assert driven[0].end.yaw_deg == pytest.approx(end.yaw_deg, abs=0.1)
 
 
 async def test_start_on_end(devkit_system):
@@ -114,16 +107,15 @@ async def test_start_on_end(devkit_system):
     def handle_segment_started(_: DriveSegment):
         nonlocal segment_started
         segment_started = True
-    assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
     # set start of path 1m before current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=-1, y=0.0, yaw=0.0))
     end = devkit_system.robot_locator.pose
-    devkit_system.current_navigation.generate_path = lambda: [  # type: ignore[assignment]
+    devkit_system.straight_line.generate_path = lambda: [  # type: ignore[assignment]
         DriveSegment.from_poses(start, end)]
-    devkit_system.current_navigation.SEGMENT_STARTED.subscribe(handle_segment_started)
+    devkit_system.path_driver.SEGMENT_STARTED.subscribe(handle_segment_started)
     devkit_system.automator.start()
-    await forward(until=lambda: devkit_system.automator.is_running)
-    assert segment_started
+    # NOTE: the robot already stands at the end, so the run is over too quickly to catch it running
+    await forward(until=lambda: segment_started, timeout=10)
     assert devkit_system.robot_locator.pose.x == pytest.approx(end.x, abs=0.1)
     assert devkit_system.robot_locator.pose.y == pytest.approx(end.y, abs=0.1)
     assert devkit_system.robot_locator.pose.yaw_deg == pytest.approx(end.yaw_deg, abs=0.1)
@@ -134,7 +126,6 @@ async def test_skip_first_segment(devkit_system):
     pose2 = Pose(x=0, y=0.0, yaw=0.0)
     pose3 = Pose(x=1.0, y=1.0, yaw=np.pi / 2)
     pose4 = Pose(x=0, y=2.0, yaw=np.pi)
-    assert isinstance(devkit_system.current_navigation, StraightLineNavigation)
 
     def generate_path():
         path = [
@@ -143,17 +134,18 @@ async def test_skip_first_segment(devkit_system):
             DriveSegment.from_poses(pose3, pose4, stop_at_end=False),
             DriveSegment.from_poses(pose4, pose1),
         ]
-        assert devkit_system.current_navigation is not None
-        path = devkit_system.current_navigation._remove_segments_behind_robot(path)  # pylint: disable=protected-access
-        return path
-    devkit_system.current_navigation.generate_path = generate_path  # type: ignore[assignment]
+        return skip_completed_segments(devkit_system.robot_locator.pose, path)
+    devkit_system.straight_line.generate_path = generate_path  # type: ignore[assignment]
+    planned = generate_path()
+    driven: list[DriveSegment] = []
+    devkit_system.path_driver.SEGMENT_STARTED.subscribe(driven.append)
     devkit_system.automator.start()
-    await forward(until=lambda: devkit_system.current_navigation is not None and devkit_system.current_navigation.current_segment is not None)
-    assert devkit_system.current_navigation.current_segment is not None
-    assert len(devkit_system.current_navigation.path) == 3
-    assert devkit_system.current_navigation.current_segment.end.x == pytest.approx(pose3.x, abs=0.1)
-    assert devkit_system.current_navigation.current_segment.end.y == pytest.approx(pose3.y, abs=0.1)
-    assert devkit_system.current_navigation.current_segment.end.yaw_deg == pytest.approx(pose3.yaw_deg, abs=0.1)
+    await forward(until=lambda: driven, timeout=10)
+
+    assert len(planned) == 3, 'the segment the robot stands at the end of is skipped'
+    assert driven[0].end.x == pytest.approx(pose3.x, abs=0.1)
+    assert driven[0].end.y == pytest.approx(pose3.y, abs=0.1)
+    assert driven[0].end.yaw_deg == pytest.approx(pose3.yaw_deg, abs=0.1)
 
 
 @pytest.mark.parametrize(('robot_x', 'robot_yaw_deg', 'expected_count', 'expected_start_x'), [
