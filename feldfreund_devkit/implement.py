@@ -1,4 +1,6 @@
 from abc import abstractmethod
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import rosys
@@ -6,7 +8,7 @@ from rosys.analysis import track
 from rosys.geometry import Point, Pose3d
 
 from .config import ImplementConfiguration
-from .work_context import WorkContext, never
+from .work_context import Detection, NoDetection, WorkContext, never
 
 
 class ImplementException(Exception):
@@ -37,14 +39,16 @@ class Implement(rosys.persistence.Persistable):
     async def stop(self) -> None:
         ...
 
-    @track
-    async def activate(self) -> bool:
-        """Activate and prepare the implement for use"""
-        return True
+    @asynccontextmanager
+    async def activated(self) -> AsyncIterator[Detection]:
+        """Make the tool ready to work and hand back what it works by sight of.
 
-    @track
-    async def deactivate(self) -> None:
-        """Deactivate the implement and clean up after use"""
+        Held for the length of a run: leaving the scope puts the tool away again, so a tool cannot
+        be readied without also being cleaned up.
+
+        :raises ImplementException: the tool cannot be made ready
+        """
+        yield NoDetection()
 
     @abstractmethod
     async def work(self, ctx: WorkContext) -> None:
