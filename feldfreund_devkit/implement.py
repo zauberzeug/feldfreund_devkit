@@ -1,7 +1,7 @@
 from abc import abstractmethod
-from collections.abc import AsyncGenerator, AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Any
+from typing import Any, Generic, TypeVar
 
 import rosys
 from rosys.geometry import Point, Pose3d
@@ -9,12 +9,15 @@ from rosys.geometry import Point, Pose3d
 from .config import ImplementConfiguration
 from .work_context import WorkContext, never
 
+# NOTE: spelled out rather than as a PEP 695 type parameter, which needs Python 3.12
+C = TypeVar('C')
+
 
 class ImplementException(Exception):
     """Raised when an implement operation fails."""
 
 
-class Implement[C](rosys.persistence.Persistable):
+class Implement(rosys.persistence.Persistable, Generic[C]):
     """Base class for robot implements like weeding tools or cameras.
 
     ``C`` is whatever the tool keeps for the length of one run: what it set up when it was readied
@@ -94,8 +97,10 @@ class ImplementDummy(Implement[None]):
     async def stop(self) -> None:
         pass
 
+    # NOTE: the decorator turns this into the context manager the abstract asks for; pylint sees
+    # only an async method where a plain one was declared
     @asynccontextmanager
-    async def activated(self) -> AsyncGenerator[None, None]:
+    async def activated(self) -> AsyncGenerator[None, None]:  # pylint: disable=invalid-overridden-method
         """Nothing to ready, and nothing to keep."""
         yield None
 

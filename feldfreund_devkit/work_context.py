@@ -35,4 +35,3 @@ async def never() -> None:
     from activation to deactivation, or a tool that only needs to act when the stretch ends.
     """
     await asyncio.Event().wait()
-

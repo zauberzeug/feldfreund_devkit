@@ -2,6 +2,7 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from functools import partial
+from typing import TypeVar
 
 import rosys
 from rosys.analysis import track
@@ -14,6 +15,10 @@ from .navigation import Navigation
 from .path_driver import PathDriver
 
 log = logging.getLogger('feldfreund.drive_and_work')
+
+C = TypeVar('C')
+
+
 @track
 async def drive(navigation: Navigation, path_driver: PathDriver) -> None:
     """Drive a whole route, working nothing -- a transit between the stretches that are worked."""
@@ -21,9 +26,9 @@ async def drive(navigation: Navigation, path_driver: PathDriver) -> None:
 
 
 @track
-async def drive_and_work[C](navigation: Navigation, path_driver: PathDriver,
-                            pose_provider: PoseProvider, *,
-                            implement: Implement[C], context: C) -> None:
+async def drive_and_work(navigation: Navigation, path_driver: PathDriver,
+                         pose_provider: PoseProvider, *,
+                         implement: Implement[C], context: C) -> None:
     """Drive a whole route, letting a tool work the stretches that are workable.
 
     Owns the run rather than the route, so the navigation stays a planner and the ``PathDriver``
@@ -82,7 +87,6 @@ async def _drive_route(navigation: Navigation, path_driver: PathDriver, *,
                 route.advance()
     finally:
         await path_driver.driver.wheels.stop()
-
 
 
 class _Route:

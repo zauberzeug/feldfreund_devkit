@@ -77,7 +77,7 @@ class StaticNavigation(Navigation):
     def generate_path(self) -> list[DriveSegment]:
         """Plan the whole route. Returning an empty list means there is nothing to drive."""
 
-    async def segments(self) -> AsyncGenerator[DriveSegment, None]:
+    async def segments(self) -> AsyncGenerator[DriveSegment, None]:  # pylint: disable=invalid-overridden-method
         self._path = self.generate_path()
         self._announce()
         while self._path:
