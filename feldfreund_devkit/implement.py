@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import rosys
-from rosys.analysis import track
 from rosys.geometry import Point, Pose3d
 
 from .config import ImplementConfiguration
@@ -58,28 +57,8 @@ class Implement(rosys.persistence.Persistable):
         its own. A tool that acts continuously from activation has nothing to do here but wait.
         """
 
-    @track
-    async def start_workflow(self) -> None:
-        """Called after robot has stopped via observation to perform it's workflow on a specific point on the ground
-
-        Returns True if the robot can drive forward, if the implement whishes to stay at the current location, return False
-        """
-
-    @track
-    async def stop_workflow(self) -> None:
-        """Called after workflow has been performed to stop the workflow"""
-
-    @track
-    async def get_target(self) -> Point | None:
-        """Return the target position to drive to."""
-        return None
-
     @abstractmethod
-    def can_reach(self, local_point: rosys.geometry.Point) -> bool:
-        ...
-
-    @abstractmethod
-    async def is_ready(self) -> bool:
+    def can_reach(self, local_point: Point) -> bool:
         ...
 
     def backup_to_dict(self) -> dict[str, Any]:
@@ -107,9 +86,6 @@ class ImplementDummy(Implement):
 
     async def stop(self) -> None:
         pass
-
-    async def is_ready(self) -> bool:
-        return True
 
     async def work(self, ctx: WorkContext) -> None:
         """Nothing to do: this implement exists so the robot can drive without one."""
