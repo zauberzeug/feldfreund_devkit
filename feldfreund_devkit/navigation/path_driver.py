@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 
@@ -91,7 +91,7 @@ class PathDriver:
         return min(limits)
 
     @asynccontextmanager
-    async def stop_over(self, target: Point, tool_offset_x: float) -> AsyncIterator[None]:
+    async def stop_over(self, target: Point, tool_offset_x: float) -> AsyncGenerator[None, None]:
         """Come to rest with the tool on ``target`` and hold there for the body of the scope.
 
         The stop stays pending until the robot reaches it, so a target beyond the end of the segment

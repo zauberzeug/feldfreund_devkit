@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any
 
@@ -95,7 +95,7 @@ class ImplementDummy(Implement[None]):
         pass
 
     @asynccontextmanager
-    async def activated(self) -> AsyncIterator[None]:
+    async def activated(self) -> AsyncGenerator[None, None]:
         """Nothing to ready, and nothing to keep."""
         yield None
 
