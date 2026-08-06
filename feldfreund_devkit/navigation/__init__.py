@@ -1,4 +1,4 @@
-from .drive_and_work import drive_and_work
+from .drive_and_work import drive, drive_and_work
 from .drive_segment import DriveSegment
 from .navigation import Navigation, RouteRefused, StaticNavigation
 from .path_driver import CannotStop, PathDriver
@@ -31,6 +31,7 @@ __all__ = [
     'StaticNavigation',
     'StraightLineRoute',
     'TrackRecordingController',
+    'drive',
     'drive_and_work',
     'generate_three_point_turn',
     'is_reference_valid',

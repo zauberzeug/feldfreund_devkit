@@ -1,23 +1,29 @@
 import logging
 from collections.abc import AsyncIterator
 from contextlib import aclosing
+from functools import partial
 
 import rosys
 from rosys.analysis import track
 from rosys.driving.pose_provider import PoseProvider
 
-from ..implement import ImplementException
-from ..work_context import Detection, WorkContext, WorkFunction
+from ..implement import Implement, ImplementException
+from ..work_context import WorkContext, WorkFunction
 from .drive_segment import DriveSegment
 from .navigation import Navigation
 from .path_driver import PathDriver
 
 log = logging.getLogger('feldfreund.drive_and_work')
+@track
+async def drive(navigation: Navigation, path_driver: PathDriver) -> None:
+    """Drive a whole route, working nothing -- a transit between the stretches that are worked."""
+    await _drive_route(navigation, path_driver, work=None)
 
 
 @track
-async def drive_and_work(navigation: Navigation, path_driver: PathDriver, pose_provider: PoseProvider, *,
-                         detection: Detection, work: WorkFunction) -> None:
+async def drive_and_work[C](navigation: Navigation, path_driver: PathDriver,
+                            pose_provider: PoseProvider, *,
+                            implement: Implement[C], context: C) -> None:
     """Drive a whole route, letting a tool work the stretches that are workable.
 
     Owns the run rather than the route, so the navigation stays a planner and the ``PathDriver``
@@ -31,9 +37,17 @@ async def drive_and_work(navigation: Navigation, path_driver: PathDriver, pose_p
     :param navigation: produces the route
     :param path_driver: drives the segments, at the slowest speed anyone is asking for
     :param pose_provider: where the robot is, handed to the tool
-    :param detection: controls when the robot looks for what it works on
-    :param work: the tool's work loop; pass :func:`no_work` for a run that only drives
+    :param implement: the tool to work with
+    :param context: what :meth:`Implement.activated` kept for this run -- which is the only place it
+        comes from, so a tool cannot be worked without having been readied
     """
+    work = partial(implement.work, context=context)
+    await _drive_route(navigation, path_driver, work=work, pose_provider=pose_provider)
+
+
+async def _drive_route(navigation: Navigation, path_driver: PathDriver, *,
+                       work: WorkFunction | None,
+                       pose_provider: PoseProvider | None = None) -> None:
     async def drive_stretch(route: '_Route') -> None:
         """Drive workable segments until the one after them is not."""
         while (segment := await route.current()) is not None and segment.use_implement:
@@ -46,7 +60,8 @@ async def drive_and_work(navigation: Navigation, path_driver: PathDriver, pose_p
         Returning early would look to ``parallelize`` like the stretch being over and halt the drive
         mid-row, so it is reported rather than obeyed.
         """
-        await work(WorkContext(motion=path_driver, pose=pose_provider, detection=detection))
+        assert work is not None and pose_provider is not None
+        await work(WorkContext(motion=path_driver, pose=pose_provider))
         raise ImplementException('the work loop returned; it must run until the stretch ends')
 
     # NOTE: stopping the wheels happens here rather than in a branch of the drive, because that is
@@ -56,7 +71,7 @@ async def drive_and_work(navigation: Navigation, path_driver: PathDriver, pose_p
         async with aclosing(navigation.segments()) as segments:
             route = _Route(segments)
             while (segment := await route.current()) is not None:
-                if segment.use_implement:
+                if segment.use_implement and work is not None:
                     await rosys.automation.parallelize(
                         drive_stretch(route),
                         work_until_cancelled(),
@@ -67,6 +82,7 @@ async def drive_and_work(navigation: Navigation, path_driver: PathDriver, pose_p
                 route.advance()
     finally:
         await path_driver.driver.wheels.stop()
+
 
 
 class _Route:

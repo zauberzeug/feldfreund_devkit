@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING
 
 from rosys.driving.pose_provider import PoseProvider
 
@@ -12,37 +11,21 @@ if TYPE_CHECKING:
     from .navigation.path_driver import PathDriver
 
 
-class Detection(Protocol):
-    """Controls when the robot is looking for what it works on."""
-
-    def running(self) -> AbstractAsyncContextManager[None]:
-        """Keep detection running for the duration of the scope, and stop it on the way out."""
-
-
 @dataclass(frozen=True)
 class WorkContext:
-    """What a tool may use while it works: how to move, where the robot is, and what it can see.
+    """What a tool may use while it works: how to move, and where the robot is.
 
-    Run-scoped, so it carries only what a tool cannot own itself. Hardware and the like stay wired
-    into the implement at construction.
+    Run-scoped, so it carries only what a tool cannot own itself. Hardware, and anything a tool sets
+    up for itself when it is readied, stay with the implement.
     """
 
     motion: PathDriver
     pose: PoseProvider
-    detection: Detection
 
 
 WorkFunction = Callable[[WorkContext], Awaitable[None]]
 """A tool's work loop. Runs while the robot drives a working stretch and is cancelled at its end,
 so it must not return on its own -- see :func:`drive_and_work`."""
-
-
-class NoDetection:
-    """Detection for a run that works nothing, and so has nothing to look for."""
-
-    @asynccontextmanager
-    async def running(self) -> AsyncIterator[None]:
-        yield
 
 
 async def never() -> None:
@@ -53,11 +36,3 @@ async def never() -> None:
     """
     await asyncio.Event().wait()
 
-
-async def no_work(ctx: WorkContext) -> None:
-    """The work loop for a run that only drives.
-
-    Distinct from :func:`never`, which takes no context: a :data:`WorkFunction` is always called
-    with one, and a run over workable segments would otherwise fail on the first of them.
-    """
-    await never()
