@@ -11,7 +11,6 @@ from feldfreund_devkit.navigation import (
     DriveSegment,
     GnssRequirement,
     RecordedTrack,
-    RecordedTrackNavigation,
     RecordedWaypoint,
     generate_three_point_turn,
 )
@@ -54,7 +53,7 @@ def three_point_turn_track(devkit_system) -> RecordedTrack:
     ]
     devkit_system.recorded_track_provider.recorded_tracks.append(track)
     devkit_system.recorded_track_provider.selected_track = track
-    devkit_system.use_recorded_track_navigation()
+    devkit_system.use_recorded_track_route()
     return track
 
 
@@ -137,7 +136,6 @@ def test_reversed_three_point_turn_headings(three_point_turn_track: RecordedTrac
 # ---------------------------------------------------------------------------
 
 async def test_three_point_turn_headings(devkit_system, three_point_turn_track: RecordedTrack):
-    assert isinstance(devkit_system.current_navigation, RecordedTrackNavigation)
     test_poses = []
 
     def record_pose():
@@ -146,7 +144,7 @@ async def test_three_point_turn_headings(devkit_system, three_point_turn_track: 
                     yaw=devkit_system.robot_locator.pose.yaw)
         test_poses.append(pose)
     devkit_system.automator.start()
-    devkit_system.recorded_track_navigation.SEGMENT_COMPLETED.subscribe(record_pose)
+    devkit_system.path_driver.SEGMENT_COMPLETED.subscribe(lambda _: record_pose())
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
@@ -165,9 +163,8 @@ async def test_three_point_turn_headings(devkit_system, three_point_turn_track: 
 
 @pytest.mark.parametrize('reverse', (False, True))
 async def test_approach_recorded_track(devkit_system, three_point_turn_track: RecordedTrack, reverse: bool):
-    assert isinstance(devkit_system.current_navigation, RecordedTrackNavigation)
-    devkit_system.recorded_track_navigation.reverse = reverse
-    devkit_system.automator.start(devkit_system.recorded_track_navigation.approach_start())
+    devkit_system.recorded_track_route.reverse = reverse
+    devkit_system.automator.start(devkit_system.recorded_track_route.approach_start())
     if reverse:
         expected_pose = three_point_turn_track.waypoints[-1].pose.to_local().rotate(math.pi)
         devkit_system.set_robot_pose(Pose(x=-3.0, y=1.0, yaw=math.pi))
@@ -234,19 +231,16 @@ async def test_recorded_track_navigation(devkit_system, reverse: bool):
     track._waypoints = waypoints  # pylint: disable=protected-access
     devkit_system.recorded_track_provider.recorded_tracks.append(track)
     devkit_system.recorded_track_provider.selected_track = track
-    devkit_system.use_recorded_track_navigation()
-    assert isinstance(devkit_system.current_navigation, RecordedTrackNavigation)
-    devkit_system.recorded_track_navigation.reverse = reverse
+    devkit_system.use_recorded_track_route()
+    devkit_system.recorded_track_route.reverse = reverse
 
     assert devkit_system.robot_locator.pose.point.x == pytest.approx(start_pose.x, abs=0.1)
     assert devkit_system.robot_locator.pose.point.y == pytest.approx(start_pose.y, abs=0.1)
     assert devkit_system.robot_locator.pose.yaw == pytest.approx(start_pose.yaw, abs=0.1)
-    devkit_system.automator.start()
-    await forward(until=lambda: devkit_system.automator.is_running)
-    assert len(devkit_system.recorded_track_navigation.path) == len(segments)
+    path = devkit_system.recorded_track_route.generate_path()
+    assert len(path) == len(segments)
 
     for i, segment in enumerate(segments):
-        path = devkit_system.recorded_track_navigation.path
         assert path[i].start.x == pytest.approx(segment.start.x, abs=0.1)
         assert path[i].start.y == pytest.approx(segment.start.y, abs=0.1)
         assert path[i].start.yaw == pytest.approx(segment.start.yaw, abs=0.1)
@@ -257,6 +251,8 @@ async def test_recorded_track_navigation(devkit_system, reverse: bool):
         assert path[i].stop_at_end == segment.stop_at_end
         assert path[i].backward == segment.backward
 
+    devkit_system.automator.start()
+    await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped, timeout=120)
     assert devkit_system.robot_locator.pose.point.x == pytest.approx(end_pose.x, abs=0.1)
     assert devkit_system.robot_locator.pose.point.y == pytest.approx(end_pose.y, abs=0.1)

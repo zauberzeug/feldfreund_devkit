@@ -1,32 +1,38 @@
 from abc import abstractmethod
-from typing import Any
+from collections.abc import AsyncGenerator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from typing import Any, Generic, TypeVar
 
 import rosys
-from rosys.analysis import track
-from rosys.geometry import Frame3d, Point, Pose3d
+from rosys.geometry import Point, Pose3d
 
 from .config import ImplementConfiguration
+from .work_context import WorkContext, never
+
+# NOTE: spelled out rather than as a PEP 695 type parameter, which needs Python 3.12
+C = TypeVar('C')
 
 
 class ImplementException(Exception):
     """Raised when an implement operation fails."""
 
 
-class Implement(rosys.persistence.Persistable):
-    """Base class for robot implements like weeding tools or cameras."""
+class Implement(rosys.persistence.Persistable, Generic[C]):
+    """Base class for robot implements like weeding tools or cameras.
+
+    ``C`` is whatever the tool keeps for the length of one run: what it set up when it was readied
+    and needs again while it works. Only :meth:`activated` produces one and only :meth:`work` takes
+    one, so a tool cannot be set to work without having been readied first. A tool that keeps
+    nothing uses ``None``.
+    """
 
     def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
         self._config = config
-        self._frame = self._config.offset.as_frame('implement')
 
     @property
     def name(self) -> str:
         return self._config.display_name
-
-    @property
-    def frame(self) -> Frame3d:
-        return self._frame
 
     @property
     def offset(self) -> Pose3d:
@@ -41,37 +47,28 @@ class Implement(rosys.persistence.Persistable):
     async def stop(self) -> None:
         ...
 
-    @track
-    async def activate(self) -> bool:
-        """Activate and prepare the implement for use"""
-        return True
+    @abstractmethod
+    def activated(self) -> AbstractAsyncContextManager[C]:
+        """Make the tool ready to work and hand back what it keeps for this run.
 
-    @track
-    async def deactivate(self) -> None:
-        """Deactivate the implement and clean up after use"""
+        Held for the length of a run: leaving the scope puts the tool away again, so a tool cannot
+        be readied without also being cleaned up.
 
-    @track
-    async def start_workflow(self) -> None:
-        """Called after robot has stopped via observation to perform it's workflow on a specific point on the ground
-
-        Returns True if the robot can drive forward, if the implement whishes to stay at the current location, return False
+        :raises ImplementException: the tool cannot be made ready
         """
 
-    @track
-    async def stop_workflow(self) -> None:
-        """Called after workflow has been performed to stop the workflow"""
+    @abstractmethod
+    async def work(self, ctx: WorkContext, context: C) -> None:
+        """Do whatever this implement does, for as long as the robot is on workable ground.
 
-    @track
-    async def get_target(self) -> Point | None:
-        """Return the target position to drive to."""
-        return None
+        Started when a working stretch begins and cancelled when it ends, so it must not return on
+        its own. A tool that acts continuously from activation has nothing to do here but wait.
+
+        :param context: what :meth:`activated` set up for this run
+        """
 
     @abstractmethod
-    def can_reach(self, local_point: rosys.geometry.Point) -> bool:
-        ...
-
-    @abstractmethod
-    async def is_ready(self) -> bool:
+    def can_reach(self, local_point: Point) -> bool:
         ...
 
     def backup_to_dict(self) -> dict[str, Any]:
@@ -87,7 +84,7 @@ class Implement(rosys.persistence.Persistable):
         """Create UI for developer tools."""
 
 
-class ImplementDummy(Implement):
+class ImplementDummy(Implement[None]):
     """A no-op implement for testing or when no implement is attached."""
 
     def __init__(self) -> None:
@@ -100,8 +97,16 @@ class ImplementDummy(Implement):
     async def stop(self) -> None:
         pass
 
-    async def is_ready(self) -> bool:
-        return True
+    # NOTE: the decorator turns this into the context manager the abstract asks for; pylint sees
+    # only an async method where a plain one was declared
+    @asynccontextmanager
+    async def activated(self) -> AsyncGenerator[None, None]:  # pylint: disable=invalid-overridden-method
+        """Nothing to ready, and nothing to keep."""
+        yield None
+
+    async def work(self, ctx: WorkContext, context: None) -> None:
+        """Nothing to do: this implement exists so the robot can drive without one."""
+        await never()
 
     def can_reach(self, local_point: Point) -> bool:
         return True

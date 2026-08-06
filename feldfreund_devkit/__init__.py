@@ -6,6 +6,7 @@ from .robot_locator import RobotLocator
 from .system import System
 from .target_locator import TargetLocator
 from .version import __version__
+from .work_context import WorkContext, WorkFunction, never
 
 __all__ = [
     'CameraProvider',
@@ -19,6 +20,9 @@ __all__ = [
     'RobotLocator',
     'System',
     'TargetLocator',
+    'WorkContext',
+    'WorkFunction',
     '__version__',
     'log_configuration',
+    'never',
 ]
