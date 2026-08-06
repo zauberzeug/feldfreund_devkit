@@ -1,11 +1,8 @@
 """Routes and waiting helpers shared by the run-loop and path-driver tests."""
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-
 import rosys
 from rosys.geometry import Pose
 
-from feldfreund_devkit import no_work
+from feldfreund_devkit import ImplementDummy, WorkContext, WorkFunction
 from feldfreund_devkit.navigation import DriveSegment, PathDriver, StaticNavigation, drive_and_work
 
 TOOL_OFFSET = 0.1
@@ -53,16 +50,23 @@ async def until(condition) -> None:
         await rosys.sleep(0.1)
 
 
-class NoDetection:
-    """The detection channel for tools that look for nothing; the scope does nothing."""
+class ToolDoing(ImplementDummy):
+    """A tool that does whatever a test asks of it while a stretch is worked."""
 
-    @asynccontextmanager
-    async def running(self) -> AsyncIterator[None]:
-        yield
+    def __init__(self, work: WorkFunction) -> None:
+        super().__init__()
+        self._work = work
+
+    async def work(self, ctx: WorkContext, context: None) -> None:
+        await self._work(ctx)
 
 
-def route_run(devkit_system, navigation, *, work=no_work, detection=None):
-    """A path driver and the run that drives ``navigation`` with it."""
+def route_run(devkit_system, navigation, *, work: WorkFunction | None = None):
+    """A path driver and the run that drives ``navigation`` with it.
+
+    Without ``work`` the tool keeps still, which is all a test of the driving itself needs.
+    """
     path_driver = PathDriver(devkit_system.driver, speed_limit=lambda: navigation.linear_speed_limit)
+    implement = ImplementDummy() if work is None else ToolDoing(work)
     return path_driver, drive_and_work(navigation, path_driver, devkit_system.robot_locator,
-                                       detection=detection or NoDetection(), work=work)
+                                       implement=implement, context=None)

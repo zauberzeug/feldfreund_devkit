@@ -16,7 +16,7 @@ from route_helpers import (
     until,
 )
 
-from feldfreund_devkit import never, no_work
+from feldfreund_devkit import never
 from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
@@ -57,7 +57,7 @@ def test_the_slowest_of_everything_asked_for_wins() -> None:
 
 async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
     """The robot comes to rest with the tool on the target, waits, then drives on to the end."""
-    path_driver, run = route_run(devkit_system, OneLegNavigation(), work=no_work)
+    path_driver, run = route_run(devkit_system, OneLegNavigation())
     at_rest: list[float] = []
 
     async def work() -> None:
@@ -77,7 +77,7 @@ async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
 
 
 async def test_a_stop_is_refused_when_nothing_is_driving(devkit_system) -> None:
-    path_driver, _ = route_run(devkit_system, OneLegNavigation(), work=no_work)
+    path_driver, _ = route_run(devkit_system, OneLegNavigation())
 
     with pytest.raises(CannotStop):
         async with path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
@@ -86,7 +86,7 @@ async def test_a_stop_is_refused_when_nothing_is_driving(devkit_system) -> None:
 
 async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
     """Refused rather than reversed: the caller carries on and the robot keeps driving."""
-    path_driver, run = route_run(devkit_system, OneLegNavigation(), work=no_work)
+    path_driver, run = route_run(devkit_system, OneLegNavigation())
     refused: list[bool] = []
 
     async def work() -> None:
@@ -107,7 +107,7 @@ async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
 
 async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None:
     """The release is in a ``finally``, so a raising tool can never strand the robot stopped."""
-    path_driver, run = route_run(devkit_system, OneLegNavigation(), work=no_work)
+    path_driver, run = route_run(devkit_system, OneLegNavigation())
 
     async def work() -> None:
         await until(lambda: devkit_system.driver.pose.x > 0.2)
@@ -124,7 +124,7 @@ async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None
 
 async def test_a_second_stop_at_the_same_time_is_unsupported(devkit_system) -> None:
     """One stop at a time; a second holder would silently take over the single stop slot."""
-    path_driver, run = route_run(devkit_system, OneLegNavigation(), work=no_work)
+    path_driver, run = route_run(devkit_system, OneLegNavigation())
     crashed: list[bool] = []
 
     async def work() -> None:

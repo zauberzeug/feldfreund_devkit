@@ -8,10 +8,9 @@ from rosys.geometry import GeoPoint, GeoReference, Pose
 from rosys.hardware import GnssSimulation, ImuSimulation, WheelsSimulation
 from rosys.testing import forward, helpers
 
-from feldfreund_devkit import NoDetection, no_work
+from feldfreund_devkit import ImplementDummy
 from feldfreund_devkit.config import Secrets, config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
-from feldfreund_devkit.implement import ImplementDummy
 from feldfreund_devkit.navigation import (
     PathDriver,
     RecordedTrackProvider,
@@ -76,7 +75,7 @@ class TestSystem(System):
         """Make driving *route* the default automation."""
         self.path_driver.ambient_limit = lambda: route.linear_speed_limit
         self.automator.default_automation = lambda: drive_and_work(
-            route, self.path_driver, self.robot_locator, detection=NoDetection(), work=no_work)
+            route, self.path_driver, self.robot_locator, implement=self.current_implement, context=None)
 
     def use_recorded_track_route(self) -> None:
         """Make driving the selected recorded track the default automation."""

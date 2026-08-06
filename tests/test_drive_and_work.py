@@ -6,7 +6,7 @@ from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
 from route_helpers import TOOL_OFFSET, RowTurnRowNavigation, route_run
 
-from feldfreund_devkit import never, no_work
+from feldfreund_devkit import never
 from feldfreund_devkit.implement import ImplementException
 from feldfreund_devkit.navigation import (
     CannotStop,
@@ -49,7 +49,7 @@ class RefusingNavigation(Navigation):
 
 
 async def test_drives_the_whole_route(devkit_system) -> None:
-    path_driver, run = route_run(devkit_system, TwoLegNavigation(), work=no_work)
+    path_driver, run = route_run(devkit_system, TwoLegNavigation())
     driven: list[DriveSegment] = []
     path_driver.SEGMENT_COMPLETED.subscribe(driven.append)
 
@@ -63,7 +63,7 @@ async def test_drives_the_whole_route(devkit_system) -> None:
 
 async def test_reports_the_route_as_it_shrinks(devkit_system) -> None:
     navigation = TwoLegNavigation()
-    path_driver, run = route_run(devkit_system, navigation, work=no_work)
+    path_driver, run = route_run(devkit_system, navigation)
     started: list[float] = []
     path_driver.SEGMENT_STARTED.subscribe(lambda segment: started.append(segment.end.x))
     remaining: list[int] = []
@@ -78,7 +78,7 @@ async def test_reports_the_route_as_it_shrinks(devkit_system) -> None:
 
 
 async def test_an_empty_route_finishes_without_driving(devkit_system) -> None:
-    _, run = route_run(devkit_system, EmptyNavigation(), work=no_work)
+    _, run = route_run(devkit_system, EmptyNavigation())
 
     await run  # an empty route is a finished run, not a refusal
 
@@ -87,7 +87,7 @@ async def test_an_empty_route_finishes_without_driving(devkit_system) -> None:
 
 async def test_a_navigation_may_refuse_to_start(devkit_system) -> None:
     """Refusing is an exception, not an empty route -- the two must stay distinguishable."""
-    _, run = route_run(devkit_system, RefusingNavigation(), work=no_work)
+    _, run = route_run(devkit_system, RefusingNavigation())
 
     with pytest.raises(RuntimeError, match='no route from here'):
         await run
