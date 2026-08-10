@@ -12,8 +12,7 @@ from feldfreund_devkit.navigation import DriveSegment, skip_completed_segments
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
 async def test_stopping_at_different_distances(devkit_system, distance: float):
     devkit_system.straight_line_navigation.length = distance
-    devkit_system.straight_line_navigation.linear_speed_limit = 0.13
-    assert devkit_system.straight_line_navigation.generate_path()[0].spline.estimated_length() == distance
+    assert devkit_system.straight_line_navigation.generate_path(0.13)[0].spline.estimated_length() == distance
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
@@ -25,7 +24,7 @@ async def test_straight_line_different_headings(devkit_system, heading_degrees: 
     heading = np.deg2rad(heading_degrees)
     current_pose = devkit_system.robot_locator.pose
     devkit_system.set_robot_pose(Pose(x=current_pose.x, y=current_pose.y, yaw=heading))
-    segment = devkit_system.straight_line_navigation.generate_path()[0]
+    segment = devkit_system.straight_line_navigation.generate_path(0.13)[0]
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
     direction = segment.spline.start.direction(segment.spline.end)
@@ -34,9 +33,8 @@ async def test_straight_line_different_headings(devkit_system, heading_degrees: 
 
 async def test_straight_line_backward(devkit_system):
     devkit_system.straight_line_navigation.length = 1.0
-    devkit_system.straight_line_navigation.linear_speed_limit = 0.13
     devkit_system.straight_line_navigation.backward = True
-    segment = devkit_system.straight_line_navigation.generate_path()[0]
+    segment = devkit_system.straight_line_navigation.generate_path(0.13)[0]
     assert segment.backward is True
     assert segment.use_implement is False
     devkit_system.automator.start()
@@ -50,7 +48,6 @@ async def test_straight_line_backward(devkit_system):
 async def test_deceleration_different_distances(devkit_system_with_acceleration, distance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
     devkit_system_with_acceleration.straight_line_navigation.length = distance
-    devkit_system_with_acceleration.straight_line_navigation.linear_speed_limit = 0.13
     devkit_system_with_acceleration.automator.start()
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_running)
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_stopped)
@@ -89,8 +86,8 @@ async def test_start_inbetween_waypoints(devkit_system, start_offset: float):
     # a route which expands left and right from the current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=start_offset, y=0.0, yaw=0.0))
     end = start.transform_pose(Pose(x=1.0, y=0.0, yaw=0.0))
-    devkit_system.straight_line_navigation.generate_path = lambda: [  # type: ignore[assignment]
-        DriveSegment.from_poses(start, end)]
+    devkit_system.straight_line_navigation.generate_path = lambda speed_limit: [  # type: ignore[assignment]
+        DriveSegment.from_poses(start, end, speed_limit=0.13)]
     driven: list[DriveSegment] = []
     devkit_system.path_driver.SEGMENT_STARTED.subscribe(driven.append)
     devkit_system.automator.start()
@@ -110,8 +107,8 @@ async def test_start_on_end(devkit_system):
     # set start of path 1m before current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=-1, y=0.0, yaw=0.0))
     end = devkit_system.robot_locator.pose
-    devkit_system.straight_line_navigation.generate_path = lambda: [  # type: ignore[assignment]
-        DriveSegment.from_poses(start, end)]
+    devkit_system.straight_line_navigation.generate_path = lambda speed_limit: [  # type: ignore[assignment]
+        DriveSegment.from_poses(start, end, speed_limit=0.13)]
     devkit_system.path_driver.SEGMENT_STARTED.subscribe(handle_segment_started)
     devkit_system.automator.start()
     # NOTE: the robot already stands at the end, so the run is over too quickly to catch it running
@@ -127,12 +124,12 @@ async def test_skip_first_segment(devkit_system):
     pose3 = Pose(x=1.0, y=1.0, yaw=np.pi / 2)
     pose4 = Pose(x=0, y=2.0, yaw=np.pi)
 
-    def generate_path():
+    def generate_path(speed_limit: float = 0.13):
         path = [
-            DriveSegment.from_poses(pose1, pose2, stop_at_end=False),
-            DriveSegment.from_poses(pose2, pose3, stop_at_end=False),
-            DriveSegment.from_poses(pose3, pose4, stop_at_end=False),
-            DriveSegment.from_poses(pose4, pose1),
+            DriveSegment.from_poses(pose1, pose2, stop_at_end=False, speed_limit=0.13),
+            DriveSegment.from_poses(pose2, pose3, stop_at_end=False, speed_limit=0.13),
+            DriveSegment.from_poses(pose3, pose4, stop_at_end=False, speed_limit=0.13),
+            DriveSegment.from_poses(pose4, pose1, speed_limit=0.13),
         ]
         return skip_completed_segments(devkit_system.robot_locator.pose, path)
     devkit_system.straight_line_navigation.generate_path = generate_path  # type: ignore[assignment]
@@ -166,9 +163,9 @@ def test_skip_completed_segments(robot_x: float,
     pose2 = Pose(x=2.0, y=0.0, yaw=0.0)
     pose3 = Pose(x=3.0, y=0.0, yaw=0.0)
     path = [
-        DriveSegment.from_poses(pose0, pose1),
-        DriveSegment.from_poses(pose1, pose2),
-        DriveSegment.from_poses(pose2, pose3),
+        DriveSegment.from_poses(pose0, pose1, speed_limit=0.13),
+        DriveSegment.from_poses(pose1, pose2, speed_limit=0.13),
+        DriveSegment.from_poses(pose2, pose3, speed_limit=0.13),
     ]
     robot_pose = Pose(x=robot_x, y=0.0, yaw=np.deg2rad(robot_yaw_deg))
     result = skip_completed_segments(robot_pose, path)
@@ -183,8 +180,8 @@ def test_skip_completed_segments(robot_x: float,
 def test_skip_completed_segments_picks_up_backward_segment():
     # robot drives backward from x=2 to x=1 (still facing +x), then forward from x=1 to x=3
     path = [
-        DriveSegment.from_poses(Pose(x=2.0, y=0.0, yaw=0.0), Pose(x=1.0, y=0.0, yaw=0.0), backward=True),
-        DriveSegment.from_poses(Pose(x=1.0, y=0.0, yaw=0.0), Pose(x=3.0, y=0.0, yaw=0.0)),
+        DriveSegment.from_poses(Pose(x=2.0, y=0.0, yaw=0.0), Pose(x=1.0, y=0.0, yaw=0.0), backward=True, speed_limit=0.13),
+        DriveSegment.from_poses(Pose(x=1.0, y=0.0, yaw=0.0), Pose(x=3.0, y=0.0, yaw=0.0), speed_limit=0.13),
     ]
     # robot mid-backward-segment, correctly facing +x → must accept the backward segment
     result = skip_completed_segments(Pose(x=1.5, y=0.0, yaw=0.0), path)
@@ -199,9 +196,9 @@ def test_skip_completed_segments_picks_up_backward_segment():
 def test_skip_completed_segments_handles_segment_seam():
     # robot near the very end of segment 0 must continue from segment 1, not redrive segment 0
     path = [
-        DriveSegment.from_poses(Pose(x=0.0, y=0.0, yaw=0.0), Pose(x=1.0, y=0.0, yaw=0.0)),
-        DriveSegment.from_poses(Pose(x=1.0, y=0.0, yaw=0.0), Pose(x=2.0, y=0.0, yaw=0.0)),
-        DriveSegment.from_poses(Pose(x=2.0, y=0.0, yaw=0.0), Pose(x=3.0, y=0.0, yaw=0.0)),
+        DriveSegment.from_poses(Pose(x=0.0, y=0.0, yaw=0.0), Pose(x=1.0, y=0.0, yaw=0.0), speed_limit=0.13),
+        DriveSegment.from_poses(Pose(x=1.0, y=0.0, yaw=0.0), Pose(x=2.0, y=0.0, yaw=0.0), speed_limit=0.13),
+        DriveSegment.from_poses(Pose(x=2.0, y=0.0, yaw=0.0), Pose(x=3.0, y=0.0, yaw=0.0), speed_limit=0.13),
     ]
     result = skip_completed_segments(Pose(x=0.999, y=0.0, yaw=0.0), path)
     assert len(result) == 2

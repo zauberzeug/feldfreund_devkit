@@ -79,12 +79,12 @@ class PathDriver:
         finally:
             self._caps.remove(speed)
 
-    def speed_limit(self, segment: DriveSegment, ambient_limit: float) -> float:
-        """The slowest speed the segment, the scoped caps and ``ambient_limit`` allow."""
-        limits = [ambient_limit, *self._caps]
+    def speed_limit(self, segment: DriveSegment) -> float:
+        """The slowest speed the segment and the scoped caps allow."""
+        limits = [*self._caps]
         if segment.speed_limit is not None:
             limits.append(segment.speed_limit)
-        return min(limits)
+        return min(limits) if limits else self.driver.parameters.linear_speed_limit
 
     @asynccontextmanager
     async def stop_over(self, target: Point, tool_offset_x: float) -> AsyncGenerator[None, None]:
@@ -122,7 +122,7 @@ class PathDriver:
             stop.released.set()
 
     @track
-    async def drive(self, segment: DriveSegment, *, ambient_limit: float) -> None:
+    async def drive(self, segment: DriveSegment) -> None:
         """Drive the segment: its spline, at its speed, in its direction, resting at its end if it says so.
 
         Returns once the segment has been driven to its end, however many stops were held on the
@@ -148,7 +148,7 @@ class PathDriver:
                         stop_t = reach.t
                 piece = remaining if stop_t is None else sub_spline(remaining, 0.0, stop_t)
                 try:
-                    await self._drive(segment, piece, ambient_limit=ambient_limit,
+                    await self._drive(segment, piece,
                                       stop_at_end=stop_t is not None or segment.stop_at_end)
                 except DrivingAbortedException:
                     remaining = self._remaining(segment)  # a stop was asked for, or released
@@ -162,9 +162,8 @@ class PathDriver:
         finally:
             self._segment = None
 
-    async def _drive(self, segment: DriveSegment, spline: Spline, *,
-                     stop_at_end: bool, ambient_limit: float) -> None:
-        with self.driver.parameters.set(linear_speed_limit=self.speed_limit(segment, ambient_limit),
+    async def _drive(self, segment: DriveSegment, spline: Spline, *, stop_at_end: bool) -> None:
+        with self.driver.parameters.set(linear_speed_limit=self.speed_limit(segment),
                                         can_drive_backwards=segment.backward):
             await self.driver.drive_spline(spline, flip_hook=segment.backward,
                                            throttle_at_end=stop_at_end, stop_at_end=stop_at_end)

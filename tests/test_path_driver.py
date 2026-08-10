@@ -32,19 +32,20 @@ def _segment(speed_limit: float | None = None) -> DriveSegment:
     return DriveSegment.from_poses(Pose(), Pose(x=1.0), speed_limit=speed_limit)
 
 
-@pytest.mark.parametrize(('segment_limit', 'expected'), [(None, 0.13), (0.05, 0.05), (0.0, 0.0), (0.3, 0.13)])
-def test_a_segment_can_only_slow_the_robot_down(segment_limit: float | None, expected: float) -> None:
-    assert _path_driver().speed_limit(_segment(segment_limit), 0.13) == expected
+@pytest.mark.parametrize(('segment_limit', 'expected'), [(0.05, 0.05), (0.0, 0.0), (0.3, 0.3)])
+def test_a_segment_sets_the_speed_it_is_driven_at(segment_limit: float, expected: float) -> None:
+    """The route put the speed on the segment, so the driver simply obeys it."""
+    assert _path_driver().speed_limit(_segment(segment_limit)) == expected
 
 
 def test_a_scoped_cap_applies_only_inside_its_scope() -> None:
     path_driver = _path_driver()
-    segment = _segment()
+    segment = _segment(0.13)
 
     with path_driver.limit(0.04):
-        assert path_driver.speed_limit(segment, 0.13) == 0.04
+        assert path_driver.speed_limit(segment) == 0.04
 
-    assert path_driver.speed_limit(segment, 0.13) == 0.13
+    assert path_driver.speed_limit(segment) == 0.13
 
 
 def test_the_slowest_of_everything_asked_for_wins() -> None:
@@ -52,7 +53,7 @@ def test_the_slowest_of_everything_asked_for_wins() -> None:
     path_driver = _path_driver()
 
     with path_driver.limit(0.08), path_driver.limit(0.02), path_driver.limit(0.5):
-        assert path_driver.speed_limit(_segment(0.06), 0.13) == 0.02
+        assert path_driver.speed_limit(_segment(0.06)) == 0.02
 
 
 async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:

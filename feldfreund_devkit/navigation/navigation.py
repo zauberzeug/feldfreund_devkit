@@ -3,7 +3,7 @@ from collections.abc import AsyncGenerator
 from typing import Any
 
 import rosys
-from nicegui import Event, ui
+from nicegui import Event
 
 from .drive_segment import DriveSegment
 from .recorded_track import GnssRequirement
@@ -22,12 +22,11 @@ class Navigation(rosys.persistence.Persistable, ABC):
     """
 
     LINEAR_SPEED_LIMIT: float = 0.13
+    """The speed this kind of route is usually driven at, which a mission starts its setting from."""
 
     def __init__(self, *, name: str) -> None:
         super().__init__()
         self.name = name
-        self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
-        """Forward speed the user allows; segments may ask for less, never for more."""
 
     @property
     def gnss_requirement(self) -> GnssRequirement | None:
@@ -35,27 +34,24 @@ class Navigation(rosys.persistence.Persistable, ABC):
         return None
 
     @abstractmethod
-    def segments(self) -> AsyncGenerator[DriveSegment, None]:
+    def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:
         """Yield the segments to drive, in order, until the route ends.
 
         Raise to refuse to start at all; yielding nothing means there was legitimately nothing to
         do. The consumer closes the iterator, so cleanup belongs in a ``finally``.
+
+        :param speed_limit: the fastest the mission allows. Put it on the segments, or less where
+            the route itself knows better -- a docking approach, a turn -- but never more.
         """
 
     def settings_ui(self) -> None:
         """Controls for the route, shown while the mission driving it is selected."""
-        ui.number('Linear Speed', step=0.01, min=0.01, max=1.0, format='%.2f', suffix='m/s',
-                  on_change=self.request_backup) \
-            .bind_value(self, 'linear_speed_limit') \
-            .props('dense outlined') \
-            .classes('w-24') \
-            .tooltip(f'Forward speed limit (default: {self.LINEAR_SPEED_LIMIT:.2f} m/s)')
 
     def backup_to_dict(self) -> dict[str, Any]:
-        return {'linear_speed_limit': self.linear_speed_limit}
+        return {}
 
     def restore_from_dict(self, data: dict[str, Any]) -> None:
-        self.linear_speed_limit = data.get('linear_speed_limit', self.linear_speed_limit)
+        ...
 
 
 class StaticNavigation(Navigation):
@@ -74,11 +70,14 @@ class StaticNavigation(Navigation):
         """The segments still to drive have changed (argument: ``list[DriveSegment]``)."""
 
     @abstractmethod
-    def generate_path(self) -> list[DriveSegment]:
-        """Plan the whole route. Returning an empty list means there is nothing to drive."""
+    def generate_path(self, speed_limit: float) -> list[DriveSegment]:
+        """Plan the whole route. Returning an empty list means there is nothing to drive.
 
-    async def segments(self) -> AsyncGenerator[DriveSegment, None]:  # pylint: disable=invalid-overridden-method
-        self._path = self.generate_path()
+        :param speed_limit: the fastest the mission allows; put it on the segments, or less.
+        """
+
+    async def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:  # pylint: disable=invalid-overridden-method
+        self._path = self.generate_path(speed_limit)
         self._announce()
         while self._path:
             yield self._path[0]

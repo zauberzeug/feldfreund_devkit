@@ -14,7 +14,7 @@ from rosys.geometry import Pose, Spline
 from rosys.hardware import Gnss
 
 from .drive_segment import DriveSegment
-from .navigation import NavigationRefused, StaticNavigation
+from .navigation import Navigation, NavigationRefused, StaticNavigation
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider
 from .track_recording_controller import TrackRecordingController
 from .utils import skip_completed_segments
@@ -73,7 +73,7 @@ class RecordedTrackNavigation(StaticNavigation):
         track = self.recorded_track_provider.selected_track
         return None if track is None else track.gnss_requirement
 
-    def generate_path(self) -> list[DriveSegment]:
+    def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         recorded_track = self.recorded_track_provider.selected_track
         if recorded_track is None:
             raise NavigationRefused('no track selected')
@@ -91,6 +91,7 @@ class RecordedTrackNavigation(StaticNavigation):
                 backward=backward,
                 use_implement=waypoints[i].use_implement,
                 stop_at_end=waypoints[i].stop_at_waypoint or is_last_segment,
+                speed_limit=speed_limit,
             ))
         if self.reverse:
             forward_segments = list(path_segments)
@@ -127,7 +128,7 @@ class RecordedTrackNavigation(StaticNavigation):
         super().restore_from_dict(data)
         self.reverse = data.get('reverse', self.reverse)
 
-    async def approach_start(self) -> None:
+    async def approach_start(self, speed_limit: float = Navigation.LINEAR_SPEED_LIMIT) -> None:
         """Approaches the start of the track directly.
 
         Use with caution, alignment with the track will not be checked.
@@ -141,7 +142,7 @@ class RecordedTrackNavigation(StaticNavigation):
         if self.reverse:
             start_pose = start_pose.rotate(math.pi)
         spline = Spline.from_poses(self.pose_provider.pose, start_pose)
-        with self.driver.parameters.set(linear_speed_limit=self.linear_speed_limit):
+        with self.driver.parameters.set(linear_speed_limit=speed_limit):
             await self.driver.drive_spline(spline)
 
     def settings_ui(self) -> None:

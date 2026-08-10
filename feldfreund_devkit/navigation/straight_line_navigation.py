@@ -22,10 +22,11 @@ class StraightLineNavigation(StaticNavigation):
         self.backward = False
         self._pose_provider = pose_provider
 
-    def generate_path(self) -> list[DriveSegment]:
+    def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         start = self._pose_provider.pose
         end = start.transform_pose(Pose(x=-self.length if self.backward else self.length))
-        return [DriveSegment.from_poses(start, end, use_implement=not self.backward, backward=self.backward)]
+        return [DriveSegment.from_poses(start, end, use_implement=not self.backward,
+                                        backward=self.backward, speed_limit=speed_limit)]
 
     def settings_ui(self) -> None:
         super().settings_ui()

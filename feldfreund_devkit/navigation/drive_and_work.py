@@ -20,14 +20,14 @@ C = TypeVar('C')
 
 
 @track
-async def drive(navigation: Navigation, path_driver: PathDriver) -> None:
+async def drive(navigation: Navigation, path_driver: PathDriver, *, speed_limit: float) -> None:
     """Drive a whole route, working nothing -- a transit between the stretches that are worked."""
-    await _drive_route(navigation, path_driver, work=None)
+    await _drive_route(navigation, path_driver, speed_limit=speed_limit, work=None)
 
 
 @track
 async def drive_and_work(navigation: Navigation, path_driver: PathDriver,
-                         pose_provider: PoseProvider, *,
+                         pose_provider: PoseProvider, *, speed_limit: float,
                          implement: Implement[C], context: C) -> None:
     """Drive a whole route, letting a tool work the stretches that are workable.
 
@@ -41,16 +41,18 @@ async def drive_and_work(navigation: Navigation, path_driver: PathDriver,
 
     :param navigation: produces the route
     :param path_driver: drives the segments, at the slowest speed anyone is asking for
+    :param speed_limit: the fastest the mission allows; the route puts it on its segments
     :param pose_provider: where the robot is, handed to the tool
     :param implement: the tool to work with
     :param context: what :meth:`Implement.activated` kept for this run -- which is the only place it
         comes from, so a tool cannot be worked without having been readied
     """
     work = partial(implement.work, context=context)
-    await _drive_route(navigation, path_driver, work=work, pose_provider=pose_provider)
+    await _drive_route(navigation, path_driver, speed_limit=speed_limit, work=work,
+                       pose_provider=pose_provider)
 
 
-async def _drive_route(navigation: Navigation, path_driver: PathDriver, *,
+async def _drive_route(navigation: Navigation, path_driver: PathDriver, *, speed_limit: float,
                        work: WorkFunction | None,
                        pose_provider: PoseProvider | None = None) -> None:
     async def drive_stretch(route: '_Route') -> None:
@@ -73,7 +75,7 @@ async def _drive_route(navigation: Navigation, path_driver: PathDriver, *,
     # the one place cleanup may still await: on the error path `parallelize` closes its branches
     # with `GeneratorExit`, under which awaiting is illegal.
     try:
-        async with aclosing(navigation.segments()) as segments:
+        async with aclosing(navigation.segments(speed_limit)) as segments:
             route = _Route(segments)
             while (segment := await route.current()) is not None:
                 if segment.use_implement and work is not None:

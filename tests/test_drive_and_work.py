@@ -22,10 +22,10 @@ class TwoLegNavigation(StaticNavigation):
     def __init__(self) -> None:
         super().__init__(name='Two Legs')
 
-    def generate_path(self) -> list[DriveSegment]:
+    def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         return [
-            DriveSegment.from_poses(Pose(), Pose(x=1.0), stop_at_end=False),
-            DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), stop_at_end=True),
+            DriveSegment.from_poses(Pose(), Pose(x=1.0), stop_at_end=False, speed_limit=speed_limit),
+            DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), stop_at_end=True, speed_limit=speed_limit),
         ]
 
 
@@ -34,7 +34,7 @@ class EmptyNavigation(StaticNavigation):
     def __init__(self) -> None:
         super().__init__(name='Empty')
 
-    def generate_path(self) -> list[DriveSegment]:
+    def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         return []
 
 
@@ -43,7 +43,7 @@ class RefusingNavigation(Navigation):
     def __init__(self) -> None:
         super().__init__(name='Refusing')
 
-    async def segments(self) -> AsyncIterator[DriveSegment]:
+    async def segments(self, speed_limit: float) -> AsyncIterator[DriveSegment]:
         raise RuntimeError('no route from here')
         yield  # pragma: no cover  # NOTE: makes this an async generator despite the raise
 

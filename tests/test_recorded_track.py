@@ -237,7 +237,7 @@ async def test_recorded_track_navigation(devkit_system, reverse: bool):
     assert devkit_system.robot_locator.pose.point.x == pytest.approx(start_pose.x, abs=0.1)
     assert devkit_system.robot_locator.pose.point.y == pytest.approx(start_pose.y, abs=0.1)
     assert devkit_system.robot_locator.pose.yaw == pytest.approx(start_pose.yaw, abs=0.1)
-    path = devkit_system.recorded_track_navigation.generate_path()
+    path = devkit_system.recorded_track_navigation.generate_path(0.13)
     assert len(path) == len(segments)
 
     for i, segment in enumerate(segments):

@@ -15,8 +15,8 @@ class OneLegNavigation(StaticNavigation):
     def __init__(self) -> None:
         super().__init__(name='One Leg')
 
-    def generate_path(self) -> list[DriveSegment]:
-        return [DriveSegment.from_poses(Pose(), Pose(x=2.0))]
+    def generate_path(self, speed_limit: float) -> list[DriveSegment]:
+        return [DriveSegment.from_poses(Pose(), Pose(x=2.0), speed_limit=speed_limit)]
 
 
 class RowTurnRowNavigation(StaticNavigation):
@@ -25,12 +25,12 @@ class RowTurnRowNavigation(StaticNavigation):
     def __init__(self) -> None:
         super().__init__(name='Row Turn Row')
 
-    def generate_path(self) -> list[DriveSegment]:
+    def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         return [
-            DriveSegment.from_poses(Pose(), Pose(x=1.0), use_implement=True, stop_at_end=False),
-            DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), use_implement=True),
-            DriveSegment.from_poses(Pose(x=2.0), Pose(x=3.0)),
-            DriveSegment.from_poses(Pose(x=3.0), Pose(x=4.0), use_implement=True),
+            DriveSegment.from_poses(Pose(), Pose(x=1.0), use_implement=True, stop_at_end=False, speed_limit=speed_limit),
+            DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), use_implement=True, speed_limit=speed_limit),
+            DriveSegment.from_poses(Pose(x=2.0), Pose(x=3.0), speed_limit=speed_limit),
+            DriveSegment.from_poses(Pose(x=3.0), Pose(x=4.0), use_implement=True, speed_limit=speed_limit),
         ]
 
 
@@ -40,8 +40,8 @@ class AheadOfTheRobotNavigation(StaticNavigation):
     def __init__(self) -> None:
         super().__init__(name='Ahead Of The Robot')
 
-    def generate_path(self) -> list[DriveSegment]:
-        return [DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), use_implement=True)]
+    def generate_path(self, speed_limit: float) -> list[DriveSegment]:
+        return [DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), use_implement=True, speed_limit=speed_limit)]
 
 
 async def until(condition) -> None:
@@ -69,4 +69,5 @@ def route_run(devkit_system, navigation, *, work: WorkFunction | None = None):
     path_driver = PathDriver(devkit_system.driver)
     implement = ImplementDummy() if work is None else ToolDoing(work)
     return path_driver, drive_and_work(navigation, path_driver, devkit_system.robot_locator,
+                                       speed_limit=navigation.LINEAR_SPEED_LIMIT,
                                        implement=implement, context=None)
