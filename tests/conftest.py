@@ -73,7 +73,6 @@ class TestSystem(System):
 
     def use_navigation(self, route) -> None:
         """Make driving *route* the default automation."""
-        self.path_driver.ambient_limit = lambda: route.linear_speed_limit
         self.automator.default_automation = lambda: drive_and_work(
             route, self.path_driver, self.robot_locator, implement=self.current_implement, context=None)
 

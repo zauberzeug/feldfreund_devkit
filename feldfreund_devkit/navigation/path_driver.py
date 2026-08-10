@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import AsyncGenerator, Callable, Iterator
+from collections.abc import AsyncGenerator, Iterator
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import dataclass, field
 
@@ -46,9 +46,6 @@ class PathDriver:
     the deceleration backwards from it on its own.
 
     :param driver: the low-level driver executing velocities
-    :param speed_limit: the ambient limit, read live because it is a user setting; defaults to what
-        the driver itself is configured for. Reassign :attr:`ambient_limit` to hand the robot to a
-        route with its own limit.
     """
 
     STOP_LOOKAHEAD: float = 1.0
@@ -56,9 +53,8 @@ class PathDriver:
     Only that segment is known, so a target further out cannot be checked against the route --
     accepting one would risk leaving a tool waiting for a place the robot never reaches."""
 
-    def __init__(self, driver: Driver, *, speed_limit: Callable[[], float] | None = None) -> None:
+    def __init__(self, driver: Driver) -> None:
         self.driver = driver
-        self.ambient_limit = speed_limit or (lambda: driver.parameters.linear_speed_limit)
         self._caps: list[float] = []
         self._segment: DriveSegment | None = None
         self._stop: _Stop | None = None
@@ -83,9 +79,9 @@ class PathDriver:
         finally:
             self._caps.remove(speed)
 
-    def speed_limit(self, segment: DriveSegment) -> float:
-        """The slowest speed the segment, the scoped caps and the user allow."""
-        limits = [self.ambient_limit(), *self._caps]
+    def speed_limit(self, segment: DriveSegment, ambient_limit: float) -> float:
+        """The slowest speed the segment, the scoped caps and ``ambient_limit`` allow."""
+        limits = [ambient_limit, *self._caps]
         if segment.speed_limit is not None:
             limits.append(segment.speed_limit)
         return min(limits)
@@ -126,7 +122,7 @@ class PathDriver:
             stop.released.set()
 
     @track
-    async def drive(self, segment: DriveSegment) -> None:
+    async def drive(self, segment: DriveSegment, *, ambient_limit: float) -> None:
         """Drive the segment: its spline, at its speed, in its direction, resting at its end if it says so.
 
         Returns once the segment has been driven to its end, however many stops were held on the
@@ -152,7 +148,8 @@ class PathDriver:
                         stop_t = reach.t
                 piece = remaining if stop_t is None else sub_spline(remaining, 0.0, stop_t)
                 try:
-                    await self._drive(segment, piece, stop_at_end=stop_t is not None or segment.stop_at_end)
+                    await self._drive(segment, piece, ambient_limit=ambient_limit,
+                                      stop_at_end=stop_t is not None or segment.stop_at_end)
                 except DrivingAbortedException:
                     remaining = self._remaining(segment)  # a stop was asked for, or released
                     continue
@@ -165,8 +162,9 @@ class PathDriver:
         finally:
             self._segment = None
 
-    async def _drive(self, segment: DriveSegment, spline: Spline, *, stop_at_end: bool) -> None:
-        with self.driver.parameters.set(linear_speed_limit=self.speed_limit(segment),
+    async def _drive(self, segment: DriveSegment, spline: Spline, *,
+                     stop_at_end: bool, ambient_limit: float) -> None:
+        with self.driver.parameters.set(linear_speed_limit=self.speed_limit(segment, ambient_limit),
                                         can_drive_backwards=segment.backward):
             await self.driver.drive_spline(spline, flip_hook=segment.backward,
                                            throttle_at_end=stop_at_end, stop_at_end=stop_at_end)

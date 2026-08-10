@@ -66,7 +66,7 @@ def route_run(devkit_system, navigation, *, work: WorkFunction | None = None):
 
     Without ``work`` the tool keeps still, which is all a test of the driving itself needs.
     """
-    path_driver = PathDriver(devkit_system.driver, speed_limit=lambda: navigation.linear_speed_limit)
+    path_driver = PathDriver(devkit_system.driver)
     implement = ImplementDummy() if work is None else ToolDoing(work)
     return path_driver, drive_and_work(navigation, path_driver, devkit_system.robot_locator,
                                        implement=implement, context=None)
