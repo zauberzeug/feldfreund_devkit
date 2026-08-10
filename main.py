@@ -10,7 +10,7 @@ from feldfreund_devkit.config import FeldfreundConfiguration, Secrets, config_fr
 from feldfreund_devkit.navigation import (
     PathDriver,
     RecordedTrackProvider,
-    StraightLineRoute,
+    StraightLineNavigation,
     TrackRecordingController,
     drive_and_work,
 )
@@ -29,7 +29,7 @@ class System(feldfreund_devkit.System):
             self.recorded_track_provider, pose_provider=self.odometer, gnss=self.feldfreund.gnss)
 
         self.path_driver = PathDriver(self.driver)
-        self.route = StraightLineRoute(self.odometer)
+        self.route = StraightLineNavigation(self.odometer)
         self.automator.default_automation = self._drive
 
     async def _drive(self) -> None:

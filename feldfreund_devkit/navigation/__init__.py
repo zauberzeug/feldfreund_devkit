@@ -1,10 +1,10 @@
 from .drive_and_work import drive, drive_and_work
 from .drive_segment import DriveSegment
-from .navigation import Navigation, RouteRefused, StaticNavigation
+from .navigation import Navigation, NavigationRefused, StaticNavigation
 from .path_driver import CannotStop, PathDriver
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider, RecordedWaypoint
-from .recorded_track_route import RecordedTrackRoute
-from .straight_line_route import StraightLineRoute
+from .recorded_track_navigation import RecordedTrackNavigation
+from .straight_line_navigation import StraightLineNavigation
 from .track_recording_controller import TrackRecordingController
 from .utils import (
     Reach,
@@ -21,15 +21,15 @@ __all__ = [
     'DriveSegment',
     'GnssRequirement',
     'Navigation',
+    'NavigationRefused',
     'PathDriver',
     'Reach',
     'RecordedTrack',
+    'RecordedTrackNavigation',
     'RecordedTrackProvider',
-    'RecordedTrackRoute',
     'RecordedWaypoint',
-    'RouteRefused',
     'StaticNavigation',
-    'StraightLineRoute',
+    'StraightLineNavigation',
     'TrackRecordingController',
     'drive',
     'drive_and_work',

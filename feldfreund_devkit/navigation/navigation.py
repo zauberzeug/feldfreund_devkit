@@ -9,7 +9,7 @@ from .drive_segment import DriveSegment
 from .recorded_track import GnssRequirement
 
 
-class RouteRefused(Exception):
+class NavigationRefused(Exception):
     """Raised when a route cannot be planned at all, so the run never starts."""
 
 

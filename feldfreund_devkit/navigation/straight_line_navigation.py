@@ -8,7 +8,7 @@ from .drive_segment import DriveSegment
 from .navigation import StaticNavigation
 
 
-class StraightLineRoute(StaticNavigation):
+class StraightLineNavigation(StaticNavigation):
     """A straight stretch ahead of wherever the robot currently stands.
 
     Worked when driving forward; driving backward is for repositioning, so the tool stays off.

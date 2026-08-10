@@ -14,7 +14,7 @@ from rosys.geometry import Pose, Spline
 from rosys.hardware import Gnss
 
 from .drive_segment import DriveSegment
-from .navigation import RouteRefused, StaticNavigation
+from .navigation import NavigationRefused, StaticNavigation
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider
 from .track_recording_controller import TrackRecordingController
 from .utils import skip_completed_segments
@@ -22,7 +22,7 @@ from .utils import skip_completed_segments
 if TYPE_CHECKING:
     from ..interface.components.track_recorder_dialog import TrackRecorderDialog
 
-class RecordedTrackRoute(StaticNavigation):
+class RecordedTrackNavigation(StaticNavigation):
     """The waypoints of a previously recorded track, as segments to drive.
 
     Owns the track's own settings -- which track, and which way round -- and the recorder UI that
@@ -76,7 +76,7 @@ class RecordedTrackRoute(StaticNavigation):
     def generate_path(self) -> list[DriveSegment]:
         recorded_track = self.recorded_track_provider.selected_track
         if recorded_track is None:
-            raise RouteRefused('no track selected')
+            raise NavigationRefused('no track selected')
         self._check_gnss(recorded_track)
         waypoints = recorded_track.waypoints
         path_segments: list[DriveSegment] = []
@@ -109,7 +109,7 @@ class RecordedTrackRoute(StaticNavigation):
         path_segments = skip_completed_segments(self.pose_provider.pose, path_segments,
                                                 max_distance=self.RESUME_MAX_OFFSET, max_angle=self.RESUME_MAX_HEADING)
         if not path_segments:
-            raise RouteRefused(f'align the robot with the track (within {self.RESUME_MAX_OFFSET:.1f} m and '
+            raise NavigationRefused(f'align the robot with the track (within {self.RESUME_MAX_OFFSET:.1f} m and '
                                f'{np.rad2deg(self.RESUME_MAX_HEADING):.0f}°)')
         return path_segments
 
@@ -118,7 +118,7 @@ class RecordedTrackRoute(StaticNavigation):
             return
         measurement = self.gnss.last_measurement if self.gnss else None
         if not track.meets_gnss_requirement(measurement.gps_quality if measurement else None):
-            raise RouteRefused(f'GNSS quality is insufficient for this track ({track.gnss_requirement})')
+            raise NavigationRefused(f'GNSS quality is insufficient for this track ({track.gnss_requirement})')
 
     def backup_to_dict(self) -> dict[str, Any]:
         return super().backup_to_dict() | {'reverse': self.reverse}

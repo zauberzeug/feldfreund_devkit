@@ -7,8 +7,8 @@ from feldfreund_devkit.navigation.recorded_track import RecordedTrack
 
 def _open(devkit_system):
     """Open the recorder for a fresh track and return the live dialog."""
-    devkit_system.recorded_track_route._open_recorder(RecordedTrack())
-    return devkit_system.recorded_track_route._current_recorder
+    devkit_system.recorded_track_navigation._open_recorder(RecordedTrack())
+    return devkit_system.recorded_track_navigation._current_recorder
 
 
 async def test_reopening_recorder_releases_the_previous_one(devkit_system):

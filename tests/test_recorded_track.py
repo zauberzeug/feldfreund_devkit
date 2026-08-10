@@ -53,7 +53,7 @@ def three_point_turn_track(devkit_system) -> RecordedTrack:
     ]
     devkit_system.recorded_track_provider.recorded_tracks.append(track)
     devkit_system.recorded_track_provider.selected_track = track
-    devkit_system.use_recorded_track_route()
+    devkit_system.use_recorded_track_navigation()
     return track
 
 
@@ -163,8 +163,8 @@ async def test_three_point_turn_headings(devkit_system, three_point_turn_track: 
 
 @pytest.mark.parametrize('reverse', (False, True))
 async def test_approach_recorded_track(devkit_system, three_point_turn_track: RecordedTrack, reverse: bool):
-    devkit_system.recorded_track_route.reverse = reverse
-    devkit_system.automator.start(devkit_system.recorded_track_route.approach_start())
+    devkit_system.recorded_track_navigation.reverse = reverse
+    devkit_system.automator.start(devkit_system.recorded_track_navigation.approach_start())
     if reverse:
         expected_pose = three_point_turn_track.waypoints[-1].pose.to_local().rotate(math.pi)
         devkit_system.set_robot_pose(Pose(x=-3.0, y=1.0, yaw=math.pi))
@@ -231,13 +231,13 @@ async def test_recorded_track_navigation(devkit_system, reverse: bool):
     track._waypoints = waypoints  # pylint: disable=protected-access
     devkit_system.recorded_track_provider.recorded_tracks.append(track)
     devkit_system.recorded_track_provider.selected_track = track
-    devkit_system.use_recorded_track_route()
-    devkit_system.recorded_track_route.reverse = reverse
+    devkit_system.use_recorded_track_navigation()
+    devkit_system.recorded_track_navigation.reverse = reverse
 
     assert devkit_system.robot_locator.pose.point.x == pytest.approx(start_pose.x, abs=0.1)
     assert devkit_system.robot_locator.pose.point.y == pytest.approx(start_pose.y, abs=0.1)
     assert devkit_system.robot_locator.pose.yaw == pytest.approx(start_pose.yaw, abs=0.1)
-    path = devkit_system.recorded_track_route.generate_path()
+    path = devkit_system.recorded_track_navigation.generate_path()
     assert len(path) == len(segments)
 
     for i, segment in enumerate(segments):

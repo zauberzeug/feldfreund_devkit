@@ -11,9 +11,9 @@ from feldfreund_devkit.navigation import DriveSegment, skip_completed_segments
 
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
 async def test_stopping_at_different_distances(devkit_system, distance: float):
-    devkit_system.straight_line.length = distance
-    devkit_system.straight_line.linear_speed_limit = 0.13
-    assert devkit_system.straight_line.generate_path()[0].spline.estimated_length() == distance
+    devkit_system.straight_line_navigation.length = distance
+    devkit_system.straight_line_navigation.linear_speed_limit = 0.13
+    assert devkit_system.straight_line_navigation.generate_path()[0].spline.estimated_length() == distance
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
     await forward(until=lambda: devkit_system.automator.is_stopped)
@@ -25,7 +25,7 @@ async def test_straight_line_different_headings(devkit_system, heading_degrees: 
     heading = np.deg2rad(heading_degrees)
     current_pose = devkit_system.robot_locator.pose
     devkit_system.set_robot_pose(Pose(x=current_pose.x, y=current_pose.y, yaw=heading))
-    segment = devkit_system.straight_line.generate_path()[0]
+    segment = devkit_system.straight_line_navigation.generate_path()[0]
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
     direction = segment.spline.start.direction(segment.spline.end)
@@ -33,10 +33,10 @@ async def test_straight_line_different_headings(devkit_system, heading_degrees: 
 
 
 async def test_straight_line_backward(devkit_system):
-    devkit_system.straight_line.length = 1.0
-    devkit_system.straight_line.linear_speed_limit = 0.13
-    devkit_system.straight_line.backward = True
-    segment = devkit_system.straight_line.generate_path()[0]
+    devkit_system.straight_line_navigation.length = 1.0
+    devkit_system.straight_line_navigation.linear_speed_limit = 0.13
+    devkit_system.straight_line_navigation.backward = True
+    segment = devkit_system.straight_line_navigation.generate_path()[0]
     assert segment.backward is True
     assert segment.use_implement is False
     devkit_system.automator.start()
@@ -49,8 +49,8 @@ async def test_straight_line_backward(devkit_system):
 @pytest.mark.parametrize('distance', (0.005, 0.01, 0.05, 0.1, 0.5, 1.0))
 async def test_deceleration_different_distances(devkit_system_with_acceleration, distance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
-    devkit_system_with_acceleration.straight_line.length = distance
-    devkit_system_with_acceleration.straight_line.linear_speed_limit = 0.13
+    devkit_system_with_acceleration.straight_line_navigation.length = distance
+    devkit_system_with_acceleration.straight_line_navigation.linear_speed_limit = 0.13
     devkit_system_with_acceleration.automator.start()
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_running)
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_stopped)
@@ -66,8 +66,8 @@ async def test_deceleration_different_distances(devkit_system_with_acceleration,
 ])
 async def test_deceleration_different_speeds(devkit_system_with_acceleration, linear_speed_limit: float, tolerance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
-    devkit_system_with_acceleration.straight_line.length = 0.005
-    devkit_system_with_acceleration.straight_line.linear_speed_limit = linear_speed_limit
+    devkit_system_with_acceleration.straight_line_navigation.length = 0.005
+    devkit_system_with_acceleration.straight_line_navigation.linear_speed_limit = linear_speed_limit
     devkit_system_with_acceleration.automator.start()
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_running)
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_stopped)
@@ -76,7 +76,7 @@ async def test_deceleration_different_speeds(devkit_system_with_acceleration, li
 
 async def test_slippage(devkit_system):
     assert isinstance(devkit_system.feldfreund.wheels, rosys.hardware.WheelsSimulation)
-    devkit_system.straight_line.length = 2.0
+    devkit_system.straight_line_navigation.length = 2.0
     devkit_system.feldfreund.wheels.slip_factor_right = 0.04
     devkit_system.automator.start()
     await forward(until=lambda: devkit_system.automator.is_running)
@@ -89,7 +89,7 @@ async def test_start_inbetween_waypoints(devkit_system, start_offset: float):
     # a route which expands left and right from the current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=start_offset, y=0.0, yaw=0.0))
     end = start.transform_pose(Pose(x=1.0, y=0.0, yaw=0.0))
-    devkit_system.straight_line.generate_path = lambda: [  # type: ignore[assignment]
+    devkit_system.straight_line_navigation.generate_path = lambda: [  # type: ignore[assignment]
         DriveSegment.from_poses(start, end)]
     driven: list[DriveSegment] = []
     devkit_system.path_driver.SEGMENT_STARTED.subscribe(driven.append)
@@ -110,7 +110,7 @@ async def test_start_on_end(devkit_system):
     # set start of path 1m before current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=-1, y=0.0, yaw=0.0))
     end = devkit_system.robot_locator.pose
-    devkit_system.straight_line.generate_path = lambda: [  # type: ignore[assignment]
+    devkit_system.straight_line_navigation.generate_path = lambda: [  # type: ignore[assignment]
         DriveSegment.from_poses(start, end)]
     devkit_system.path_driver.SEGMENT_STARTED.subscribe(handle_segment_started)
     devkit_system.automator.start()
@@ -135,7 +135,7 @@ async def test_skip_first_segment(devkit_system):
             DriveSegment.from_poses(pose4, pose1),
         ]
         return skip_completed_segments(devkit_system.robot_locator.pose, path)
-    devkit_system.straight_line.generate_path = generate_path  # type: ignore[assignment]
+    devkit_system.straight_line_navigation.generate_path = generate_path  # type: ignore[assignment]
     planned = generate_path()
     driven: list[DriveSegment] = []
     devkit_system.path_driver.SEGMENT_STARTED.subscribe(driven.append)

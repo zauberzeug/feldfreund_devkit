@@ -13,9 +13,9 @@ from feldfreund_devkit.config import Secrets, config_from_id, create_drive_param
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.navigation import (
     PathDriver,
+    RecordedTrackNavigation,
     RecordedTrackProvider,
-    RecordedTrackRoute,
-    StraightLineRoute,
+    StraightLineNavigation,
     TrackRecordingController,
     drive_and_work,
 )
@@ -56,12 +56,12 @@ class TestSystem(System):
         helpers.driver = self.driver
         helpers.automator = self.automator
         self.current_implement = ImplementDummy()
-        self.straight_line = StraightLineRoute(self.robot_locator)
+        self.straight_line_navigation = StraightLineNavigation(self.robot_locator)
 
         self.recorded_track_provider = RecordedTrackProvider()
         self.track_recording_controller = TrackRecordingController(
             self.recorded_track_provider, pose_provider=self.robot_locator, gnss=self.feldfreund.gnss)
-        self.recorded_track_route = RecordedTrackRoute(
+        self.recorded_track_navigation = RecordedTrackNavigation(
             recorded_track_provider=self.recorded_track_provider,
             track_recording_controller=self.track_recording_controller,
             gnss=self.feldfreund.gnss,
@@ -69,17 +69,17 @@ class TestSystem(System):
             driver=self.driver,
             pose_provider=self.robot_locator)
         self.path_driver = PathDriver(self.driver)
-        self.use_route(self.straight_line)
+        self.use_navigation(self.straight_line_navigation)
 
-    def use_route(self, route) -> None:
+    def use_navigation(self, route) -> None:
         """Make driving *route* the default automation."""
         self.path_driver.ambient_limit = lambda: route.linear_speed_limit
         self.automator.default_automation = lambda: drive_and_work(
             route, self.path_driver, self.robot_locator, implement=self.current_implement, context=None)
 
-    def use_recorded_track_route(self) -> None:
+    def use_recorded_track_navigation(self) -> None:
         """Make driving the selected recorded track the default automation."""
-        self.use_route(self.recorded_track_route)
+        self.use_navigation(self.recorded_track_navigation)
 
     def set_robot_pose(self, pose: Pose):
         # pylint: disable=protected-access
