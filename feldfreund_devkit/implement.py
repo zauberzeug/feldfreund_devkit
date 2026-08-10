@@ -4,7 +4,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from typing import Any, Generic, TypeVar
 
 import rosys
-from rosys.geometry import Point, Pose3d
+from rosys.geometry import Point3d, Pose3d
 
 from .config import ImplementConfiguration
 from .work_context import WorkContext, never
@@ -51,24 +51,15 @@ class Implement(rosys.persistence.Persistable, Generic[C]):
     def activated(self) -> AbstractAsyncContextManager[C]:
         """Make the tool ready to work and hand back what it keeps for this run.
 
-        Held for the length of a run: leaving the scope puts the tool away again, so a tool cannot
-        be readied without also being cleaned up.
-
         :raises ImplementException: the tool cannot be made ready
         """
 
     @abstractmethod
     async def work(self, ctx: WorkContext, context: C) -> None:
-        """Do whatever this implement does, for as long as the robot is on workable ground.
-
-        Started when a working stretch begins and cancelled when it ends, so it must not return on
-        its own. A tool that acts continuously from activation has nothing to do here but wait.
-
-        :param context: what :meth:`activated` set up for this run
-        """
+        """Work until cancelled."""
 
     @abstractmethod
-    def can_reach(self, local_point: Point) -> bool:
+    def can_reach(self, local_point: Point3d) -> bool:
         ...
 
     def backup_to_dict(self) -> dict[str, Any]:
@@ -108,5 +99,5 @@ class ImplementDummy(Implement[None]):
         """Nothing to do: this implement exists so the robot can drive without one."""
         await never()
 
-    def can_reach(self, local_point: Point) -> bool:
+    def can_reach(self, local_point: Point3d) -> bool:
         return True
