@@ -62,9 +62,11 @@ class Implement(rosys.persistence.Persistable, Generic[C]):
     def can_reach(self, local_point: Point3d) -> bool:
         ...
 
+    @abstractmethod
     def backup_to_dict(self) -> dict[str, Any]:
-        return {}
+        ...
 
+    @abstractmethod
     def restore_from_dict(self, data: dict[str, Any]) -> None:
         ...
 
@@ -101,3 +103,10 @@ class ImplementDummy(Implement[None]):
 
     def can_reach(self, local_point: Point3d) -> bool:
         return True
+
+    def backup_to_dict(self) -> dict[str, Any]:
+        """Nothing the operator can set, so nothing to keep."""
+        return {}
+
+    def restore_from_dict(self, data: dict[str, Any]) -> None:
+        ...
