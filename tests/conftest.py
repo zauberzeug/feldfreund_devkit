@@ -34,7 +34,6 @@ class FakeSecrets(Secrets):
 GEO_REFERENCE = GeoReference(GeoPoint.from_degrees(lat=51.98333489813455, lon=7.434242465994318))
 ROBOT_GEO_START_POSITION = GEO_REFERENCE.origin
 DRIVE_SPEED = 0.13
-"""What a mission would ask for; the speed these tests are written against."""
 
 
 class TestSystem(System):
@@ -74,13 +73,11 @@ class TestSystem(System):
         self.use_navigation(self.straight_line_navigation)
 
     def use_navigation(self, route) -> None:
-        """Make driving *route* the default automation."""
         self.automator.default_automation = lambda: drive_and_work(
             route, self.path_driver, self.robot_locator, speed_limit=DRIVE_SPEED,
             implement=self.current_implement, context=None)
 
     def use_recorded_track_navigation(self) -> None:
-        """Make driving the selected recorded track the default automation."""
         self.use_navigation(self.recorded_track_navigation)
 
     def set_robot_pose(self, pose: Pose):

@@ -13,25 +13,19 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class WorkContext:
-    """What a tool may use while it works: how to move, and where the robot is.
-
-    Run-scoped, so it carries only what a tool cannot own itself. Hardware, and anything a tool sets
-    up for itself when it is readied, stay with the implement.
-    """
+    """What a tool may use while it works: how to move, and where the robot is."""
 
     motion: PathDriver
     pose: PoseProvider
 
 
 WorkFunction = Callable[[WorkContext], Awaitable[None]]
-"""A tool's work loop. Runs while the robot drives a working stretch and is cancelled at its end,
-so it must not return on its own -- see :func:`drive_and_work`."""
+"""A tool's work loop: runs while a workable stretch is driven, cancelled at its end.
+
+It must not return on its own; returning would look like the stretch being over.
+"""
 
 
 async def never() -> None:
-    """Idle until cancelled.
-
-    For a tool with nothing to do but stay alive for the stretch -- a mower, whose actuation runs
-    from activation to deactivation, or a tool that only needs to act when the stretch ends.
-    """
+    """Idle until cancelled."""
     await asyncio.Event().wait()

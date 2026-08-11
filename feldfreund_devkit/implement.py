@@ -9,7 +9,7 @@ from rosys.geometry import Point3d, Pose3d
 from .config import ImplementConfiguration
 from .work_context import WorkContext, never
 
-# NOTE: spelled out rather than as a PEP 695 type parameter, which needs Python 3.12
+# NOTE: not a PEP 695 type parameter, which would need Python 3.12
 C = TypeVar('C')
 
 
@@ -20,10 +20,9 @@ class ImplementException(Exception):
 class Implement(rosys.persistence.Persistable, Generic[C]):
     """Base class for robot implements like weeding tools or cameras.
 
-    ``C`` is whatever the tool keeps for the length of one run: what it set up when it was readied
-    and needs again while it works. Only :meth:`activated` produces one and only :meth:`work` takes
-    one, so a tool cannot be set to work without having been readied first. A tool that keeps
-    nothing uses ``None``.
+    ``C`` is what the tool sets up when it is activated and needs again while it works. Only
+    ``activated`` produces one and only ``work`` takes one, so a tool cannot be set to work
+    without having been readied first. A tool that keeps nothing uses ``None``.
     """
 
     def __init__(self, config: ImplementConfiguration) -> None:
@@ -49,10 +48,7 @@ class Implement(rosys.persistence.Persistable, Generic[C]):
 
     @abstractmethod
     def activated(self) -> AbstractAsyncContextManager[C]:
-        """Make the tool ready to work and hand back what it keeps for this run.
-
-        :raises ImplementException: the tool cannot be made ready
-        """
+        """Make the tool ready to work and hand back what it keeps for this run."""
 
     @abstractmethod
     async def work(self, ctx: WorkContext, context: C) -> None:
@@ -90,22 +86,18 @@ class ImplementDummy(Implement[None]):
     async def stop(self) -> None:
         pass
 
-    # NOTE: the decorator turns this into the context manager the abstract asks for; pylint sees
-    # only an async method where a plain one was declared
+    # NOTE: the decorator makes this the context manager the abstract asks for; pylint sees only the async def
     @asynccontextmanager
     async def activated(self) -> AsyncGenerator[None, None]:  # pylint: disable=invalid-overridden-method
-        """Nothing to ready, and nothing to keep."""
         yield None
 
     async def work(self, ctx: WorkContext, context: None) -> None:
-        """Nothing to do: this implement exists so the robot can drive without one."""
         await never()
 
     def can_reach(self, local_point: Point3d) -> bool:
         return True
 
     def backup_to_dict(self) -> dict[str, Any]:
-        """Nothing the operator can set, so nothing to keep."""
         return {}
 
     def restore_from_dict(self, data: dict[str, Any]) -> None:

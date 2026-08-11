@@ -21,7 +21,7 @@ C = TypeVar('C')
 
 @track
 async def drive(navigation: Navigation, path_driver: PathDriver, *, speed_limit: float) -> None:
-    """Drive a whole route, working nothing -- a transit between the stretches that are worked."""
+    """Drive a whole route without working."""
     await _drive_route(navigation, path_driver, speed_limit=speed_limit, work=None)
 
 
@@ -31,21 +31,12 @@ async def drive_and_work(navigation: Navigation, path_driver: PathDriver,
                          implement: Implement[C], context: C) -> None:
     """Drive a whole route, letting a tool work the stretches that are workable.
 
-    Owns the run rather than the route, so the navigation stays a planner and the ``PathDriver``
-    stays a driver. Returns once the route has ended and the robot has come to rest.
-
     The tool's work runs alongside the drive for as long as the route stays workable -- a *working
     stretch* -- and is cancelled when the first non-working segment comes up. A tool therefore never
-    runs during a headland turn, and a tool that works while moving is never interrupted at a
-    segment boundary in the middle of a row.
+    runs during a headland turn, and is never interrupted at a segment boundary in the middle of a row.
 
-    :param navigation: produces the route
-    :param path_driver: drives the segments, at the slowest speed anyone is asking for
     :param speed_limit: the fastest the mission allows; the route puts it on its segments
-    :param pose_provider: where the robot is, handed to the tool
-    :param implement: the tool to work with
-    :param context: what :meth:`Implement.activated` kept for this run -- which is the only place it
-        comes from, so a tool cannot be worked without having been readied
+    :param context: what ``implement.activated`` kept for this run
     """
     work = partial(implement.work, context=context)
     await _drive_route(navigation, path_driver, speed_limit=speed_limit, work=work,
@@ -56,24 +47,19 @@ async def _drive_route(navigation: Navigation, path_driver: PathDriver, *, speed
                        work: WorkFunction | None,
                        pose_provider: PoseProvider | None = None) -> None:
     async def drive_stretch(route: '_Route') -> None:
-        """Drive workable segments until the one after them is not."""
         while (segment := await route.current()) is not None and segment.use_implement:
             await path_driver.drive(segment)
             route.advance()
 
     async def work_until_cancelled() -> None:
-        """Run the tool's work loop for one stretch, and refuse to let it end the stretch itself.
-
-        Returning early would look to ``parallelize`` like the stretch being over and halt the drive
-        mid-row, so it is reported rather than obeyed.
-        """
+        """Run the tool's work loop; a return would look like the stretch ending and halt the drive."""
         assert work is not None and pose_provider is not None
         await work(WorkContext(motion=path_driver, pose=pose_provider))
         raise ImplementException('the work loop returned; it must run until the stretch ends')
 
-    # NOTE: stopping the wheels happens here rather than in a branch of the drive, because that is
-    # the one place cleanup may still await: on the error path `parallelize` closes its branches
-    # with `GeneratorExit`, under which awaiting is illegal.
+    # NOTE: the wheels are stopped here because it is the one place cleanup may still await: on the
+    # error path `parallelize` closes its branches with `GeneratorExit`, under which awaiting is illegal
+
     try:
         async with aclosing(navigation.segments(speed_limit)) as segments:
             route = _Route(segments)
@@ -92,12 +78,10 @@ async def _drive_route(navigation: Navigation, path_driver: PathDriver, *, speed
 
 
 class _Route:
-    """The segments to drive, one at a time.
+    """The segments to drive, one at a time, with a one-segment lookahead.
 
     A stretch of workable segments ends at the first one that is not, which can only be found by
     pulling it -- so the run loop must be able to look at a segment before committing to drive it.
-    Pulling still happens only once the previous segment has been driven, so a navigation that plans
-    lazily still plans each segment at the moment it starts.
     """
 
     def __init__(self, segments: AsyncIterator[DriveSegment]) -> None:
@@ -111,9 +95,5 @@ class _Route:
         return self._current
 
     def advance(self) -> None:
-        """Move on, now that the current segment has been driven.
-
-        Deliberately after the drive rather than before it: a cancelled drive then leaves the
-        segment current, instead of being silently skipped.
-        """
+        """Move on to the next segment; called after a drive, so a cancelled one is not skipped."""
         self._current = None

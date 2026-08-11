@@ -13,7 +13,7 @@ def _straight(length: float = 2.0) -> Spline:
 
 
 def _curved() -> Spline:
-    """A quarter-circle-ish arc, far tighter than any crop row, to expose the curvature term."""
+    """An arc far tighter than any crop row, to expose the curvature term."""
     return Spline.from_poses(Pose(x=0.0, y=0.0, yaw=0.0), Pose(x=1.0, y=1.0, yaw=np.pi / 2))
 
 
@@ -28,7 +28,6 @@ def test_straight_path_puts_the_tool_a_tool_length_short_of_the_target(lateral: 
 
 @pytest.mark.parametrize('lateral', (0.0, 0.15, -0.15))
 def test_the_tool_lands_on_the_target_even_on_a_curve(lateral: float) -> None:
-    """The defining property: the target sits exactly one tool length ahead in the robot's frame."""
     spline = _curved()
     target = spline.pose(0.5).transform(Point(x=0.0, y=lateral))
 
@@ -38,11 +37,8 @@ def test_the_tool_lands_on_the_target_even_on_a_curve(lateral: float) -> None:
 
 
 def test_beats_projecting_and_stepping_back_on_a_curve() -> None:
-    """The previous reduction was exact as a pose, but its callers projected it back onto the path.
-
-    Perpendicular foot plus a yaw-preserving step back does put the target a tool length ahead --
-    of a pose that is off the path. Driving to it means projecting that pose back onto the spline,
-    and on a curve with a laterally offset weed that round trip loses centimetres.
+    """Perpendicular foot plus a step back lands off the path, and the round trip back onto it
+    loses centimetres on a curve with a laterally offset target.
     """
     spline = _curved()
     target = spline.pose(0.5).transform(Point(x=0.0, y=0.15))
@@ -78,20 +74,12 @@ def test_the_tool_reaches_a_target_on_the_spline() -> None:
 
 @pytest.mark.parametrize(('target_x', 'expected'), [(2.5, Reach.BEYOND), (-1.0, Reach.BEHIND)])
 def test_a_target_off_either_end_is_told_apart(target_x: float, expected: Reach) -> None:
-    """The two call for opposite reactions: wait for the segment that contains it, or give up.
-
-    ``Spline.pose`` happily evaluates outside ``[0, 1]``, and does so non-linearly, so a clamped or
-    extrapolated answer looks plausible while being metres wrong.
-    """
+    """The two call for opposite reactions: wait for the segment that contains it, or give up."""
     assert tool_reach(_straight(), Point(x=target_x, y=0.0), TOOL_OFFSET).where is expected
 
 
 def test_a_target_already_at_the_tool_is_reached_where_the_robot_stands() -> None:
-    """The robot is already there: the stop is at t=0, not out of range.
-
-    A tool that works where it stands -- stop-and-go, or a weed reached while decelerating -- would
-    otherwise have every one of its stops silently discarded.
-    """
+    """The robot is already there: the stop is at t=0, not out of range."""
     spline = _straight()
     target = spline.pose(0.0).transform(Point(x=TOOL_OFFSET, y=0.0))
 
@@ -102,7 +90,6 @@ def test_a_target_already_at_the_tool_is_reached_where_the_robot_stands() -> Non
 
 
 def test_a_target_just_behind_the_tool_is_reached_within_the_tolerance() -> None:
-    """What the robot can work without moving must not read as unreachable."""
     spline = _straight()
     target = spline.pose(0.0).transform(Point(x=TOOL_OFFSET - 0.005, y=0.0))
 

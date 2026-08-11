@@ -1,7 +1,6 @@
 """Speed-cap composition, and holding the robot at a stop while a tool works.
 
-The stop tests need a robot that is actually driving, so they run a real route -- but what they
-pin is ``PathDriver`` behaviour.
+The stop tests need a robot that is actually driving, so they run a real route.
 """
 from types import SimpleNamespace
 
@@ -38,7 +37,6 @@ def _segment(speed_limit: float | None = None) -> DriveSegment:
 @pytest.mark.parametrize(('segment_limit', 'expected'), [(0.05, 0.05), (0.0, 0.0), (0.3, 0.13)])
 def test_the_robot_is_never_driven_faster_than_it_is_configured_for(segment_limit: float,
                                                                    expected: float) -> None:
-    """The route sets the speed of a segment, but the robot's own limit is the ceiling."""
     assert _path_driver(configured=0.13).speed_limit(_segment(segment_limit)) == expected
 
 
@@ -53,7 +51,6 @@ def test_a_scoped_cap_applies_only_inside_its_scope() -> None:
 
 
 def test_the_slowest_of_everything_asked_for_wins() -> None:
-    """Caps compose: the segment, the user and every scope get a veto, none can speed things up."""
     path_driver = _path_driver()
 
     with path_driver.limit(0.08), path_driver.limit(0.02), path_driver.limit(0.5):
@@ -61,7 +58,6 @@ def test_the_slowest_of_everything_asked_for_wins() -> None:
 
 
 async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
-    """The robot comes to rest with the tool on the target, waits, then drives on to the end."""
     path_driver, run = route_run(devkit_system, OneLegNavigation())
     at_rest: list[float] = []
 
@@ -111,7 +107,6 @@ async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
 
 
 async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None:
-    """The release is in a ``finally``, so a raising tool can never strand the robot stopped."""
     path_driver, run = route_run(devkit_system, OneLegNavigation())
 
     async def work() -> None:
@@ -128,7 +123,7 @@ async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None
 
 
 async def test_a_second_stop_at_the_same_time_is_unsupported(devkit_system) -> None:
-    """One stop at a time; a second holder would silently take over the single stop slot."""
+    """A second holder would silently take over the single stop slot."""
     path_driver, run = route_run(devkit_system, OneLegNavigation())
     crashed: list[bool] = []
 
@@ -148,11 +143,7 @@ async def test_a_second_stop_at_the_same_time_is_unsupported(devkit_system) -> N
 
 
 async def test_a_stop_on_a_later_segment_is_honoured_when_it_starts(devkit_system) -> None:
-    """A stop stays pending across segment boundaries.
-
-    The driver follows one spline at a time, but a tool should not have to know where the segments
-    end -- it asks for a stop and waits, and whichever segment contains it comes to rest there.
-    """
+    """A tool should not have to know where the segments end; it asks for a stop and waits."""
     at_rest: list[float] = []
 
     async def work(ctx) -> None:
@@ -175,12 +166,7 @@ async def test_a_stop_on_a_later_segment_is_honoured_when_it_starts(devkit_syste
 
 
 async def test_a_stop_far_off_the_segment_is_refused(devkit_system) -> None:
-    """Only the segment being driven is known, so a distant target cannot be promised a stop.
-
-    Accepting one would be worse than a stall: the reduction clamps to the segment's parameter
-    range, so a target metres beyond the end comes back as a pose just past it -- the robot would
-    stop somewhere nobody asked for.
-    """
+    """Only the segment being driven is known, so a distant target cannot be promised a stop."""
     refused: list[str] = []
 
     async def work(ctx) -> None:
@@ -201,11 +187,6 @@ async def test_a_stop_far_off_the_segment_is_refused(devkit_system) -> None:
 
 
 async def test_a_stop_behind_the_robot_is_refused_off_the_segment_too(devkit_system) -> None:
-    """A target behind the robot is refused even when it falls off the segment being driven.
-
-    The reduction extrapolates past a segment's start, so such a pose is not "on" the segment and
-    would otherwise pass the on-segment check and be waited on forever.
-    """
     refused: list[str] = []
 
     async def work(ctx) -> None:
@@ -227,12 +208,7 @@ async def test_a_stop_behind_the_robot_is_refused_off_the_segment_too(devkit_sys
 
 
 async def test_a_stop_behind_the_segment_is_refused(devkit_system) -> None:
-    """A target the route never reaches back to is refused, rather than waited on forever.
-
-    ``tool_t`` answers ``None`` both for a target beyond a segment's end and for one before its
-    start. The first is worth waiting for -- a later segment will contain it -- while the second
-    never comes, because a route only goes forward.
-    """
+    """A target the route never reaches back to is refused, rather than waited on forever."""
     refused: list[str] = []
 
     async def work(ctx) -> None:

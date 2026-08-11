@@ -11,20 +11,12 @@ TOOL_OFFSET = 0.1
 
 
 class OneLegNavigation(StaticNavigation):
-    """Two metres straight ahead, in one go."""
-
-    def __init__(self) -> None:
-        super().__init__(name='One Leg')
 
     def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         return [DriveSegment.from_poses(Pose(), Pose(x=2.0), speed_limit=speed_limit)]
 
 
 class RowTurnRowNavigation(StaticNavigation):
-    """Two workable rows with a non-workable turn between them."""
-
-    def __init__(self) -> None:
-        super().__init__(name='Row Turn Row')
 
     def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         return [
@@ -36,10 +28,6 @@ class RowTurnRowNavigation(StaticNavigation):
 
 
 class AheadOfTheRobotNavigation(StaticNavigation):
-    """A workable row that starts a metre in front of where the robot stands."""
-
-    def __init__(self) -> None:
-        super().__init__(name='Ahead Of The Robot')
 
     def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         return [DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), use_implement=True, speed_limit=speed_limit)]
@@ -52,7 +40,6 @@ async def until(condition) -> None:
 
 
 class ToolDoing(ImplementDummy):
-    """A tool that does whatever a test asks of it while a stretch is worked."""
 
     def __init__(self, work: WorkFunction) -> None:
         super().__init__()
@@ -63,10 +50,7 @@ class ToolDoing(ImplementDummy):
 
 
 def route_run(devkit_system, navigation, *, work: WorkFunction | None = None):
-    """A path driver and the run that drives ``navigation`` with it.
-
-    Without ``work`` the tool keeps still, which is all a test of the driving itself needs.
-    """
+    """A path driver and the run that drives ``navigation`` with it; without ``work`` the tool keeps still."""
     path_driver = PathDriver(devkit_system.driver)
     implement = ImplementDummy() if work is None else ToolDoing(work)
     return path_driver, drive_and_work(navigation, path_driver, devkit_system.robot_locator,

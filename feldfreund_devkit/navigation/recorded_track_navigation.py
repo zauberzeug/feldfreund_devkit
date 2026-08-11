@@ -25,11 +25,7 @@ if TYPE_CHECKING:
     from ..interface.components.track_recorder_dialog import TrackRecorderDialog
 
 class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Persistable):
-    """The waypoints of a previously recorded track, as segments to drive.
-
-    Owns the track's own settings -- which track, and which way round -- and the recorder UI that
-    produces them.
-    """
+    """The waypoints of a previously recorded track, as segments to drive."""
 
     RESUME_MAX_OFFSET: float = 2.0
     """How far (m) off the track the robot may stand and still join it part-way."""
@@ -44,7 +40,7 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
                  gnss: Gnss | None = None,
                  automator: Automator | None = None,
                  robot_marker_icon_url: str | None = None) -> None:
-        super().__init__(name='Recorded Track')
+        super().__init__()
         self.log = logging.getLogger('feldfreund.recorded_track')
         self.recorded_track_provider = recorded_track_provider
         self.track_recording_controller = track_recording_controller

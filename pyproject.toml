@@ -119,8 +119,7 @@ ignore = [
 [tool.ruff]
 line-length = 120
 indent-width = 4
-# NOTE: no target-version, so ruff follows requires-python and stops asking for syntax the oldest
-# supported Python cannot parse
+# NOTE: no target-version, so ruff follows requires-python
 
 [tool.ruff.lint]
 select = [

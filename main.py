@@ -33,7 +33,6 @@ class System(feldfreund_devkit.System):
         self.automator.default_automation = self._drive
 
     async def _drive(self) -> None:
-        """Drive the route with no tool: the demo has none to work with."""
         self.path_driver.ambient_limit = lambda: self.route.linear_speed_limit
         await drive_and_work(self.route, self.path_driver, self.odometer,
                              detection=NoDetection(), work=no_work)

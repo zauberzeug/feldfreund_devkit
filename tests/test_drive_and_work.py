@@ -17,7 +17,6 @@ from feldfreund_devkit.navigation import (
 
 
 class TwoLegNavigation(StaticNavigation):
-    """Two metres forward in two legs, flowing through the joint and resting at the end."""
 
     def __init__(self) -> None:
         super().__init__(name='Two Legs')
@@ -94,7 +93,6 @@ async def test_a_navigation_may_refuse_to_start(devkit_system) -> None:
 
 
 async def test_work_spans_a_stretch_and_never_a_turn(devkit_system) -> None:
-    """Work covers consecutive workable segments as one stretch, and is cancelled before the turn."""
     navigation = RowTurnRowNavigation()
     working: list[str] = []
 
@@ -127,7 +125,6 @@ async def test_a_work_loop_that_returns_is_an_error(devkit_system) -> None:
 
 
 async def test_work_stops_the_robot_where_the_tool_needs_it(devkit_system) -> None:
-    """The whole point: a tool can hold the robot at a target from inside its own loop."""
     navigation = RowTurnRowNavigation()
     at_rest: list[float] = []
 
