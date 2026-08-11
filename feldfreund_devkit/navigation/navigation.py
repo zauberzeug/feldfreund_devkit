@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
-from typing import Any
 
-import rosys
 from nicegui import Event
 
 from .drive_segment import DriveSegment
@@ -13,16 +11,13 @@ class NavigationRefused(Exception):
     """Raised when a route cannot be planned at all, so the run never starts."""
 
 
-class Navigation(rosys.persistence.Persistable, ABC):
+class Navigation(ABC):
     """Produces the route to drive, one segment at a time.
 
     A navigation says *where* to go, not how the driving is done -- except where a segment itself
     demands a speed or a stop, which it carries. Segments are pulled one at a time, so a navigation
     that plans from what it currently sees can plan each one at the moment it starts.
     """
-
-    LINEAR_SPEED_LIMIT: float = 0.13
-    """The speed this kind of route is usually driven at, which a mission starts its setting from."""
 
     def __init__(self, *, name: str) -> None:
         super().__init__()
@@ -45,13 +40,11 @@ class Navigation(rosys.persistence.Persistable, ABC):
         """
 
     def settings_ui(self) -> None:
-        """Controls for the route, shown while the mission driving it is selected."""
+        """Controls for the route, shown while the mission driving it is selected.
 
-    def backup_to_dict(self) -> dict[str, Any]:
-        return {}
-
-    def restore_from_dict(self, data: dict[str, Any]) -> None:
-        ...
+        A route with settings worth keeping declares ``rosys.persistence.Persistable`` itself; one
+        planned fresh for a single drive has nothing to keep.
+        """
 
 
 class StaticNavigation(Navigation):

@@ -3,6 +3,8 @@
 The stop tests need a robot that is actually driving, so they run a real route -- but what they
 pin is ``PathDriver`` behaviour.
 """
+from types import SimpleNamespace
+
 import pytest
 import rosys
 from rosys.geometry import Point, Pose
@@ -24,18 +26,20 @@ from feldfreund_devkit.navigation import (
 )
 
 
-def _path_driver() -> PathDriver:
-    return PathDriver(driver=None)  # type: ignore[arg-type]
+def _path_driver(configured: float = 0.13) -> PathDriver:
+    driver = SimpleNamespace(parameters=SimpleNamespace(linear_speed_limit=configured))
+    return PathDriver(driver)  # type: ignore[arg-type]
 
 
 def _segment(speed_limit: float | None = None) -> DriveSegment:
     return DriveSegment.from_poses(Pose(), Pose(x=1.0), speed_limit=speed_limit)
 
 
-@pytest.mark.parametrize(('segment_limit', 'expected'), [(0.05, 0.05), (0.0, 0.0), (0.3, 0.3)])
-def test_a_segment_sets_the_speed_it_is_driven_at(segment_limit: float, expected: float) -> None:
-    """The route put the speed on the segment, so the driver simply obeys it."""
-    assert _path_driver().speed_limit(_segment(segment_limit)) == expected
+@pytest.mark.parametrize(('segment_limit', 'expected'), [(0.05, 0.05), (0.0, 0.0), (0.3, 0.13)])
+def test_the_robot_is_never_driven_faster_than_it_is_configured_for(segment_limit: float,
+                                                                   expected: float) -> None:
+    """The route sets the speed of a segment, but the robot's own limit is the ceiling."""
+    assert _path_driver(configured=0.13).speed_limit(_segment(segment_limit)) == expected
 
 
 def test_a_scoped_cap_applies_only_inside_its_scope() -> None:

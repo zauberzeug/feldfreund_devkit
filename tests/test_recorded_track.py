@@ -1,7 +1,7 @@
 import math
 
 import pytest
-from conftest import GEO_REFERENCE
+from conftest import DRIVE_SPEED, GEO_REFERENCE
 from rosys.geometry import GeoPose, GeoReference, Pose
 from rosys.hardware.gnss import GpsQuality
 from rosys.helpers import angle
@@ -164,7 +164,8 @@ async def test_three_point_turn_headings(devkit_system, three_point_turn_track: 
 @pytest.mark.parametrize('reverse', (False, True))
 async def test_approach_recorded_track(devkit_system, three_point_turn_track: RecordedTrack, reverse: bool):
     devkit_system.recorded_track_navigation.reverse = reverse
-    devkit_system.automator.start(devkit_system.recorded_track_navigation.approach_start())
+    devkit_system.automator.start(devkit_system.recorded_track_navigation.approach_start(
+        devkit_system.driver.parameters.linear_speed_limit))
     if reverse:
         expected_pose = three_point_turn_track.waypoints[-1].pose.to_local().rotate(math.pi)
         devkit_system.set_robot_pose(Pose(x=-3.0, y=1.0, yaw=math.pi))
@@ -190,7 +191,7 @@ async def test_recorded_track_navigation(devkit_system, reverse: bool):
                                     Pose(x=2.0, y=3.0, yaw=0.0),
                                     use_implement=True),
             *generate_three_point_turn(Pose(x=2.0, y=3.0, yaw=0.0),
-                                       Pose(x=2.0, y=1.0, yaw=math.pi)),
+                                       Pose(x=2.0, y=1.0, yaw=math.pi), speed_limit=DRIVE_SPEED),
             DriveSegment.from_poses(Pose(x=2.0, y=1.0, yaw=math.pi),
                                     Pose(x=1.0, y=0.0, yaw=math.pi),
                                     use_implement=True,
@@ -206,7 +207,7 @@ async def test_recorded_track_navigation(devkit_system, reverse: bool):
                                     use_implement=True,
                                     stop_at_end=False),
             *generate_three_point_turn(Pose(x=2.0, y=1.0, yaw=0.0),
-                                       Pose(x=2.0, y=3.0, yaw=math.pi)),
+                                       Pose(x=2.0, y=3.0, yaw=math.pi), speed_limit=DRIVE_SPEED),
             DriveSegment.from_poses(Pose(x=2.0, y=3.0, yaw=math.pi),
                                     Pose(x=1.0, y=3.0, yaw=math.pi),
                                     use_implement=True,

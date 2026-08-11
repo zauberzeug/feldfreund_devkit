@@ -1,5 +1,6 @@
 from typing import Any
 
+import rosys
 from nicegui import ui
 from rosys.driving.pose_provider import PoseProvider
 from rosys.geometry import Pose
@@ -8,7 +9,7 @@ from .drive_segment import DriveSegment
 from .navigation import StaticNavigation
 
 
-class StraightLineNavigation(StaticNavigation):
+class StraightLineNavigation(StaticNavigation, rosys.persistence.Persistable):
     """A straight stretch ahead of wherever the robot currently stands.
 
     Worked when driving forward; driving backward is for repositioning, so the tool stays off.
@@ -40,8 +41,7 @@ class StraightLineNavigation(StaticNavigation):
             .tooltip('The robot will drive backwards if enabled')
 
     def backup_to_dict(self) -> dict[str, Any]:
-        return super().backup_to_dict() | {'length': self.length}
+        return {'length': self.length}
 
     def restore_from_dict(self, data: dict[str, Any]) -> None:
-        super().restore_from_dict(data)
         self.length = data.get('length', self.length)

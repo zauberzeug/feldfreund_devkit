@@ -6,6 +6,7 @@ import math
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import rosys
 from nicegui import ui
 from rosys.automation import Automator
 from rosys.driving import Driver
@@ -14,7 +15,7 @@ from rosys.geometry import Pose, Spline
 from rosys.hardware import Gnss
 
 from .drive_segment import DriveSegment
-from .navigation import Navigation, NavigationRefused, StaticNavigation
+from .navigation import NavigationRefused, StaticNavigation
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider
 from .track_recording_controller import TrackRecordingController
 from .utils import skip_completed_segments
@@ -22,7 +23,7 @@ from .utils import skip_completed_segments
 if TYPE_CHECKING:
     from ..interface.components.track_recorder_dialog import TrackRecorderDialog
 
-class RecordedTrackNavigation(StaticNavigation):
+class RecordedTrackNavigation(StaticNavigation, rosys.persistence.Persistable):
     """The waypoints of a previously recorded track, as segments to drive.
 
     Owns the track's own settings -- which track, and which way round -- and the recorder UI that
@@ -122,13 +123,12 @@ class RecordedTrackNavigation(StaticNavigation):
             raise NavigationRefused(f'GNSS quality is insufficient for this track ({track.gnss_requirement})')
 
     def backup_to_dict(self) -> dict[str, Any]:
-        return super().backup_to_dict() | {'reverse': self.reverse}
+        return {'reverse': self.reverse}
 
     def restore_from_dict(self, data: dict[str, Any]) -> None:
-        super().restore_from_dict(data)
         self.reverse = data.get('reverse', self.reverse)
 
-    async def approach_start(self, speed_limit: float = Navigation.LINEAR_SPEED_LIMIT) -> None:
+    async def approach_start(self, speed_limit: float) -> None:
         """Approaches the start of the track directly.
 
         Use with caution, alignment with the track will not be checked.
@@ -213,7 +213,8 @@ class RecordedTrackNavigation(StaticNavigation):
     def _start_approach(self) -> None:
         if self.automator is None:
             return
-        self.automator.start(self.approach_start())
+        # NOTE: its own automation, not a mission, so the robot's configured limit is the ceiling
+        self.automator.start(self.approach_start(self.driver.parameters.linear_speed_limit))
 
     async def start_new_track_recording(self) -> None:
         await self.track_recording_controller.start_recording(RecordedTrack())

@@ -80,11 +80,15 @@ class PathDriver:
             self._caps.remove(speed)
 
     def speed_limit(self, segment: DriveSegment) -> float:
-        """The slowest speed the segment and the scoped caps allow."""
-        limits = [*self._caps]
+        """The slowest speed the robot, the segment and the scoped caps allow.
+
+        The robot's own configured limit is a ceiling: nothing a route or an operator asks for may
+        drive it faster than it is built to go.
+        """
+        limits = [self.driver.parameters.linear_speed_limit, *self._caps]
         if segment.speed_limit is not None:
             limits.append(segment.speed_limit)
-        return min(limits) if limits else self.driver.parameters.linear_speed_limit
+        return min(limits)
 
     @asynccontextmanager
     async def stop_over(self, target: Point, tool_offset_x: float) -> AsyncGenerator[None, None]:

@@ -48,12 +48,14 @@ def sub_spline(spline: Spline, t_min: float, t_max: float) -> Spline:
 
 def generate_three_point_turn(end_pose_current_row: Pose,
                               start_pose_next_row: Pose, *,
+                              speed_limit: float,
                               radius: float = 1.5,
                               same_row_threshold: float = 0.01) -> list[DriveSegment]:
     """Generates a three-point turn between two poses
 
     :param end_pose_current_row: the pose of the end of the current row
     :param start_pose_next_row: the pose of the start of the next row
+    :param speed_limit: the fastest the legs may be driven
     :param radius: the radius of the turn
     :param same_row_threshold: the threshold distance between the end of the current row and the start of the next row to consider them to be on the same row
     :return: a list of drive segments to perform the turn
@@ -69,9 +71,11 @@ def generate_three_point_turn(end_pose_current_row: Pose,
                                                            yaw=-direction_to_start))
     backward = first_turn_pose.relative_pose(back_up_pose).x < 0
     return [
-        DriveSegment.from_poses(end_pose_current_row, first_turn_pose, stop_at_end=backward),
-        DriveSegment.from_poses(first_turn_pose, back_up_pose, backward=backward, stop_at_end=backward),
-        DriveSegment.from_poses(back_up_pose, start_pose_next_row),
+        DriveSegment.from_poses(end_pose_current_row, first_turn_pose,
+                                stop_at_end=backward, speed_limit=speed_limit),
+        DriveSegment.from_poses(first_turn_pose, back_up_pose, backward=backward,
+                                stop_at_end=backward, speed_limit=speed_limit),
+        DriveSegment.from_poses(back_up_pose, start_pose_next_row, speed_limit=speed_limit),
     ]
 
 

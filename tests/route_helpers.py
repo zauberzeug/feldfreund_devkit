@@ -1,5 +1,6 @@
 """Routes and waiting helpers shared by the run-loop and path-driver tests."""
 import rosys
+from conftest import DRIVE_SPEED
 from rosys.geometry import Pose
 
 from feldfreund_devkit import ImplementDummy, WorkContext, WorkFunction
@@ -69,5 +70,5 @@ def route_run(devkit_system, navigation, *, work: WorkFunction | None = None):
     path_driver = PathDriver(devkit_system.driver)
     implement = ImplementDummy() if work is None else ToolDoing(work)
     return path_driver, drive_and_work(navigation, path_driver, devkit_system.robot_locator,
-                                       speed_limit=navigation.LINEAR_SPEED_LIMIT,
+                                       speed_limit=DRIVE_SPEED,
                                        implement=implement, context=None)
