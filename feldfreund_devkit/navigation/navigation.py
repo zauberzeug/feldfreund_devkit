@@ -39,13 +39,6 @@ class Navigation(ABC):
             the route itself knows better -- a docking approach, a turn -- but never more.
         """
 
-    def settings_ui(self) -> None:
-        """Controls for the route, shown while the mission driving it is selected.
-
-        A route with settings worth keeping declares ``rosys.persistence.Persistable`` itself; one
-        planned fresh for a single drive has nothing to keep.
-        """
-
 
 class StaticNavigation(Navigation):
     """A navigation whose route is planned before the drive starts.

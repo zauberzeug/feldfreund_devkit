@@ -5,11 +5,12 @@ from nicegui import ui
 from rosys.driving.pose_provider import PoseProvider
 from rosys.geometry import Pose
 
+from ..settings_ui import SettingsUI
 from .drive_segment import DriveSegment
 from .navigation import StaticNavigation
 
 
-class StraightLineNavigation(StaticNavigation, rosys.persistence.Persistable):
+class StraightLineNavigation(StaticNavigation, SettingsUI, rosys.persistence.Persistable):
     """A straight stretch ahead of wherever the robot currently stands.
 
     Worked when driving forward; driving backward is for repositioning, so the tool stays off.
@@ -30,7 +31,6 @@ class StraightLineNavigation(StaticNavigation, rosys.persistence.Persistable):
                                         backward=self.backward, speed_limit=speed_limit)]
 
     def settings_ui(self) -> None:
-        super().settings_ui()
         ui.number('Length', step=0.5, min=0.05, format='%.1f', suffix='m', on_change=self.request_backup) \
             .props('dense outlined') \
             .classes('w-24') \

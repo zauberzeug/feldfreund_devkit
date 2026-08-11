@@ -14,6 +14,7 @@ from rosys.driving.pose_provider import PoseProvider
 from rosys.geometry import Pose, Spline
 from rosys.hardware import Gnss
 
+from ..settings_ui import SettingsUI
 from .drive_segment import DriveSegment
 from .navigation import NavigationRefused, StaticNavigation
 from .recorded_track import GnssRequirement, RecordedTrack, RecordedTrackProvider
@@ -23,7 +24,7 @@ from .utils import skip_completed_segments
 if TYPE_CHECKING:
     from ..interface.components.track_recorder_dialog import TrackRecorderDialog
 
-class RecordedTrackNavigation(StaticNavigation, rosys.persistence.Persistable):
+class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Persistable):
     """The waypoints of a previously recorded track, as segments to drive.
 
     Owns the track's own settings -- which track, and which way round -- and the recorder UI that
@@ -146,7 +147,6 @@ class RecordedTrackNavigation(StaticNavigation, rosys.persistence.Persistable):
             await self.driver.drive_spline(spline)
 
     def settings_ui(self) -> None:
-        super().settings_ui()
         self._recording_banner()  # type: ignore[call-arg]
         self._settings_content_row = ui.column().classes('w-full gap-2')
         with self._settings_content_row:
