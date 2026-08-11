@@ -18,9 +18,6 @@ from feldfreund_devkit.navigation import (
 
 class TwoLegNavigation(StaticNavigation):
 
-    def __init__(self) -> None:
-        super().__init__(name='Two Legs')
-
     def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         return [
             DriveSegment.from_poses(Pose(), Pose(x=1.0), stop_at_end=False, speed_limit=speed_limit),
@@ -30,17 +27,11 @@ class TwoLegNavigation(StaticNavigation):
 
 class EmptyNavigation(StaticNavigation):
 
-    def __init__(self) -> None:
-        super().__init__(name='Empty')
-
     def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         return []
 
 
 class RefusingNavigation(Navigation):
-
-    def __init__(self) -> None:
-        super().__init__(name='Refusing')
 
     async def segments(self, speed_limit: float) -> AsyncIterator[DriveSegment]:
         raise RuntimeError('no route from here')

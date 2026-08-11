@@ -19,7 +19,7 @@ class StraightLineNavigation(StaticNavigation, SettingsUI, rosys.persistence.Per
     LENGTH: float = 2.0
 
     def __init__(self, pose_provider: PoseProvider) -> None:
-        super().__init__(name='Straight Line')
+        super().__init__()
         self.length = self.LENGTH
         self.backward = False
         self._pose_provider = pose_provider
