@@ -67,9 +67,9 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
         self.track_recording_controller.WAYPOINT_ADDED.subscribe(self._update_banner_count)
 
     @property
-    def gnss_requirement(self) -> GnssRequirement | None:
+    def gnss_requirement(self) -> GnssRequirement:
         track = self.recorded_track_provider.selected_track
-        return None if track is None else track.gnss_requirement
+        return GnssRequirement.NONE if track is None else track.gnss_requirement
 
     def generate_path(self, speed_limit: float) -> list[DriveSegment]:
         recorded_track = self.recorded_track_provider.selected_track

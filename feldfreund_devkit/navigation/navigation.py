@@ -15,9 +15,9 @@ class Navigation(ABC):
     """Produces the route to drive, one segment at a time."""
 
     @property
-    def gnss_requirement(self) -> GnssRequirement | None:
+    def gnss_requirement(self) -> GnssRequirement:
         """The positioning quality this route needs."""
-        return None
+        return GnssRequirement.NONE
 
     @abstractmethod
     def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:
