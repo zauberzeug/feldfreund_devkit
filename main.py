@@ -5,14 +5,13 @@ from rosys.automation import Automator, automation_controls
 from rosys.driving import Driver, Steerer, keyboard_control, robot_object
 
 import feldfreund_devkit
-from feldfreund_devkit import NoDetection, no_work
 from feldfreund_devkit.config import FeldfreundConfiguration, Secrets, config_from_id
 from feldfreund_devkit.navigation import (
     PathDriver,
     RecordedTrackProvider,
     StraightLineNavigation,
     TrackRecordingController,
-    drive_and_work,
+    drive,
 )
 
 
@@ -33,9 +32,7 @@ class System(feldfreund_devkit.System):
         self.automator.default_automation = self._drive
 
     async def _drive(self) -> None:
-        self.path_driver.ambient_limit = lambda: self.route.linear_speed_limit
-        await drive_and_work(self.route, self.path_driver, self.odometer,
-                             detection=NoDetection(), work=no_work)
+        await drive(self.route, self.path_driver, speed_limit=self.driver.parameters.linear_speed_limit)
 
 
 def startup() -> None:
