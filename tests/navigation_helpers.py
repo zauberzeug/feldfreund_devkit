@@ -1,4 +1,6 @@
 """Navigations and waiting helpers shared by the run-loop and path-driver tests."""
+from typing import NoReturn
+
 import rosys
 from conftest import DRIVE_SPEED
 from rosys.geometry import Pose
@@ -45,7 +47,7 @@ class ToolDoing(ImplementDummy):
         super().__init__()
         self._work = work
 
-    async def work(self, ctx: WorkContext, context: None) -> None:
+    async def work(self, ctx: WorkContext, context: None) -> NoReturn:
         await self._work(ctx)
 
 

@@ -1,12 +1,13 @@
 """A run drives whatever the navigation hands out, one segment at a time."""
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
+from typing import NoReturn
 
 import pytest
 from navigation_helpers import TOOL_OFFSET, RowTurnRowNavigation, navigation_run
 from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
 
-from feldfreund_devkit import never
+from feldfreund_devkit import WorkContext, never
 from feldfreund_devkit.implement import ImplementException
 from feldfreund_devkit.navigation import (
     CannotStop,
@@ -33,7 +34,7 @@ class EmptyNavigation(StaticNavigation):
 
 class RefusingNavigation(Navigation):
 
-    async def segments(self, speed_limit: float) -> AsyncIterator[DriveSegment]:
+    async def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:
         raise RuntimeError('no way from here')
         yield  # pragma: no cover  # NOTE: makes this an async generator despite the raise
 
@@ -87,7 +88,7 @@ async def test_work_spans_a_stretch_and_never_a_turn(devkit_system) -> None:
     navigation = RowTurnRowNavigation()
     working: list[str] = []
 
-    async def work(ctx) -> None:
+    async def work(ctx: WorkContext) -> NoReturn:
         working.append('start')
         try:
             await never()
@@ -106,10 +107,10 @@ async def test_work_spans_a_stretch_and_never_a_turn(devkit_system) -> None:
 
 async def test_a_work_loop_that_returns_is_an_error(devkit_system) -> None:
     """Returning early would silently halt the drive, so it is reported instead."""
-    async def work(ctx) -> None:
+    async def work(ctx: WorkContext) -> None:
         return
 
-    _, run = navigation_run(devkit_system, RowTurnRowNavigation(), work=work)
+    _, run = navigation_run(devkit_system, RowTurnRowNavigation(), work=work)  # type: ignore[arg-type]
 
     with pytest.raises(ImplementException, match='must run until the stretch ends'):
         await run
@@ -119,7 +120,7 @@ async def test_work_stops_the_robot_where_the_tool_needs_it(devkit_system) -> No
     navigation = RowTurnRowNavigation()
     at_rest: list[float] = []
 
-    async def work(ctx) -> None:
+    async def work(ctx: WorkContext) -> NoReturn:
         try:
             async with ctx.motion.stop_over(Point(x=0.5, y=0.0), TOOL_OFFSET):
                 at_rest.append(ctx.pose.pose.x)

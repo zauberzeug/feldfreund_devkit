@@ -4,6 +4,7 @@ The stop tests need a robot that is actually driving, so they run a real navigat
 """
 from collections.abc import AsyncGenerator
 from types import SimpleNamespace
+from typing import NoReturn
 
 import pytest
 import rosys
@@ -18,7 +19,7 @@ from navigation_helpers import (
 from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
 
-from feldfreund_devkit import never
+from feldfreund_devkit import WorkContext, never
 from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
@@ -148,7 +149,7 @@ async def test_a_stop_on_a_later_segment_is_honoured_when_it_starts(devkit_syste
     """A tool should not have to know where the segments end; it asks for a stop and waits."""
     at_rest: list[float] = []
 
-    async def work(ctx) -> None:
+    async def work(ctx: WorkContext) -> NoReturn:
         try:
             async with ctx.motion.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
                 at_rest.append(ctx.pose.pose.x)
@@ -171,7 +172,7 @@ async def test_a_stop_far_off_the_segment_is_refused(devkit_system) -> None:
     """Only the segment being driven is known, so a distant target cannot be promised a stop."""
     refused: list[str] = []
 
-    async def work(ctx) -> None:
+    async def work(ctx: WorkContext) -> NoReturn:
         try:
             async with ctx.motion.stop_over(Point(x=3.5, y=0.0), TOOL_OFFSET):
                 pass
@@ -191,7 +192,7 @@ async def test_a_stop_far_off_the_segment_is_refused(devkit_system) -> None:
 async def test_a_stop_behind_the_robot_is_refused_off_the_segment_too(devkit_system) -> None:
     refused: list[str] = []
 
-    async def work(ctx) -> None:
+    async def work(ctx: WorkContext) -> NoReturn:
         await until(lambda: devkit_system.driver.pose.x > 1.2)
         try:
             async with ctx.motion.stop_over(Point(x=0.9, y=0.0), TOOL_OFFSET):
@@ -213,7 +214,7 @@ async def test_a_stop_behind_the_segment_is_refused(devkit_system) -> None:
     """A target the navigation never reaches back to is refused, rather than waited on forever."""
     refused: list[str] = []
 
-    async def work(ctx) -> None:
+    async def work(ctx: WorkContext) -> NoReturn:
         try:
             async with ctx.motion.stop_over(Point(x=0.5, y=0.0), TOOL_OFFSET):
                 pass
@@ -249,7 +250,7 @@ async def test_a_stop_survives_the_pause_between_two_segments(devkit_system) -> 
     at_rest: list[float] = []
     refused: list[str] = []
 
-    async def work(ctx) -> None:
+    async def work(ctx: WorkContext) -> NoReturn:
         await until(lambda: completed)
         try:
             async with ctx.motion.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
