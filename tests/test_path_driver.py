@@ -2,6 +2,7 @@
 
 The stop tests need a robot that is actually driving, so they run a real navigation.
 """
+from collections.abc import AsyncGenerator
 from types import SimpleNamespace
 
 import pytest
@@ -21,6 +22,7 @@ from feldfreund_devkit import never
 from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
+    Navigation,
     PathDriver,
 )
 
@@ -226,3 +228,42 @@ async def test_a_stop_behind_the_segment_is_refused(devkit_system) -> None:
 
     assert refused and 'behind the segment' in refused[0], \
         'the target is ahead of the robot, but behind the segment it is driving onto'
+
+
+class PlanningPauseNavigation(Navigation):
+    """Two workable segments, with the second one planned only once it is asked for."""
+
+    PLANNING_TIME: float = 1.0
+
+    async def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:
+        yield DriveSegment.from_poses(Pose(), Pose(x=1.0), use_implement=True,
+                                      stop_at_end=False, speed_limit=speed_limit)
+        await rosys.sleep(self.PLANNING_TIME)
+        yield DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), use_implement=True, speed_limit=speed_limit)
+
+
+@pytest.mark.xfail(strict=True, reason='PathDriver forgets the segment it finished before it has the next one')
+async def test_a_stop_survives_the_pause_between_two_segments(devkit_system) -> None:
+    """A tool that asks between segments must not lose its target: the navigation drives right over it."""
+    completed: list[DriveSegment] = []
+    at_rest: list[float] = []
+    refused: list[str] = []
+
+    async def work(ctx) -> None:
+        await until(lambda: completed)
+        try:
+            async with ctx.motion.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
+                at_rest.append(ctx.pose.pose.x)
+        except CannotStop as e:
+            refused.append(str(e))
+        await never()
+
+    path_driver, run = navigation_run(devkit_system, PlanningPauseNavigation(), work=work)
+    path_driver.SEGMENT_COMPLETED.subscribe(completed.append)
+    devkit_system.automator.start(run)
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert not refused, f'the target lies on the segment driven next, yet the stop was refused: {refused}'
+    assert at_rest[0] == pytest.approx(1.5 - TOOL_OFFSET, abs=0.05)
+    assert_pose(2, 0, deg=0, position_tolerance=0.1)
