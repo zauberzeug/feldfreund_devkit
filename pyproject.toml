@@ -71,7 +71,7 @@ default-groups = ["dev", "test"]
 rosys = { path = "../rosys", editable = true }
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 install_types = false
 check_untyped_defs = true
 
