@@ -1,4 +1,3 @@
-import logging
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from functools import partial
@@ -13,8 +12,6 @@ from ..work_context import WorkContext, WorkFunction
 from .drive_segment import DriveSegment
 from .navigation import Navigation
 from .path_driver import PathDriver
-
-log = logging.getLogger('feldfreund.drive_and_work')
 
 C = TypeVar('C')
 
