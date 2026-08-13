@@ -119,14 +119,6 @@ def skip_completed_segments(start_pose: Pose,
     return []
 
 
-def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
-                      t_min: float = -0.2, t_max: float = 1.2) -> Pose:
-    """The pose on ``spline`` from which a tool ``tool_offset_x`` ahead sits on ``target``."""
-
-    t, _ = _solve_tool_t(spline, target, tool_offset_x, t_min, t_max)
-    return spline.pose(t)
-
-
 class Reach(Enum):
     """Where a spline can bring the tool, relative to a target."""
 
@@ -166,7 +158,7 @@ def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
                   t_min: float, t_max: float, iterations: int = 25) -> tuple[float, bool]:
     """Solve ``spline.pose(t).relative_point(target).x == tool_offset_x`` by bisection.
 
-    : return: the parameter clamped to ``[t_min, t_max]``, and whether the solution was inside it
+    :return: the parameter clamped to ``[t_min, t_max]``, and whether the solution was inside it
     """
     # NOTE: The forward distance decreases monotonically along the spline, so a bisection converges.
     if _forward_distance(spline, target, t_min) < tool_offset_x:

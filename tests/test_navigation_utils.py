@@ -3,7 +3,8 @@ import numpy as np
 import pytest
 from rosys.geometry import Point, Pose, PoseStep, Spline
 
-from feldfreund_devkit.navigation import Reach, pose_with_tool_at, tool_reach
+from feldfreund_devkit.navigation import Reach, tool_reach
+from feldfreund_devkit.navigation.utils import _solve_tool_t
 
 TOOL_OFFSET = 0.09
 
@@ -17,10 +18,15 @@ def _curved() -> Spline:
     return Spline.from_poses(Pose(x=0.0, y=0.0, yaw=0.0), Pose(x=1.0, y=1.0, yaw=np.pi / 2))
 
 
+def _pose_with_tool_at(spline: Spline, target: Point) -> Pose:
+    t, _ = _solve_tool_t(spline, target, TOOL_OFFSET, -0.2, 1.2)
+    return spline.pose(t)
+
+
 @pytest.mark.parametrize('lateral', (0.0, 0.1, -0.15))
 def test_straight_path_puts_the_tool_a_tool_length_short_of_the_target(lateral: float) -> None:
     """On a straight path the lateral offset is irrelevant: only the forward coordinate counts."""
-    pose = pose_with_tool_at(_straight(), Point(x=1.0, y=lateral), TOOL_OFFSET)
+    pose = _pose_with_tool_at(_straight(), Point(x=1.0, y=lateral))
 
     assert pose.x == pytest.approx(1.0 - TOOL_OFFSET, abs=1e-6)
     assert pose.y == pytest.approx(0.0, abs=1e-6)
@@ -31,7 +37,7 @@ def test_the_tool_lands_on_the_target_even_on_a_curve(lateral: float) -> None:
     spline = _curved()
     target = spline.pose(0.5).transform(Point(x=0.0, y=lateral))
 
-    pose = pose_with_tool_at(spline, target, TOOL_OFFSET)
+    pose = _pose_with_tool_at(spline, target)
 
     assert pose.relative_point(target).x == pytest.approx(TOOL_OFFSET, abs=1e-6)
 
@@ -46,22 +52,19 @@ def test_beats_projecting_and_stepping_back_on_a_curve() -> None:
         + PoseStep(linear=-TOOL_OFFSET, angular=0, time=0)
     round_tripped = spline.pose(spline.closest_point(stepped.x, stepped.y, t_min=-0.2, t_max=1.2))
 
-    exact = pose_with_tool_at(spline, target, TOOL_OFFSET)
+    exact = _pose_with_tool_at(spline, target)
 
     assert abs(round_tripped.relative_point(target).x - TOOL_OFFSET) > 0.01
     assert exact.relative_point(target).x == pytest.approx(TOOL_OFFSET, abs=1e-6)
 
 
-def test_target_beyond_the_end_clamps_to_the_upper_bound() -> None:
-    spline = _straight()
-    assert pose_with_tool_at(spline, Point(x=99.0, y=0.0), TOOL_OFFSET, t_max=1.2).x \
-        == pytest.approx(spline.pose(1.2).x, abs=1e-6)
+@pytest.mark.parametrize(('target_x', 'expected_t'), [(99.0, 1.2), (-99.0, -0.2)])
+def test_a_target_off_either_end_clamps_to_the_bound(target_x: float, expected_t: float) -> None:
+    """Callers get a usable parameter plus the flag that says it is not a real solution."""
+    t, inside = _solve_tool_t(_straight(), Point(x=target_x, y=0.0), TOOL_OFFSET, -0.2, 1.2)
 
-
-def test_target_behind_the_start_clamps_to_the_lower_bound() -> None:
-    spline = _straight()
-    assert pose_with_tool_at(spline, Point(x=-99.0, y=0.0), TOOL_OFFSET, t_min=-0.2).x \
-        == pytest.approx(spline.pose(-0.2).x, abs=1e-6)
+    assert not inside
+    assert t == pytest.approx(expected_t, abs=1e-6)
 
 
 def test_the_tool_reaches_a_target_on_the_spline() -> None:
