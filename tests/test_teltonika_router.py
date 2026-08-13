@@ -28,7 +28,7 @@ class FakeMultiApApi:
 
     def __init__(self, entries: list[dict]) -> None:
         self.entries = entries
-        self.requests: list[tuple[str, str, dict | None]] = []
+        self.requests: list[tuple[str, str, dict]] = []
         self._counter = len(entries)  # new ids continue past the seeded entries
 
     def handler(self, request: httpx.Request) -> httpx.Response:
@@ -37,7 +37,7 @@ class FakeMultiApApi:
         :param request: the intercepted HTTP request.
         :return: the mocked response.
         """
-        body = json.loads(request.content)['data'] if request.content else None
+        body = json.loads(request.content)['data'] if request.content else {}
         self.requests.append((request.method, request.url.path, body))
         path = request.url.path
         if path == BASE_PATH:

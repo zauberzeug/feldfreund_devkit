@@ -25,7 +25,7 @@ lock:
 
 ## mypy		Run mypy type checks.
 mypy:
-	uv run --active mypy ./feldfreund_devkit ./odrive ./config
+	uv run --active mypy ./feldfreund_devkit ./odrive ./config ./tests
 
 ## pylint		Run pylint code analysis.
 pylint:
