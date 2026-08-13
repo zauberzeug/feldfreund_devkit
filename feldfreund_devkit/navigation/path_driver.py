@@ -74,7 +74,9 @@ class PathDriver:
             raise CannotStop(f'{target} lies behind the segment being driven, which no later one reaches back to')
         if not self._is_within_reach(segment.spline, target):
             raise CannotStop(f'{target} is more than {self.STOP_LOOKAHEAD} m off the segment being driven')
-        assert self._stop is None, 'only one stop at a time is supported'
+        if self._stop is not None:
+            # not CannotStop: callers absorb that, and the second holder would take over the slot unnoticed
+            raise AssertionError('only one stop at a time is supported')
         stop = self._stop = _Stop(target, tool_offset_x)
         self.driver.abort()  # NOTE: only ever while driving; an armed flag would hit the next drive
         try:
