@@ -24,8 +24,10 @@ class _Stop:
     tool_offset_x: float
     reached: asyncio.Event = field(default_factory=asyncio.Event)
     released: asyncio.Event = field(default_factory=asyncio.Event)
-    refused: bool = False
-    """The robot rolled past the target before it could stop."""
+    refusal: str | None = None
+    """Why the stop cannot be made after all."""
+    checked: bool = False
+    """Whether the checks that need a segment have run."""
 
 
 class PathDriver:
@@ -65,24 +67,18 @@ class PathDriver:
 
         :raises CannotStop: the target cannot be driven onto; the robot keeps going, skip it
         """
-        segment = self._segment
-        if segment is None:
-            raise CannotStop('nothing is being driven')
         if not self._is_ahead(target, tool_offset_x):
             raise CannotStop(f'{target} is already behind the robot')
-        if self._reach(segment.spline, target, tool_offset_x).where is Reach.BEHIND:
-            raise CannotStop(f'{target} lies behind the segment being driven, which no later one reaches back to')
-        if not self._is_within_reach(segment.spline, target):
-            raise CannotStop(f'{target} is more than {self.STOP_LOOKAHEAD} m off the segment being driven')
         if self._stop is not None:
             # not CannotStop: callers absorb that, and the second holder would take over the slot unnoticed
             raise AssertionError('only one stop at a time is supported')
         stop = self._stop = _Stop(target, tool_offset_x)
-        self.driver.abort()  # NOTE: only ever while driving; an armed flag would hit the next drive
+        if self._segment is not None:
+            self.driver.abort()  # NOTE: only ever while driving; an armed flag would hit the next drive
         try:
             await stop.reached.wait()
-            if stop.refused:
-                raise CannotStop(f'{target} fell behind before the robot could come to rest on it')
+            if stop.refusal is not None:
+                raise CannotStop(stop.refusal)
             yield
         finally:
             self._stop = None
@@ -101,10 +97,11 @@ class PathDriver:
                 stop_t: float | None = None
                 if stop is not None:
                     reach = self._reach(remaining, stop.target, stop.tool_offset_x)
-                    if reach.where is Reach.BEHIND:
-                        # NOTE: rolled past while the abort took effect; let the tool go, do not wait
-                        stop.refused = True
-                        stop.reached.set()
+                    refusal = self._refusal(remaining, stop, reach)
+                    stop.checked = True
+                    if refusal is not None:
+                        stop.refusal = refusal
+                        stop.reached.set()  # let the tool go, do not wait
                         self._stop = stop = None
                     elif reach.where is Reach.ON:
                         stop_t = reach.t
@@ -139,6 +136,17 @@ class PathDriver:
         """Whether the robot can still bring its tool onto ``target`` by driving on."""
         ahead = self.driver.pose.relative_point(target).x - tool_offset_x
         return ahead > -self.driver.parameters.minimum_drive_distance
+
+    def _refusal(self, spline: Spline, stop: _Stop, reach: ToolReach) -> str | None:
+        """Why the stop cannot be made while driving ``spline``, or ``None`` if it still can."""
+        if reach.where is Reach.BEHIND:
+            if stop.checked:
+                return f'{stop.target} fell behind before the robot could come to rest on it'
+            return f'{stop.target} lies behind the segment being driven, which no later one reaches back to'
+        # the lookahead bounds only the segment a stop is first weighed against; a later one may reach it
+        if not stop.checked and not self._is_within_reach(spline, stop.target):
+            return f'{stop.target} is more than {self.STOP_LOOKAHEAD} m off the segment being driven'
+        return None
 
     def _reach(self, spline: Spline, target: Point, tool_offset_x: float) -> ToolReach:
         """Whether ``spline`` brings the tool onto ``target``, allowing for a robot already on it."""

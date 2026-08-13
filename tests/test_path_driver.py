@@ -80,12 +80,21 @@ async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:
     assert_pose(2, 0, deg=0, position_tolerance=0.1)
 
 
-async def test_a_stop_is_refused_when_nothing_is_driving(devkit_system) -> None:
-    path_driver, _ = navigation_run(devkit_system, OneLegNavigation())
+async def test_a_stop_asked_for_before_the_drive_is_honoured_when_it_starts(devkit_system) -> None:
+    """A tool need not wait for the first segment: the stop is weighed once there is one to weigh it against."""
+    path_driver, run = navigation_run(devkit_system, OneLegNavigation())
+    at_rest: list[float] = []
 
-    with pytest.raises(CannotStop):
+    async def work() -> None:
         async with path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
-            pass
+            at_rest.append(devkit_system.driver.pose.x)
+
+    devkit_system.automator.start(rosys.automation.parallelize(run, work()))
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert at_rest[0] == pytest.approx(1.0 - TOOL_OFFSET, abs=0.05)
+    assert_pose(2, 0, deg=0, position_tolerance=0.1)
 
 
 async def test_a_stop_behind_the_robot_is_refused(devkit_system) -> None:
@@ -243,7 +252,6 @@ class PlanningPauseNavigation(Navigation):
         yield DriveSegment.from_poses(Pose(x=1.0), Pose(x=2.0), use_implement=True, speed_limit=speed_limit)
 
 
-@pytest.mark.xfail(strict=True, reason='PathDriver forgets the segment it finished before it has the next one')
 async def test_a_stop_survives_the_pause_between_two_segments(devkit_system) -> None:
     """A tool that asks between segments must not lose its target: the navigation drives right over it."""
     completed: list[DriveSegment] = []
