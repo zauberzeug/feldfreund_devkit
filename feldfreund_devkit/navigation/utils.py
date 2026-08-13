@@ -132,9 +132,9 @@ class Reach(Enum):
 
     ON = auto()
     BEHIND = auto()
-    """Already past it at the spline's start, and a route only goes forward."""
+    """Already past it at the spline's start, and a path only goes forward."""
     BEYOND = auto()
-    """Not on this spline, but a later part of the route may still contain it."""
+    """Not on this spline, but a later part of the path may still contain it."""
 
 
 @dataclass(frozen=True)

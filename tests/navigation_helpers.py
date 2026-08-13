@@ -1,4 +1,4 @@
-"""Routes and waiting helpers shared by the run-loop and path-driver tests."""
+"""Navigations and waiting helpers shared by the run-loop and path-driver tests."""
 import rosys
 from conftest import DRIVE_SPEED
 from rosys.geometry import Pose
@@ -49,7 +49,7 @@ class ToolDoing(ImplementDummy):
         await self._work(ctx)
 
 
-def route_run(devkit_system, navigation, *, work: WorkFunction | None = None):
+def navigation_run(devkit_system, navigation, *, work: WorkFunction | None = None):
     """A path driver and the run that drives ``navigation`` with it; without ``work`` the tool keeps still."""
     path_driver = PathDriver(devkit_system.driver)
     implement = ImplementDummy() if work is None else ToolDoing(work)

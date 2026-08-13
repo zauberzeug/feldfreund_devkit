@@ -83,7 +83,7 @@ async def test_slippage(devkit_system):
 
 @pytest.mark.parametrize('start_offset', (0.5, 0.0, -0.25, -0.5, -0.75, -0.99))
 async def test_start_inbetween_waypoints(devkit_system, start_offset: float):
-    # a route which expands left and right from the current pose
+    # a path which expands left and right from the current pose
     start = devkit_system.robot_locator.pose.transform_pose(Pose(x=start_offset, y=0.0, yaw=0.0))
     end = start.transform_pose(Pose(x=1.0, y=0.0, yaw=0.0))
     devkit_system.straight_line_navigation.generate_path = lambda speed_limit: [  # type: ignore[assignment]

@@ -8,24 +8,24 @@ from .recorded_track import GnssRequirement
 
 
 class NavigationRefused(Exception):
-    """Raised when a route cannot be planned at all, so the run never starts."""
+    """Raised when a navigation cannot be planned at all, so the run never starts."""
 
 
 class Navigation(ABC):
-    """Produces the route to drive, one segment at a time."""
+    """Produces the segments to drive, one at a time."""
 
     @property
     def gnss_requirement(self) -> GnssRequirement:
-        """The positioning quality this route needs."""
+        """The positioning quality this navigation needs."""
         return GnssRequirement.NONE
 
     @abstractmethod
     def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:
-        """Yield the segments to drive, in order, until the route ends."""
+        """Yield the segments to drive, in order, until the navigation ends."""
 
 
 class StaticNavigation(Navigation):
-    """A navigation whose route is planned before the drive starts."""
+    """A navigation whose path is planned before the drive starts."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -36,7 +36,7 @@ class StaticNavigation(Navigation):
 
     @abstractmethod
     def generate_path(self, speed_limit: float) -> list[DriveSegment]:
-        """Plan the whole route; an empty list means there is nothing to drive."""
+        """Plan the whole path; an empty list means there is nothing to drive."""
 
     async def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:  # pylint: disable=invalid-overridden-method
         self._path = self.generate_path(speed_limit)

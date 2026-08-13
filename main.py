@@ -28,11 +28,11 @@ class System(feldfreund_devkit.System):
             self.recorded_track_provider, pose_provider=self.odometer, gnss=self.feldfreund.gnss)
 
         self.path_driver = PathDriver(self.driver)
-        self.route = StraightLineNavigation(self.odometer)
+        self.navigation = StraightLineNavigation(self.odometer)
         self.automator.default_automation = self._drive
 
     async def _drive(self) -> None:
-        await drive(self.route, self.path_driver, speed_limit=self.driver.parameters.linear_speed_limit)
+        await drive(self.navigation, self.path_driver, speed_limit=self.driver.parameters.linear_speed_limit)
 
 
 def startup() -> None:
@@ -49,7 +49,7 @@ def startup() -> None:
         with ui.card():
             ui.label('hold SHIFT to steer with the keyboard arrow keys or use the automation controls')
             with ui.row():
-                system.route.settings_ui()
+                system.navigation.settings_ui()
             with ui.row():
                 automation_controls(system.automator)
 

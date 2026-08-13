@@ -72,9 +72,9 @@ class TestSystem(System):
         self.path_driver = PathDriver(self.driver)
         self.use_navigation(self.straight_line_navigation)
 
-    def use_navigation(self, route) -> None:
+    def use_navigation(self, navigation) -> None:
         self.automator.default_automation = lambda: drive_and_work(
-            route, self.path_driver, self.robot_locator, speed_limit=DRIVE_SPEED,
+            navigation, self.path_driver, self.robot_locator, speed_limit=DRIVE_SPEED,
             implement=self.current_implement, context=None)
 
     def use_recorded_track_navigation(self) -> None:
