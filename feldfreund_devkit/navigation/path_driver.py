@@ -18,11 +18,7 @@ class CannotStop(Exception):
 
 @dataclass
 class _Stop:
-    """A stop a tool is waiting for.
-
-    Holds the target rather than a pose, because where the robot must stand can only be worked out
-    against the segment that passes it -- which may not be the one being driven when it is asked for.
-    """
+    """A stop a tool is waiting for."""
 
     target: Point
     tool_offset_x: float
@@ -33,13 +29,7 @@ class _Stop:
 
 
 class PathDriver:
-    """Drives the segments a navigation hands out, at the slowest speed anyone is asking for.
-
-    A tool that has to work at a standstill asks for a stop through :meth:`stop_over` while the
-    drive is in flight. Because the driver's spline cannot be changed underneath it, the running
-    drive is aborted and re-issued as a piece that *ends* at the stop pose; the driver then plans
-    the deceleration backwards from it on its own.
-    """
+    """Drives the segments a navigation hands out, offering speed and stop controls."""
 
     STOP_LOOKAHEAD: float = 1.0
     """How far (m) from the segment being driven a target may lie and still be stopped at."""
@@ -73,9 +63,6 @@ class PathDriver:
     async def stop_over(self, target: Point, tool_offset_x: float) -> AsyncGenerator[None, None]:
         """Come to rest with the tool on ``target`` and hold there for the body of the scope.
 
-        The stop stays pending until the robot reaches it, so a target beyond the end of the segment
-        being driven is honoured once the segment containing it starts.
-
         :raises CannotStop: the target cannot be driven onto; the robot keeps going, skip it
         """
         segment = self._segment
@@ -101,10 +88,8 @@ class PathDriver:
 
     @track
     async def drive(self, segment: DriveSegment) -> None:
-        """Drive ``segment`` to its end, however many stops are held on the way.
+        """Drive ``segment`` to its end, honoring pending stop and stops submitted later."""
 
-        A stop pending somewhere further along the route is left pending.
-        """
         self._segment = segment
         remaining = segment.spline
         self.SEGMENT_STARTED.emit(segment)
@@ -159,19 +144,11 @@ class PathDriver:
                           tolerance=self.driver.parameters.minimum_drive_distance)
 
     def _is_within_reach(self, spline: Spline, target: Point) -> bool:
-        """Whether ``target`` is close enough to the segment being driven to be worth stopping for.
-
-        Measured on the target itself: the reduction clamps to the segment's parameter range, so a
-        target metres beyond the end would come back as a pose just past it and be stopped at.
-        """
+        """Whether ``target`` is close enough to the segment being driven to be worth stopping for."""
         t = spline.closest_point(target.x, target.y)
         return spline.pose(t).point.distance(target) <= self.STOP_LOOKAHEAD
 
     def _remaining(self, segment: DriveSegment) -> Spline:
-        """What is left of the segment, starting where the robot stands.
-
-        Never the whole spline: the driver's carrot only moves forward from the start of what it is
-        given, so a spline the robot is already partway along would send it backwards.
-        """
+        """What is left of the segment, starting where the robot stands."""
         here = segment.spline.closest_point(self.driver.pose.x, self.driver.pose.y)
         return sub_spline(segment.spline, here, 1.0)

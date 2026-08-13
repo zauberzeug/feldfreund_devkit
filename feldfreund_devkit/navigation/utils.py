@@ -80,10 +80,10 @@ def generate_three_point_turn(end_pose_current_row: Pose,
 
 
 def skip_completed_segments(start_pose: Pose,
-                             path_segments: list[DriveSegment], *,
-                             max_distance: float = 1.0,
-                             max_angle: float = np.deg2rad(45),
-                             completed_threshold: float = 0.99) -> list[DriveSegment]:
+                            path_segments: list[DriveSegment], *,
+                            max_distance: float = 1.0,
+                            max_angle: float = np.deg2rad(45),
+                            completed_threshold: float = 0.99) -> list[DriveSegment]:
     """Return the tail of ``path_segments`` starting at the segment the robot can pick up next.
 
     A segment is a candidate if it is not yet (almost) completed, the robot's heading
@@ -121,10 +121,8 @@ def skip_completed_segments(start_pose: Pose,
 
 def pose_with_tool_at(spline: Spline, target: Point, tool_offset_x: float, *,
                       t_min: float = -0.2, t_max: float = 1.2) -> Pose:
-    """The pose on ``spline`` from which a tool ``tool_offset_x`` ahead sits on ``target``.
+    """The pose on ``spline`` from which a tool ``tool_offset_x`` ahead sits on ``target``."""
 
-    Clamped to ``[t_min, t_max]``, so the result is only meaningful for a target the spline reaches.
-    """
     t, _ = _solve_tool_t(spline, target, tool_offset_x, t_min, t_max)
     return spline.pose(t)
 
@@ -152,7 +150,7 @@ def tool_reach(spline: Spline, target: Point, tool_offset_x: float, *, tolerance
     """Where along ``spline`` a tool ``tool_offset_x`` ahead of the robot sits on ``target``.
 
     :param tolerance: how far behind the spline's start the solution may fall and still count as
-        reached at ``t = 0`` -- the robot is then close enough to work the target where it stands
+        reached at ``t = 0``
     """
     t, inside = _solve_tool_t(spline, target, tool_offset_x, 0.0, 1.0)
     if inside:
@@ -166,13 +164,11 @@ def tool_reach(spline: Spline, target: Point, tool_offset_x: float, *, tolerance
 
 def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
                   t_min: float, t_max: float, iterations: int = 25) -> tuple[float, bool]:
-    """Solve ``spline.pose(t).relative_point(target).x == tool_offset_x`` by bisection.
+    """Solve ``spline.pose(t).relative_point(target).x == tool_offset_x`` by bisection."""
 
-    The forward distance decreases monotonically along the spline, so a bisection converges.
-
-    :return: the parameter clamped to ``[t_min, t_max]``, and whether the solution was inside it
+    : return: the parameter clamped to ``[t_min, t_max]``, and whether the solution was inside it
     """
-    # NOTE: strict, so a target sitting exactly at the tool counts as solved rather than out of range
+    # NOTE: The forward distance decreases monotonically along the spline, so a bisection converges.
     if _forward_distance(spline, target, t_min) < tool_offset_x:
         return t_min, False
     if _forward_distance(spline, target, t_max) > tool_offset_x:

@@ -20,10 +20,7 @@ class WorkContext:
 
 
 WorkFunction = Callable[[WorkContext], Awaitable[None]]
-"""A tool's work loop: runs while a workable stretch is driven, cancelled at its end.
-
-It must not return on its own; returning would look like the stretch being over.
-"""
+"""A tool's work loop: runs while a workable stretch is driven, cancelled at its end."""
 
 
 async def never() -> None:

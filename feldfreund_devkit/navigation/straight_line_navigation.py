@@ -11,11 +11,7 @@ from .navigation import StaticNavigation
 
 
 class StraightLineNavigation(StaticNavigation, SettingsUI, rosys.persistence.Persistable):
-    """A straight stretch ahead of wherever the robot currently stands.
-
-    Worked when driving forward; driving backward is for repositioning, so the tool stays off.
-    """
-
+    """Navigation that drives a straight line for a given length."""
     LENGTH: float = 2.0
 
     def __init__(self, pose_provider: PoseProvider) -> None:

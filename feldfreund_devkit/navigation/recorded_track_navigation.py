@@ -24,6 +24,7 @@ from .utils import skip_completed_segments
 if TYPE_CHECKING:
     from ..interface.components.track_recorder_dialog import TrackRecorderDialog
 
+
 class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Persistable):
     """The waypoints of a previously recorded track, as segments to drive."""
 
@@ -109,7 +110,7 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
                                                 max_distance=self.RESUME_MAX_OFFSET, max_angle=self.RESUME_MAX_HEADING)
         if not path_segments:
             raise NavigationRefused(f'align the robot with the track (within {self.RESUME_MAX_OFFSET:.1f} m and '
-                               f'{np.rad2deg(self.RESUME_MAX_HEADING):.0f}°)')
+                                    f'{np.rad2deg(self.RESUME_MAX_HEADING):.0f}°)')
         return path_segments
 
     def _check_gnss(self, track: RecordedTrack) -> None:
@@ -209,7 +210,6 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
     def _start_approach(self) -> None:
         if self.automator is None:
             return
-        # NOTE: its own automation, not a mission, so the robot's configured limit is the ceiling
         self.automator.start(self.approach_start(self.driver.parameters.linear_speed_limit))
 
     async def start_new_track_recording(self) -> None:

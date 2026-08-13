@@ -21,12 +21,7 @@ class Navigation(ABC):
 
     @abstractmethod
     def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:
-        """Yield the segments to drive, in order, until the route ends.
-
-        Raise to refuse to start at all; yielding nothing means there was legitimately nothing to do.
-
-        :param speed_limit: the fastest the mission allows; segments may ask for less, never more
-        """
+        """Yield the segments to drive, in order, until the route ends."""
 
 
 class StaticNavigation(Navigation):

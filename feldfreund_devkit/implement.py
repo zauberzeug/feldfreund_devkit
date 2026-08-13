@@ -18,12 +18,7 @@ class ImplementException(Exception):
 
 
 class Implement(rosys.persistence.Persistable, Generic[C]):
-    """Base class for robot implements like weeding tools or cameras.
-
-    ``C`` is what the tool sets up when it is activated and needs again while it works. Only
-    ``activated`` produces one and only ``work`` takes one, so a tool cannot be set to work
-    without having been readied first. A tool that keeps nothing uses ``None``.
-    """
+    """Base class for robot implements like weeding tools or cameras."""
 
     def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
@@ -52,7 +47,9 @@ class Implement(rosys.persistence.Persistable, Generic[C]):
 
     @abstractmethod
     async def work(self, ctx: WorkContext, context: C) -> None:
-        """Work until cancelled."""
+        """Work until cancelled.
+
+        Should never return on its own."""
 
     @abstractmethod
     def can_reach(self, local_point: Point3d) -> bool:
