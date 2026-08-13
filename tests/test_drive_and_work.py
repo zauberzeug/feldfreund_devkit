@@ -13,6 +13,7 @@ from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
     Navigation,
+    NavigationRefused,
     StaticNavigation,
 )
 
@@ -35,7 +36,7 @@ class EmptyNavigation(StaticNavigation):
 class RefusingNavigation(Navigation):
 
     async def segments(self, speed_limit: float) -> AsyncGenerator[DriveSegment, None]:
-        raise RuntimeError('no way from here')
+        raise NavigationRefused('no way from here')
         yield  # pragma: no cover  # NOTE: makes this an async generator despite the raise
 
 
@@ -80,7 +81,7 @@ async def test_a_navigation_may_refuse_to_start(devkit_system) -> None:
     """Refusing is an exception, not an empty navigation -- the two must stay distinguishable."""
     _, run = navigation_run(devkit_system, RefusingNavigation())
 
-    with pytest.raises(RuntimeError, match='no way from here'):
+    with pytest.raises(NavigationRefused, match='no way from here'):
         await run
 
 
