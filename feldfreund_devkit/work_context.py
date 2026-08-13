@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NoReturn
 
 from rosys.driving.pose_provider import PoseProvider
 
@@ -19,10 +19,11 @@ class WorkContext:
     pose: PoseProvider
 
 
-WorkFunction = Callable[[WorkContext], Awaitable[None]]
+WorkFunction = Callable[[WorkContext], Awaitable[NoReturn]]
 """A tool's work loop: runs while a workable stretch is driven, cancelled at its end."""
 
 
-async def never() -> None:
+async def never() -> NoReturn:
     """Idle until cancelled."""
     await asyncio.Event().wait()
+    raise AssertionError('an Event that is never set was set')

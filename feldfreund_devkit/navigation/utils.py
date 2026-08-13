@@ -164,7 +164,7 @@ def tool_reach(spline: Spline, target: Point, tool_offset_x: float, *, tolerance
 
 def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
                   t_min: float, t_max: float, iterations: int = 25) -> tuple[float, bool]:
-    """Solve ``spline.pose(t).relative_point(target).x == tool_offset_x`` by bisection."""
+    """Solve ``spline.pose(t).relative_point(target).x == tool_offset_x`` by bisection.
 
     : return: the parameter clamped to ``[t_min, t_max]``, and whether the solution was inside it
     """

@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, NoReturn, TypeVar
 
 import rosys
 from rosys.geometry import Point3d, Pose3d
@@ -46,10 +46,8 @@ class Implement(rosys.persistence.Persistable, Generic[C]):
         """Make the tool ready to work and hand back what it keeps for this run."""
 
     @abstractmethod
-    async def work(self, ctx: WorkContext, context: C) -> None:
-        """Work until cancelled.
-
-        Should never return on its own."""
+    async def work(self, ctx: WorkContext, context: C) -> NoReturn:
+        """Work until cancelled."""
 
     @abstractmethod
     def can_reach(self, local_point: Point3d) -> bool:
@@ -88,7 +86,7 @@ class ImplementDummy(Implement[None]):
     async def activated(self) -> AsyncGenerator[None, None]:  # pylint: disable=invalid-overridden-method
         yield None
 
-    async def work(self, ctx: WorkContext, context: None) -> None:
+    async def work(self, ctx: WorkContext, context: None) -> NoReturn:
         await never()
 
     def can_reach(self, local_point: Point3d) -> bool:
