@@ -12,6 +12,7 @@ from feldfreund_devkit import ImplementDummy
 from feldfreund_devkit.config import Secrets, config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.navigation import (
+    Navigation,
     PathDriver,
     RecordedTrackNavigation,
     RecordedTrackProvider,
@@ -72,9 +73,9 @@ class TestSystem(System):
         self.path_driver = PathDriver(self.driver)
         self.use_navigation(self.straight_line_navigation)
 
-    def use_navigation(self, navigation) -> None:
+    def use_navigation(self, navigation: Navigation, *, speed_limit: float = DRIVE_SPEED) -> None:
         self.automator.default_automation = lambda: drive_and_work(
-            navigation, self.path_driver, self.robot_locator, speed_limit=DRIVE_SPEED,
+            navigation, self.path_driver, self.robot_locator, speed_limit=speed_limit,
             implement=self.current_implement, context=None)
 
     def use_recorded_track_navigation(self) -> None:

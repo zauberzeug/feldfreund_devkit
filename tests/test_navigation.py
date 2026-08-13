@@ -64,7 +64,10 @@ async def test_deceleration_different_distances(devkit_system_with_acceleration,
 async def test_deceleration_different_speeds(devkit_system_with_acceleration, linear_speed_limit: float, tolerance: float):
     assert isinstance(devkit_system_with_acceleration.feldfreund.wheels, TracksSimulation)
     devkit_system_with_acceleration.straight_line_navigation.length = 0.005
-    devkit_system_with_acceleration.straight_line_navigation.linear_speed_limit = linear_speed_limit
+    # the run is driven at the slower of its own limit and the robot's configured one
+    devkit_system_with_acceleration.driver.parameters.linear_speed_limit = linear_speed_limit
+    devkit_system_with_acceleration.use_navigation(devkit_system_with_acceleration.straight_line_navigation,
+                                                   speed_limit=linear_speed_limit)
     devkit_system_with_acceleration.automator.start()
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_running)
     await forward(until=lambda: devkit_system_with_acceleration.automator.is_stopped)
