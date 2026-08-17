@@ -109,7 +109,9 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                  heartbeat_interval=config.robot_brain.heartbeat_interval,
                                  supported_lizard_versions=config.robot_brain.supported_lizard_versions)
         robot_brain.lizard_firmware.flash_params += config.robot_brain.flash_params
-        self.bluetooth = BluetoothHardware(robot_brain, name=config.bluetooth.name, pin_code=config.bluetooth.pin_code)
+        # None skips Bluetooth entirely; its ~58 KB of heap can be needed for a SerialBus setup.
+        self.bluetooth = BluetoothHardware(robot_brain, name=config.bluetooth.name, pin_code=config.bluetooth.pin_code) \
+            if config.bluetooth is not None else None
         serial = SerialHardware(robot_brain)
         self.expander = ExpanderHardware(robot_brain, serial=serial)
         self.can = CanHardware(robot_brain,

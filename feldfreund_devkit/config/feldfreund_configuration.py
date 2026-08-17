@@ -27,7 +27,7 @@ class FeldfreundConfiguration:
     robot_id: str
     robot_footprint: RobotFootprint = field(default_factory=RobotFootprint)
     battery_control: BatteryControlConfiguration = field(default_factory=BatteryControlConfiguration)
-    bluetooth: BluetoothConfiguration = field(default_factory=BluetoothConfiguration)
+    bluetooth: BluetoothConfiguration | None = field(default_factory=BluetoothConfiguration)
     bms: BmsConfiguration = field(default_factory=BmsConfiguration)
     bumper: BumperConfiguration | None = None
     can: CanConfiguration = field(default_factory=CanConfiguration)
