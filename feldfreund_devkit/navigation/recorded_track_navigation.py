@@ -156,7 +156,7 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
             ui.button(icon='fiber_manual_record', on_click=self.resume_track_recording) \
                 .tooltip('Resume recording into selected track') \
                 .bind_enabled_from(provider, 'selected_track', lambda t: t is not None)
-            ui.checkbox('Approach start').props('dense color=red').bind_value(self, 'approach_start') \
+            ui.checkbox('Approach start').props('color=red').bind_value(self, 'approach_start') \
                 .tooltip('Drive onto the track before driving it. Use with caution: alignment is not checked!')
             ui.checkbox('Reverse direction').bind_value(self, 'reverse')
 
