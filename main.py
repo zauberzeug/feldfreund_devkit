@@ -1,15 +1,20 @@
 #! /usr/bin/env python
-from typing import Any
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from typing import Any, NoReturn
 
 import rosys
 from nicegui import app, ui
 from rosys.automation import Automator, automation_controls
 from rosys.driving import Driver, Steerer, keyboard_control, robot_object
+from rosys.geometry import Point, Point3d, Pose3d
 
 import feldfreund_devkit
-from feldfreund_devkit import ImplementDummy
-from feldfreund_devkit.config import FeldfreundConfiguration, Secrets, config_from_id
+from feldfreund_devkit import Implement, WorkContext
+from feldfreund_devkit.config import FeldfreundConfiguration, ImplementConfiguration, Secrets, config_from_id
 from feldfreund_devkit.navigation import (
+    CannotStop,
     PathDriver,
     RecordedTrackNavigation,
     RecordedTrackProvider,
@@ -19,6 +24,57 @@ from feldfreund_devkit.navigation import (
 )
 
 DemoNavigation = StraightLineNavigation | RecordedTrackNavigation
+
+
+@dataclass
+class IntervalRun:
+    """What the demo tool keeps for one run."""
+
+    stops: int = 0
+
+
+class IntervalImplement(Implement[IntervalRun]):
+    """A demo tool that comes to rest every ``interval`` metres and holds there for ``dwell`` seconds."""
+
+    def __init__(self, *, interval: float = 0.5, dwell: float = 1.0) -> None:
+        super().__init__(ImplementConfiguration(lizard_name='None', display_name='Interval',
+                                                offset=Pose3d(x=0.3), work_radius=0.0))
+        self.interval = interval
+        self.dwell = dwell
+
+    @property
+    def modules(self) -> list[rosys.hardware.Module]:
+        return []
+
+    async def stop(self) -> None:
+        pass
+
+    @asynccontextmanager
+    async def activated(self) -> AsyncGenerator[IntervalRun, None]:  # pylint: disable=invalid-overridden-method
+        run = IntervalRun()
+        try:
+            yield run
+        finally:
+            rosys.notify(f'{self.name} stopped {run.stops} times')
+
+    async def work(self, ctx: WorkContext, context: IntervalRun) -> NoReturn:
+        while True:
+            target = ctx.pose.pose.transform(Point(x=self.offset.x + self.interval, y=0.0))
+            try:
+                async with ctx.motion.stop_over(target, self.offset.x):
+                    context.stops += 1
+                    await rosys.sleep(self.dwell)
+            except CannotStop:  # We have already driven over the stop, skip it
+                await rosys.sleep(0.1)
+
+    def can_reach(self, local_point: Point3d) -> bool:
+        return True
+
+    def backup_to_dict(self) -> dict[str, Any]:
+        return {}
+
+    def restore_from_dict(self, data: dict[str, Any]) -> None:
+        ...
 
 
 class System(feldfreund_devkit.System):
@@ -36,7 +92,7 @@ class System(feldfreund_devkit.System):
             self.recorded_track_provider, pose_provider=self.odometer, gnss=self.feldfreund.gnss)
 
         self.path_driver = PathDriver(self.driver)
-        self.implement = ImplementDummy()
+        self.implement = IntervalImplement()
         self.navigations: dict[str, DemoNavigation] = {
             'Straight Line': StraightLineNavigation(self.odometer),
             'Recorded Track': RecordedTrackNavigation(
@@ -54,9 +110,10 @@ class System(feldfreund_devkit.System):
         return self.navigations[self.navigation_name]
 
     async def _drive(self) -> None:
-        await drive_and_work(self.navigation, self.path_driver, self.odometer,
-                             speed_limit=self.linear_speed_limit,
-                             implement=self.implement, context=None)
+        async with self.implement.activated() as context:
+            await drive_and_work(self.navigation, self.path_driver, self.odometer,
+                                 speed_limit=self.linear_speed_limit,
+                                 implement=self.implement, context=context)
 
     def backup_to_dict(self) -> dict[str, Any]:
         return super().backup_to_dict() | {'linear_speed_limit': self.linear_speed_limit}
