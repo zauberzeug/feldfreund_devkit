@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 import rosys
 from nicegui import ui
-from rosys.automation import Automator
-from rosys.driving import Driver
 from rosys.driving.pose_provider import PoseProvider
 from rosys.geometry import Pose, Spline
 from rosys.hardware import Gnss
@@ -37,21 +35,18 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
                  recorded_track_provider: RecordedTrackProvider,
                  track_recording_controller: TrackRecordingController,
                  pose_provider: PoseProvider,
-                 driver: Driver,
                  gnss: Gnss | None = None,
-                 automator: Automator | None = None,
                  robot_marker_icon_url: str | None = None) -> None:
         super().__init__()
         self.log = logging.getLogger('feldfreund.recorded_track')
         self.recorded_track_provider = recorded_track_provider
         self.track_recording_controller = track_recording_controller
         self.pose_provider = pose_provider
-        self.driver = driver
         self.gnss = gnss
-        self.automator = automator
         # Robot marker image shown on the recorder map; None falls back to Leaflet's default marker.
         self.robot_marker_icon_url = robot_marker_icon_url
         self.reverse: bool = False
+        self.approach_start: bool = False
         # Live waypoint count is patched directly into this label to avoid refreshing
         # the banner on every waypoint, which would disturb sibling elements.
         self._banner_count_label: ui.label | None = None
@@ -106,6 +101,12 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
                     use_implement=seg.use_implement,
                     stop_at_end=seg.stop_at_end or is_last_reversed,
                 ))
+        if not path_segments:
+            raise NavigationRefused('the selected track has no segments to drive')
+        if self.approach_start:
+            approach = DriveSegment.from_poses(self.pose_provider.pose, path_segments[0].start,
+                                               speed_limit=speed_limit)
+            return [approach, *path_segments]
         path_segments = skip_completed_segments(self.pose_provider.pose, path_segments,
                                                 max_distance=self.RESUME_MAX_OFFSET, max_angle=self.RESUME_MAX_HEADING)
         if not path_segments:
@@ -125,23 +126,6 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
 
     def restore_from_dict(self, data: dict[str, Any]) -> None:
         self.reverse = data.get('reverse', self.reverse)
-
-    async def approach_start(self, speed_limit: float) -> None:
-        """Approaches the start of the track directly.
-
-        Use with caution, alignment with the track will not be checked.
-        If reverse is enabled, the robot will approach the end of the track instead.
-        """
-        recorded_track = self.recorded_track_provider.selected_track
-        if recorded_track is None:
-            raise ValueError('No track selected')
-        start_index = -1 if self.reverse else 0
-        start_pose = recorded_track.waypoints[start_index].pose.to_local()
-        if self.reverse:
-            start_pose = start_pose.rotate(math.pi)
-        spline = Spline.from_poses(self.pose_provider.pose, start_pose)
-        with self.driver.parameters.set(linear_speed_limit=speed_limit):
-            await self.driver.drive_spline(spline)
 
     def settings_ui(self) -> None:
         self._recording_banner()  # type: ignore[call-arg]
@@ -172,9 +156,8 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
             ui.button(icon='fiber_manual_record', on_click=self.resume_track_recording) \
                 .tooltip('Resume recording into selected track') \
                 .bind_enabled_from(provider, 'selected_track', lambda t: t is not None)
-            ui.button(icon='moving', on_click=self._start_approach) \
-                .tooltip('Approach start of selected track. Use with caution!') \
-                .bind_enabled_from(provider, 'selected_track', lambda t: t is not None)
+            ui.checkbox('Approach start').props('dense color=red').bind_value(self, 'approach_start') \
+                .tooltip('Drive onto the track before driving it. Use with caution: alignment is not checked!')
             ui.checkbox('Reverse direction').bind_value(self, 'reverse')
 
     @ui.refreshable
@@ -206,11 +189,6 @@ class RecordedTrackNavigation(StaticNavigation, SettingsUI, rosys.persistence.Pe
     def _set_settings_visible(self, visible: bool) -> None:
         if self._settings_content_row is not None:
             self._settings_content_row.set_visibility(visible)
-
-    def _start_approach(self) -> None:
-        if self.automator is None:
-            return
-        self.automator.start(self.approach_start(self.driver.parameters.linear_speed_limit))
 
     async def start_new_track_recording(self) -> None:
         await self.track_recording_controller.start_recording(RecordedTrack())

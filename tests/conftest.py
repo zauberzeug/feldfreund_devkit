@@ -67,8 +67,6 @@ class TestSystem(System):
             recorded_track_provider=self.recorded_track_provider,
             track_recording_controller=self.track_recording_controller,
             gnss=self.feldfreund.gnss,
-            automator=self.automator,
-            driver=self.driver,
             pose_provider=self.robot_locator)
         self.path_driver = PathDriver(self.driver)
         self.use_navigation(self.straight_line_navigation)

@@ -43,8 +43,6 @@ class System(feldfreund_devkit.System):
                 recorded_track_provider=self.recorded_track_provider,
                 track_recording_controller=self.track_recording_controller,
                 gnss=self.feldfreund.gnss,
-                automator=self.automator,
-                driver=self.driver,
                 pose_provider=self.odometer),
         }
         self.navigation_name = next(iter(self.navigations))
