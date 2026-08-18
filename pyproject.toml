@@ -4,7 +4,7 @@ dynamic = ["version"]
 description = "A sturdy development platform for autonomous outdoor robotics made by Zauberzeug"
 authors = [{ name="Zauberzeug GmbH", email="feldfreund@zauberzeug.com" }]
 readme = "README.md"
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.12, <3.14"
 dependencies = [
     "nicegui (>= 3.13.0, <4.0.0)",
     "rosys @ git+https://github.com/zauberzeug/rosys.git@851e3586dd2e0289a2195e1d8966352d0f829516",
@@ -71,7 +71,7 @@ default-groups = ["dev", "test"]
 rosys = { path = "../rosys", editable = true }
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 install_types = false
 check_untyped_defs = true
 

@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
-from typing import Any, Generic, NoReturn, TypeVar
+from typing import Any, NoReturn
 
 import rosys
 from rosys.geometry import Point3d, Pose3d
@@ -9,15 +9,12 @@ from rosys.geometry import Point3d, Pose3d
 from .config import ImplementConfiguration
 from .work_context import WorkContext, never
 
-# NOTE: not a PEP 695 type parameter, which would need Python 3.12
-ImplementContext = TypeVar('ImplementContext')
-
 
 class ImplementException(Exception):
     """Raised when an implement operation fails."""
 
 
-class Implement(rosys.persistence.Persistable, Generic[ImplementContext]):
+class Implement[ImplementContext](rosys.persistence.Persistable):
     """Base class for robot implements like weeding tools or cameras."""
 
     def __init__(self, config: ImplementConfiguration) -> None:
