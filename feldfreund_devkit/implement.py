@@ -10,14 +10,14 @@ from .config import ImplementConfiguration
 from .work_context import WorkContext, never
 
 # NOTE: not a PEP 695 type parameter, which would need Python 3.12
-C = TypeVar('C')
+ImplementContext = TypeVar('ImplementContext')
 
 
 class ImplementException(Exception):
     """Raised when an implement operation fails."""
 
 
-class Implement(rosys.persistence.Persistable, Generic[C]):
+class Implement(rosys.persistence.Persistable, Generic[ImplementContext]):
     """Base class for robot implements like weeding tools or cameras."""
 
     def __init__(self, config: ImplementConfiguration) -> None:
@@ -42,11 +42,11 @@ class Implement(rosys.persistence.Persistable, Generic[C]):
         ...
 
     @abstractmethod
-    def activated(self) -> AbstractAsyncContextManager[C]:
+    def activated(self) -> AbstractAsyncContextManager[ImplementContext]:
         """Make the tool ready to work and hand back what it keeps for this run."""
 
     @abstractmethod
-    async def work(self, ctx: WorkContext, context: C) -> NoReturn:
+    async def work(self, ctx: WorkContext, context: ImplementContext) -> NoReturn:
         """Work until cancelled."""
 
     @abstractmethod
