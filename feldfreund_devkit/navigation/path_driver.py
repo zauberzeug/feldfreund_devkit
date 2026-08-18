@@ -86,7 +86,10 @@ class PathDriver:
 
     @track
     async def drive(self, segment: DriveSegment) -> None:
-        """Drive ``segment`` to its end, honoring pending stop and stops submitted later."""
+        """Drive ``segment`` to its end, honoring pending stop and stops submitted later.
+
+        Note that a caller should not interfere with `self.driver` while `drive` is active.
+        """
 
         self._segment = segment
         remaining = segment.spline
