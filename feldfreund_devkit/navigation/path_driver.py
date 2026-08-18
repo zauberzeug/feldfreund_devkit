@@ -46,20 +46,13 @@ class PathDriver:
         self.SEGMENT_COMPLETED = Event[DriveSegment]()
 
     @contextmanager
-    def limit(self, speed: float) -> Iterator[None]:
+    def limit_speed_to(self, speed: float) -> Iterator[None]:
         """Cap the driving speed for as long as the scope is held; effective from the next piece driven."""
         self._caps.append(speed)
         try:
             yield
         finally:
             self._caps.remove(speed)
-
-    def speed_limit(self, segment: DriveSegment) -> float:
-        """The slowest speed the robot, the segment and the scoped caps allow."""
-        limits = [self.driver.parameters.linear_speed_limit, *self._caps]
-        if segment.speed_limit is not None:
-            limits.append(segment.speed_limit)
-        return min(limits)
 
     @asynccontextmanager
     async def stop_over(self, target: Point, tool_offset_x: float) -> AsyncGenerator[None, None]:
@@ -124,8 +117,15 @@ class PathDriver:
         finally:
             self._segment = None
 
+    def _effective_speed_limit(self, segment: DriveSegment) -> float:
+        """The slowest speed the robot, the segment and requests `via limit_speed_to` allow."""
+        limits = [self.driver.parameters.linear_speed_limit, *self._caps]
+        if segment.speed_limit is not None:
+            limits.append(segment.speed_limit)
+        return min(limits)
+
     async def _drive(self, segment: DriveSegment, spline: Spline, *, stop_at_end: bool) -> None:
-        with self.driver.parameters.set(linear_speed_limit=self.speed_limit(segment),
+        with self.driver.parameters.set(linear_speed_limit=self._effective_speed_limit(segment),
                                         can_drive_backwards=segment.backward):
             await self.driver.drive_spline(spline, flip_hook=segment.backward,
                                            throttle_at_end=stop_at_end, stop_at_end=stop_at_end)
