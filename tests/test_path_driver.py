@@ -28,7 +28,6 @@ from feldfreund_devkit.navigation import (
     PathDriver,
 )
 
-
 MINIMUM_DRIVE_DISTANCE = 0.005
 """What the configured drive parameters call the shortest worthwhile drive."""
 
