@@ -2,6 +2,7 @@
 
 The stop tests need a robot that is actually driving, so they run a real navigation.
 """
+import math
 from collections.abc import AsyncGenerator
 from types import SimpleNamespace
 from typing import NoReturn
@@ -28,13 +29,37 @@ from feldfreund_devkit.navigation import (
 )
 
 
-def _path_driver(configured: float = 0.13) -> PathDriver:
-    driver = SimpleNamespace(parameters=SimpleNamespace(linear_speed_limit=configured))
+MINIMUM_DRIVE_DISTANCE = 0.005
+"""What the configured drive parameters call the shortest worthwhile drive."""
+
+
+def _path_driver(configured: float = 0.13, *, pose: Pose | None = None) -> PathDriver:
+    driver = SimpleNamespace(pose=pose or Pose(),
+                             parameters=SimpleNamespace(linear_speed_limit=configured,
+                                                        minimum_drive_distance=MINIMUM_DRIVE_DISTANCE))
     return PathDriver(driver)  # type: ignore[arg-type]
 
 
 def _segment(speed_limit: float | None = None) -> DriveSegment:
     return DriveSegment.from_poses(Pose(), Pose(x=1.0), speed_limit=speed_limit)
+
+
+@pytest.mark.parametrize(('offset', 'expected'), [
+    (0.0, True),
+    (MINIMUM_DRIVE_DISTANCE / 2, True),
+    (MINIMUM_DRIVE_DISTANCE * 2, False),
+    (-MINIMUM_DRIVE_DISTANCE * 2, False),
+])
+def test_a_target_at_the_tool_needs_no_driving(offset: float, expected: bool) -> None:
+    """Unlike a stop, this asks whether the tool is already there -- a target just behind it is not."""
+    assert _path_driver().is_reached(Point(x=TOOL_OFFSET + offset, y=0.0), TOOL_OFFSET) is expected
+
+
+def test_reaching_is_measured_along_the_robots_heading() -> None:
+    path_driver = _path_driver(pose=Pose(x=1.0, y=1.0, yaw=math.pi / 2))
+
+    assert path_driver.is_reached(Point(x=1.0, y=1.0 + TOOL_OFFSET), TOOL_OFFSET)
+    assert not path_driver.is_reached(Point(x=1.0 + TOOL_OFFSET, y=1.0), TOOL_OFFSET)
 
 
 @pytest.mark.parametrize(('segment_limit', 'expected'), [(0.05, 0.05), (0.0, 0.0), (0.3, 0.13)])
@@ -94,6 +119,23 @@ async def test_a_stop_asked_for_before_the_drive_is_honoured_when_it_starts(devk
     await forward(until=lambda: devkit_system.automator.is_stopped)
 
     assert at_rest[0] == pytest.approx(1.0 - TOOL_OFFSET, abs=0.05)
+    assert_pose(2, 0, deg=0, position_tolerance=0.1)
+
+
+async def test_a_target_already_under_the_tool_is_stopped_at_without_driving(devkit_system) -> None:
+    path_driver, run = navigation_run(devkit_system, OneLegNavigation())
+    at_rest: list[float] = []
+
+    async def work() -> None:
+        async with path_driver.stop_over(Point(x=TOOL_OFFSET, y=0.0), TOOL_OFFSET):
+            at_rest.append(devkit_system.driver.pose.x)
+
+    # work first: parallelize steps in order, and one driven tick already carries the tool past a target this close
+    devkit_system.automator.start(rosys.automation.parallelize(work(), run))
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert at_rest[0] == pytest.approx(0.0, abs=0.001), 'the tool is already there, so the robot does not drive'
     assert_pose(2, 0, deg=0, position_tolerance=0.1)
 
 

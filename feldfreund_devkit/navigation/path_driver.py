@@ -133,12 +133,12 @@ class PathDriver:
     def is_reached(self, target: Point, tool_offset_x: float) -> bool:
         """Whether the tool already sits on ``target``, so working it needs no driving at all."""
         ahead = self.driver.pose.relative_point(target).x - tool_offset_x
-        return abs(ahead) < self.driver.parameters.minimum_drive_distance
+        return bool(abs(ahead) < self.driver.parameters.minimum_drive_distance)
 
     def _is_ahead(self, target: Point, tool_offset_x: float) -> bool:
         """Whether the robot can still bring its tool onto ``target`` by driving on."""
         ahead = self.driver.pose.relative_point(target).x - tool_offset_x
-        return ahead > -self.driver.parameters.minimum_drive_distance
+        return bool(ahead > -self.driver.parameters.minimum_drive_distance)
 
     def _refusal(self, spline: Spline, stop: _Stop, reach: ToolReach) -> str | None:
         """Why the stop cannot be made while driving ``spline``, or ``None`` if it still can."""
