@@ -1,4 +1,6 @@
 #! /usr/bin/env python
+from typing import Any
+
 import rosys
 from nicegui import app, ui
 from rosys.automation import Automator, automation_controls
@@ -20,6 +22,8 @@ DemoNavigation = StraightLineNavigation | RecordedTrackNavigation
 
 
 class System(feldfreund_devkit.System):
+    LINEAR_SPEED_LIMIT: float = 0.13
+
     def __init__(self, config: FeldfreundConfiguration, secrets: Secrets) -> None:
         super().__init__(config, secrets=secrets)
         self.steerer = Steerer(self.feldfreund.wheels, speed_scaling=0.25)
@@ -44,6 +48,7 @@ class System(feldfreund_devkit.System):
                 pose_provider=self.odometer),
         }
         self.navigation_name = next(iter(self.navigations))
+        self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
         self.automator.default_automation = self._drive
 
     @property
@@ -52,8 +57,27 @@ class System(feldfreund_devkit.System):
 
     async def _drive(self) -> None:
         await drive_and_work(self.navigation, self.path_driver, self.odometer,
-                             speed_limit=self.driver.parameters.linear_speed_limit,
+                             speed_limit=self.linear_speed_limit,
                              implement=self.implement, context=None)
+
+    def backup_to_dict(self) -> dict[str, Any]:
+        return super().backup_to_dict() | {'linear_speed_limit': self.linear_speed_limit}
+
+    def restore_from_dict(self, data: dict[str, Any]) -> None:
+        super().restore_from_dict(data)
+        self.linear_speed_limit = data.get('linear_speed_limit', self.linear_speed_limit)
+
+
+def speed_setting(system: System) -> None:
+    minimum = system.driver.parameters.throttle_at_end_min_speed
+    maximum = system.driver.parameters.linear_speed_limit
+    ui.number('Linear Speed', step=0.01, min=minimum, max=maximum, format='%.2f', suffix='m/s',
+              on_change=system.request_backup) \
+        .bind_value(system, 'linear_speed_limit') \
+        .props('dense outlined') \
+        .classes('w-24') \
+        .tooltip(f'Forward speed limit between {minimum:.2f} and {maximum:.2f} m/s '
+                 f'(default: {System.LINEAR_SPEED_LIMIT:.2f})')
 
 
 def startup() -> None:
@@ -79,7 +103,8 @@ def startup() -> None:
                 .classes('w-64')
             with ui.row():
                 navigation_settings()
-            with ui.row():
+            with ui.row().classes('items-center'):
+                speed_setting(system)
                 automation_controls(system.automator)
 
 
