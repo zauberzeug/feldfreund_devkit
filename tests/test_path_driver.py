@@ -9,6 +9,7 @@ from typing import NoReturn
 
 import pytest
 import rosys
+from conftest import DRIVE_SPEED
 from navigation_helpers import (
     TOOL_OFFSET,
     AheadOfTheRobotNavigation,
@@ -30,6 +31,8 @@ from feldfreund_devkit.navigation import (
 
 MINIMUM_DRIVE_DISTANCE = 0.005
 """What the configured drive parameters call the shortest worthwhile drive."""
+SETTLE_TIME = 0.3
+"""Long enough for a re-planned piece to reach the driver, so a speed is measured and not a transition."""
 
 
 def _path_driver(configured: float = 0.13, *, pose: Pose | None = None) -> PathDriver:
@@ -82,6 +85,27 @@ def test_the_slowest_of_everything_asked_for_wins() -> None:
 
     with path_driver.limit_speed_to(0.08), path_driver.limit_speed_to(0.02), path_driver.limit_speed_to(0.5):
         assert path_driver._effective_speed_limit(_segment(0.06)) == 0.02
+
+
+async def test_a_cap_reaches_the_piece_already_being_driven(devkit_system) -> None:
+    """A tool caps the speed when it starts working, which is after the drive began -- so a cap that
+    waited for the next segment would leave the first one, and a one-segment row, uncapped."""
+    path_driver, run = navigation_run(devkit_system, OneLegNavigation())
+    covered: list[float] = []
+
+    async def work() -> None:
+        await until(lambda: devkit_system.driver.pose.x > 0.2)
+        with path_driver.limit_speed_to(0.02):
+            await rosys.sleep(SETTLE_TIME)
+            start = devkit_system.driver.pose.x
+            await rosys.sleep(1.0)
+            covered.append(devkit_system.driver.pose.x - start)
+
+    devkit_system.automator.start(rosys.automation.parallelize(run, work()))
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert covered[0] == pytest.approx(0.02, abs=0.005), f'a second at 0.02 m/s, not at {DRIVE_SPEED} m/s'
 
 
 async def test_a_stop_holds_the_robot_and_then_resumes(devkit_system) -> None:

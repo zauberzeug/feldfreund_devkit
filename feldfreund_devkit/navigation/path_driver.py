@@ -47,12 +47,19 @@ class PathDriver:
 
     @contextmanager
     def limit_speed_to(self, speed: float) -> Iterator[None]:
-        """Cap the driving speed for as long as the scope is held; effective from the next piece driven."""
+        """Cap the driving speed for as long as the scope is held, the piece being driven included."""
         self._caps.append(speed)
+        self._replan()
         try:
             yield
         finally:
             self._caps.remove(speed)
+            self._replan()
+
+    def _replan(self) -> None:
+        """Re-plan the piece being driven, so a stop or a changed cap reaches the driver at once."""
+        if self._segment is not None:
+            self.driver.abort()  # NOTE: only ever while driving; an armed flag would hit the next drive
 
     @asynccontextmanager
     async def stop_over(self, target: Point, tool_offset_x: float) -> AsyncGenerator[None, None]:
@@ -66,8 +73,7 @@ class PathDriver:
             # not CannotStop: callers absorb that, and the second holder would take over the slot unnoticed
             raise AssertionError('only one stop at a time is supported')
         stop = self._stop = _Stop(target, tool_offset_x)
-        if self._segment is not None:
-            self.driver.abort()  # NOTE: only ever while driving; an armed flag would hit the next drive
+        self._replan()
         try:
             await stop.reached.wait()
             if stop.refusal is not None:

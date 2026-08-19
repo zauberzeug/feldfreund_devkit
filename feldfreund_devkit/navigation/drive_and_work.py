@@ -49,8 +49,8 @@ async def _drive_navigation(navigation: Navigation, path_driver: PathDriver, *, 
             while (segment := await stream.current()) is not None:
                 if segment.use_implement and work is not None:
                     await rosys.automation.parallelize(
-                        drive_stretch(stream),
                         work_until_cancelled(),
+                        drive_stretch(stream),
                         return_when_first_completed=True,
                     )
                     continue
