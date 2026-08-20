@@ -4,10 +4,9 @@ from functools import partial
 
 import rosys
 from rosys.analysis import track
-from rosys.driving.pose_provider import PoseProvider
 
 from ..implement import Implement, ImplementException
-from ..work_context import WorkContext, WorkFunction
+from ..work_context import PoseVelocityProvider, WorkContext, WorkFunction
 from .drive_segment import DriveSegment
 from .navigation import Navigation
 from .path_driver import PathDriver
@@ -21,7 +20,7 @@ async def drive(navigation: Navigation, path_driver: PathDriver, *, speed_limit:
 
 @track
 async def drive_and_work[ImplementContext](navigation: Navigation, path_driver: PathDriver,
-                                           pose_provider: PoseProvider, *, speed_limit: float,
+                                           pose_provider: PoseVelocityProvider, *, speed_limit: float,
                                            implement: Implement[ImplementContext],
                                            context: ImplementContext) -> None:
     """Drive a navigation to its end, letting a tool work the stretches that are workable."""
@@ -32,7 +31,7 @@ async def drive_and_work[ImplementContext](navigation: Navigation, path_driver: 
 
 async def _drive_navigation(navigation: Navigation, path_driver: PathDriver, *, speed_limit: float,
                             work: WorkFunction | None,
-                            pose_provider: PoseProvider | None = None) -> None:
+                            pose_provider: PoseVelocityProvider | None = None) -> None:
     async def drive_stretch(stream: '_SegmentStream') -> None:
         while (segment := await stream.current()) is not None and segment.use_implement:
             await path_driver.drive(segment)
