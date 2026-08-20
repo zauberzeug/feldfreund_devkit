@@ -9,16 +9,17 @@ class BumperConfiguration:
         name: 'bumper'
         on_expander: True
     """
-    pin_front_top: int
-    pin_front_bottom: int
-    pin_back: int
+    pin_front_top: int | None
+    pin_front_bottom: int | None
+    pin_back: int | None
     name: str = 'bumper'
     on_expander: bool = True
 
     @property
     def pins(self) -> dict[str, int]:
-        return {
+        pins = {
             'front_top': self.pin_front_top,
             'front_bottom': self.pin_front_bottom,
-            'back': self.pin_back
+            'back': self.pin_back,
         }
+        return {name: pin for name, pin in pins.items() if pin is not None}
