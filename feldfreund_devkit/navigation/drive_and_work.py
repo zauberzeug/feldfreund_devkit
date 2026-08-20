@@ -6,7 +6,8 @@ import rosys
 from rosys.analysis import track
 
 from ..implement import Implement, ImplementException
-from ..work_context import PoseVelocityProvider, WorkContext, WorkFunction
+from ..robot_locator import RobotLocator
+from ..work_context import WorkContext, WorkFunction
 from .drive_segment import DriveSegment
 from .navigation import Navigation
 from .path_driver import PathDriver
@@ -20,26 +21,26 @@ async def drive(navigation: Navigation, path_driver: PathDriver, *, speed_limit:
 
 @track
 async def drive_and_work[ImplementContext](navigation: Navigation, path_driver: PathDriver,
-                                           pose_provider: PoseVelocityProvider, *, speed_limit: float,
+                                           locator: RobotLocator, *, speed_limit: float,
                                            implement: Implement[ImplementContext],
                                            context: ImplementContext) -> None:
     """Drive a navigation to its end, letting a tool work the stretches that are workable."""
     work = partial(implement.work, context=context)
     await _drive_navigation(navigation, path_driver, speed_limit=speed_limit, work=work,
-                            pose_provider=pose_provider)
+                            locator=locator)
 
 
 async def _drive_navigation(navigation: Navigation, path_driver: PathDriver, *, speed_limit: float,
                             work: WorkFunction | None,
-                            pose_provider: PoseVelocityProvider | None = None) -> None:
+                            locator: RobotLocator | None = None) -> None:
     async def drive_stretch(stream: '_SegmentStream') -> None:
         while (segment := await stream.current()) is not None and segment.use_implement:
             await path_driver.drive(segment)
             stream.advance()
 
     async def work_until_cancelled() -> None:
-        assert work is not None and pose_provider is not None
-        await work(WorkContext(motion=path_driver, pose=pose_provider))
+        assert work is not None and locator is not None
+        await work(WorkContext(motion=path_driver, locator=locator))
         raise ImplementException('the work loop returned; it must run until the stretch ends')
 
     try:

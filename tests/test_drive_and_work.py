@@ -94,7 +94,7 @@ async def test_work_spans_a_stretch_and_never_a_turn(devkit_system) -> None:
         try:
             await never()
         finally:
-            working.append(f'end at x={ctx.pose.pose.x:.0f}')
+            working.append(f'end at x={ctx.locator.pose.x:.0f}')
 
     _, run = navigation_run(devkit_system, navigation, work=work)
     devkit_system.automator.start(run)
@@ -124,7 +124,7 @@ async def test_work_stops_the_robot_where_the_tool_needs_it(devkit_system) -> No
     async def work(ctx: WorkContext) -> NoReturn:
         try:
             async with ctx.motion.stop_over(Point(x=0.5, y=0.0), TOOL_OFFSET):
-                at_rest.append(ctx.pose.pose.x)
+                at_rest.append(ctx.locator.pose.x)
         except CannotStop:
             pass  # NOTE: the second stretch starts past this target, as a real loop must tolerate
         await never()

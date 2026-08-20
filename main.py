@@ -11,7 +11,7 @@ from rosys.driving import Driver, Steerer, keyboard_control, robot_object
 from rosys.geometry import Point, Point3d, Pose3d
 
 import feldfreund_devkit
-from feldfreund_devkit import Implement, WorkContext
+from feldfreund_devkit import Implement, RobotLocator, WorkContext
 from feldfreund_devkit.config import FeldfreundConfiguration, ImplementConfiguration, Secrets, config_from_id
 from feldfreund_devkit.navigation import (
     CannotStop,
@@ -59,7 +59,7 @@ class IntervalImplement(Implement[IntervalRun]):
 
     async def work(self, ctx: WorkContext, context: IntervalRun) -> NoReturn:
         while True:
-            target = ctx.pose.pose.transform(Point(x=self.offset.x + self.interval, y=0.0))
+            target = ctx.locator.pose.transform(Point(x=self.offset.x + self.interval, y=0.0))
             try:
                 async with ctx.motion.stop_over(target, self.offset.x):
                     context.stops += 1
@@ -82,24 +82,28 @@ class System(feldfreund_devkit.System):
 
     def __init__(self, config: FeldfreundConfiguration, secrets: Secrets) -> None:
         super().__init__(config, secrets=secrets)
+        self.robot_locator = RobotLocator(self.feldfreund.wheels,
+                                          gnss=self.feldfreund.gnss,
+                                          imu=self.feldfreund.imu,
+                                          gnss_config=self.config.gnss)
         self.steerer = Steerer(self.feldfreund.wheels, speed_scaling=0.25)
-        self.driver = Driver(self.feldfreund.wheels, self.odometer, parameters=self.config.driver)
+        self.driver = Driver(self.feldfreund.wheels, self.robot_locator, parameters=self.config.driver)
         self.shape = rosys.geometry.Prism.default_robot_shape()
         self.automator = Automator(self.steerer, on_interrupt=self.feldfreund.stop, notify=False)
 
         self.recorded_track_provider = RecordedTrackProvider().persistent()
         self.track_recording_controller = TrackRecordingController(
-            self.recorded_track_provider, pose_provider=self.odometer, gnss=self.feldfreund.gnss)
+            self.recorded_track_provider, pose_provider=self.robot_locator, gnss=self.feldfreund.gnss)
 
         self.path_driver = PathDriver(self.driver)
         self.implement = IntervalImplement()
         self.navigations: dict[str, DemoNavigation] = {
-            'Straight Line': StraightLineNavigation(self.odometer),
+            'Straight Line': StraightLineNavigation(self.robot_locator),
             'Recorded Track': RecordedTrackNavigation(
                 recorded_track_provider=self.recorded_track_provider,
                 track_recording_controller=self.track_recording_controller,
                 gnss=self.feldfreund.gnss,
-                pose_provider=self.odometer),
+                pose_provider=self.robot_locator),
         }
         self.navigation_name = next(iter(self.navigations))
         self.linear_speed_limit = self.LINEAR_SPEED_LIMIT
@@ -111,7 +115,7 @@ class System(feldfreund_devkit.System):
 
     async def _drive(self) -> None:
         async with self.implement.activated() as context:
-            await drive_and_work(self.navigation, self.path_driver, self.odometer,
+            await drive_and_work(self.navigation, self.path_driver, self.robot_locator,
                                  speed_limit=self.linear_speed_limit,
                                  implement=self.implement, context=context)
 

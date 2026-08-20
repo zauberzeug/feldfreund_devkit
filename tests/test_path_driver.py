@@ -226,7 +226,7 @@ async def test_a_stop_on_a_later_segment_is_honoured_when_it_starts(devkit_syste
     async def work(ctx: WorkContext) -> NoReturn:
         try:
             async with ctx.motion.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
-                at_rest.append(ctx.pose.pose.x)
+                at_rest.append(ctx.locator.pose.x)
         except CannotStop:
             pass
         await never()
@@ -327,7 +327,7 @@ async def test_a_stop_survives_the_pause_between_two_segments(devkit_system) -> 
         await until(lambda: completed)
         try:
             async with ctx.motion.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
-                at_rest.append(ctx.pose.pose.x)
+                at_rest.append(ctx.locator.pose.x)
         except CannotStop as e:
             refused.append(str(e))
         await never()
