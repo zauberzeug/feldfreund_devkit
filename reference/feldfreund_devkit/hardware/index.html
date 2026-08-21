@@ -976,6 +976,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#feldfreund_devkit.hardware.TeltonikaRouter._classify_interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        _classify_interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#feldfreund_devkit.hardware.TeltonikaRouter._ensure_token" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1024,6 +1035,17 @@
     <span class="md-ellipsis">
       
         _post
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feldfreund_devkit.hardware.TeltonikaRouter._reject_redirect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        _reject_redirect
       
     </span>
   </a>
@@ -1843,6 +1865,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#feldfreund_devkit.hardware.TeltonikaRouter._classify_interface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        _classify_interface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#feldfreund_devkit.hardware.TeltonikaRouter._ensure_token" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1891,6 +1924,17 @@
     <span class="md-ellipsis">
       
         _post
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#feldfreund_devkit.hardware.TeltonikaRouter._reject_redirect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        _reject_redirect
       
     </span>
   </a>
@@ -3449,6 +3493,30 @@ that get injected into the safety module's <code>enable()</code> and <code>disab
 <div class="doc doc-object doc-function">
 
 
+<h3 id="feldfreund_devkit.hardware.TeltonikaRouter._classify_interface" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">_classify_interface</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#feldfreund_devkit.hardware.TeltonikaRouter._classify_interface" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">_classify_interface</span><span class="p">(</span><span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ConnectionStatus</span> <span class="o">|</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Map an mwan3 failover interface key to its connection type (<code>None</code> if unknown).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h3 id="feldfreund_devkit.hardware.TeltonikaRouter._ensure_token" class="doc doc-heading">
             <span class="doc doc-object-name doc-function-name">_ensure_token</span>
 
@@ -3564,6 +3632,31 @@ the underlying UCI <code>disabled</code> flag when only that is present.</p>
     <div class="doc doc-contents ">
 
         <p>Perform an authenticated POST request. Returns <code>True</code> on success.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="feldfreund_devkit.hardware.TeltonikaRouter._reject_redirect" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">_reject_redirect</span>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+<a href="#feldfreund_devkit.hardware.TeltonikaRouter._reject_redirect" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">_reject_redirect</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Reject an unfollowed redirect: we talk HTTPS to the router directly, so a 3xx is unexpected
+and would otherwise slip through <code>raise_for_status</code> (which ignores 3xx) as a bodyless success.</p>
 
 
     </div>

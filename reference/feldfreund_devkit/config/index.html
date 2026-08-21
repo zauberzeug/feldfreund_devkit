@@ -1484,9 +1484,9 @@ battery_low_threshold: 15.0</p>
 <a href="#feldfreund_devkit.config.BumperConfiguration" class="headerlink" title="Permanent link">&para;</a></h2>
 <div class="doc-signature highlight"><pre><span></span><code><span class="nf">BumperConfiguration</span><span class="p">(</span>
     <span class="o">*</span><span class="p">,</span>
-    <span class="n">pin_front_top</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-    <span class="n">pin_front_bottom</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
-    <span class="n">pin_back</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">pin_front_top</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">pin_front_bottom</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">pin_back</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;bumper&quot;</span><span class="p">,</span>
     <span class="n">on_expander</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="p">)</span>
@@ -1620,7 +1620,8 @@ right: None</p>
     <span class="n">rotation</span><span class="p">:</span> <span class="n">ImageRotation</span> <span class="o">=</span> <span class="n">ImageRotation</span><span class="o">.</span><span class="n">NONE</span><span class="p">,</span>
     <span class="n">crop</span><span class="p">:</span> <span class="n">Rectangle</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">calibration</span><span class="p">:</span> <span class="n">Calibration</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">image_size</span><span class="p">:</span> <span class="n">ImageSize</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">image_size</span><span class="p">:</span> <span class="n">ImageSize</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">auto_connect</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="p">)</span>
 </code></pre></div>
 
@@ -1633,6 +1634,8 @@ right: None</p>
 <code>calibration.intrinsics.size</code> when a calibration is provided,
 otherwise from <code>image_size</code>.  At least one of the two must be set.</p>
 <p>rotation and crop are only applied for display purposes and do not affect the actual captured images.</p>
+<p><code>auto_connect</code> set to <code>False</code> keeps the camera disconnected until the connection is
+requested explicitly, for example with the switch in the camera developer UI.</p>
 
 
 <details class="defaults" open>
@@ -1641,7 +1644,8 @@ otherwise from <code>image_size</code>.  At least one of the two must be set.</p
 rotation: ImageRotation.NONE
 crop: None
 calibration: None
-image_size: None</p>
+image_size: None
+auto_connect: True</p>
 </details>
 
 
@@ -2303,6 +2307,7 @@ min_gyro_calibration: 1.0</p>
     <span class="n">crop</span><span class="p">:</span> <span class="n">Rectangle</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">calibration</span><span class="p">:</span> <span class="n">Calibration</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">image_size</span><span class="p">:</span> <span class="n">ImageSize</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">auto_connect</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;192.168.42.3&quot;</span><span class="p">,</span>
     <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;root&quot;</span><span class="p">,</span>
     <span class="n">password</span><span class="p">:</span> <span class="nb">str</span>
@@ -2463,7 +2468,8 @@ has_temperature_sensor: False</p>
     <span class="n">enable_esp_on_startup</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">nand</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="n">swap_pins</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
-    <span class="n">heartbeat_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">heartbeat_interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">supported_lizard_versions</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
 <span class="p">)</span>
 </code></pre></div>
 
@@ -2483,8 +2489,11 @@ https://github.com/zauberzeug/lizard/blob/main/espresso.py</p>
   <p>enable_esp_on_startup: False
 nand: False
 swap_pins: False
-heartbeat_interval: 0.5</p>
-</details>
+heartbeat_interval: 0.5
+supported_lizard_versions: None</p>
+</details>        <p><code>supported_lizard_versions</code> is a PEP 440 version specifier like <code>'&lt;0.14.0'</code> restricting which
+Lizard versions can be downloaded and flashed. <code>None</code> allows all versions.</p>
+
 
 
 
@@ -2623,6 +2632,7 @@ right: 0.33274</p>
     <span class="n">crop</span><span class="p">:</span> <span class="n">Rectangle</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">calibration</span><span class="p">:</span> <span class="n">Calibration</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">image_size</span><span class="p">:</span> <span class="n">ImageSize</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">auto_connect</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">mac</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">ip</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">codec</span><span class="p">:</span> <span class="n">Literal</span><span class="p">[</span><span class="s2">&quot;h264&quot;</span><span class="p">,</span> <span class="s2">&quot;h265&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;h265&quot;</span><span class="p">,</span>
@@ -2764,6 +2774,7 @@ width: 0.502</p>
     <span class="n">crop</span><span class="p">:</span> <span class="n">Rectangle</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">calibration</span><span class="p">:</span> <span class="n">Calibration</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">image_size</span><span class="p">:</span> <span class="n">ImageSize</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">auto_connect</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
     <span class="n">auto_exposure</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
 <span class="p">)</span>
 </code></pre></div>
