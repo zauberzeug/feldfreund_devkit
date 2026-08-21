@@ -1,3 +1,4 @@
+import gc
 from collections.abc import AsyncGenerator, Generator
 
 import pytest
@@ -22,6 +23,9 @@ from feldfreund_devkit.navigation import (
 )
 from feldfreund_devkit.robot_locator import RobotLocator
 from feldfreund_devkit.system import System
+
+# rosys disables automatic gc on import; without it the suite accumulates ~20 GB of cycles and OOMs CI runners
+gc.enable()
 
 
 class FakeSecrets(Secrets):
