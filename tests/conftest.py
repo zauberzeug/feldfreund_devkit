@@ -1,3 +1,4 @@
+import gc
 from collections.abc import AsyncGenerator, Generator
 
 import pytest
@@ -8,17 +9,23 @@ from rosys.geometry import GeoPoint, GeoReference, Pose
 from rosys.hardware import GnssSimulation, ImuSimulation, WheelsSimulation
 from rosys.testing import forward, helpers
 
+from feldfreund_devkit import ImplementDummy
 from feldfreund_devkit.config import Secrets, config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
-from feldfreund_devkit.implement import ImplementDummy
 from feldfreund_devkit.navigation import (
+    Navigation,
+    PathDriver,
     RecordedTrackNavigation,
     RecordedTrackProvider,
     StraightLineNavigation,
     TrackRecordingController,
+    drive_and_work,
 )
 from feldfreund_devkit.robot_locator import RobotLocator
 from feldfreund_devkit.system import System
+
+# rosys disables automatic gc on import; without it the suite accumulates ~20 GB of cycles and OOMs CI runners
+gc.enable()
 
 
 class FakeSecrets(Secrets):
@@ -31,6 +38,7 @@ class FakeSecrets(Secrets):
 # pylint: disable=unused-argument
 GEO_REFERENCE = GeoReference(GeoPoint.from_degrees(lat=51.98333489813455, lon=7.434242465994318))
 ROBOT_GEO_START_POSITION = GEO_REFERENCE.origin
+DRIVE_SPEED = 0.13
 
 
 class TestSystem(System):
@@ -54,10 +62,7 @@ class TestSystem(System):
         helpers.driver = self.driver
         helpers.automator = self.automator
         self.current_implement = ImplementDummy()
-        self.current_navigation = StraightLineNavigation(implement=self.current_implement,
-                                                         driver=self.driver,
-                                                         pose_provider=self.robot_locator)
-        self.automator.default_automation = self.current_navigation.start
+        self.straight_line_navigation = StraightLineNavigation(self.robot_locator)
 
         self.recorded_track_provider = RecordedTrackProvider()
         self.track_recording_controller = TrackRecordingController(
@@ -66,15 +71,17 @@ class TestSystem(System):
             recorded_track_provider=self.recorded_track_provider,
             track_recording_controller=self.track_recording_controller,
             gnss=self.feldfreund.gnss,
-            automator=self.automator,
-            implement=self.current_implement,
-            driver=self.driver,
             pose_provider=self.robot_locator)
+        self.path_driver = PathDriver(self.driver)
+        self.use_navigation(self.straight_line_navigation)
+
+    def use_navigation(self, navigation: Navigation, *, speed_limit: float = DRIVE_SPEED) -> None:
+        self.automator.default_automation = lambda: drive_and_work(
+            navigation, self.path_driver, self.robot_locator, speed_limit=speed_limit,
+            implement=self.current_implement, context=None)
 
     def use_recorded_track_navigation(self) -> None:
-        """Activate recorded-track navigation as the default automation."""
-        self.current_navigation = self.recorded_track_navigation
-        self.automator.default_automation = self.recorded_track_navigation.start
+        self.use_navigation(self.recorded_track_navigation)
 
     def set_robot_pose(self, pose: Pose):
         # pylint: disable=protected-access

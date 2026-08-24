@@ -16,7 +16,7 @@ Please see the [documentation](https://docs.feldfreund.de) for details on instal
 1. create a virtual environment and activate it (you can skip this if you use uv, it creates and manages the venv for you):
 
 ```bash
-uv venv -p 3.11
+uv venv -p 3.12
 source .venv/bin/activate # to activate your virtual environment
 ```
 

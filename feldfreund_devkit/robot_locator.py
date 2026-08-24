@@ -64,7 +64,6 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         self.VELOCITY_MEASURED: Event[list[Velocity]] = Event()
         """Emitted per processed wheel velocity with the filtered velocity (argument: list of ``Velocity``)."""
         self._velocity = Velocity(linear=0.0, angular=0.0, time=self._pose_timestamp)
-        """Last emitted filtered velocity, kept for the developer UI."""
 
         self._ignore_gnss = gnss is None
         self._ignore_imu = imu is None
@@ -88,6 +87,11 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
     @property
     def pose(self) -> Pose:
         return self._pose
+
+    @property
+    def velocity(self) -> Velocity:
+        """Last emitted filtered velocity."""
+        return self._velocity
 
     @property
     def prediction(self) -> Pose:

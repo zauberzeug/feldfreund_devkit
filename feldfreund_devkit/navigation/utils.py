@@ -1,4 +1,7 @@
 import logging
+import math
+from dataclasses import dataclass
+from enum import Enum, auto
 
 import numpy as np
 from rosys.geometry import GeoReference, Point, Pose, Spline
@@ -45,12 +48,14 @@ def sub_spline(spline: Spline, t_min: float, t_max: float) -> Spline:
 
 def generate_three_point_turn(end_pose_current_row: Pose,
                               start_pose_next_row: Pose, *,
+                              speed_limit: float,
                               radius: float = 1.5,
                               same_row_threshold: float = 0.01) -> list[DriveSegment]:
     """Generates a three-point turn between two poses
 
     :param end_pose_current_row: the pose of the end of the current row
     :param start_pose_next_row: the pose of the start of the next row
+    :param speed_limit: the fastest the legs may be driven
     :param radius: the radius of the turn
     :param same_row_threshold: the threshold distance between the end of the current row and the start of the next row to consider them to be on the same row
     :return: a list of drive segments to perform the turn
@@ -66,17 +71,19 @@ def generate_three_point_turn(end_pose_current_row: Pose,
                                                            yaw=-direction_to_start))
     backward = first_turn_pose.relative_pose(back_up_pose).x < 0
     return [
-        DriveSegment.from_poses(end_pose_current_row, first_turn_pose, stop_at_end=backward),
-        DriveSegment.from_poses(first_turn_pose, back_up_pose, backward=backward, stop_at_end=backward),
-        DriveSegment.from_poses(back_up_pose, start_pose_next_row),
+        DriveSegment.from_poses(end_pose_current_row, first_turn_pose,
+                                stop_at_end=backward, speed_limit=speed_limit),
+        DriveSegment.from_poses(first_turn_pose, back_up_pose, backward=backward,
+                                stop_at_end=backward, speed_limit=speed_limit),
+        DriveSegment.from_poses(back_up_pose, start_pose_next_row, speed_limit=speed_limit),
     ]
 
 
 def skip_completed_segments(start_pose: Pose,
-                             path_segments: list[DriveSegment], *,
-                             max_distance: float = 1.0,
-                             max_angle: float = np.deg2rad(45),
-                             completed_threshold: float = 0.99) -> list[DriveSegment]:
+                            path_segments: list[DriveSegment], *,
+                            max_distance: float = 1.0,
+                            max_angle: float = np.deg2rad(45),
+                            completed_threshold: float = 0.99) -> list[DriveSegment]:
     """Return the tail of ``path_segments`` starting at the segment the robot can pick up next.
 
     A segment is a candidate if it is not yet (almost) completed, the robot's heading
@@ -110,3 +117,68 @@ def skip_completed_segments(start_pose: Pose,
     log.debug('skip_completed_segments: no segment matched from %s among %d candidates',
               start_pose, len(path_segments))
     return []
+
+
+class Reach(Enum):
+    """Where a spline can bring the tool, relative to a target."""
+
+    ON = auto()
+    BEHIND = auto()
+    """Already past it at the spline's start, and a path only goes forward."""
+    BEYOND = auto()
+    """Not on this spline, but a later part of the path may still contain it."""
+
+
+@dataclass(frozen=True)
+class ToolReach:
+    """Whether a spline brings the tool onto a target, and where along it."""
+
+    where: Reach
+    t: float
+    """The spline parameter, only meaningful when ``where`` is ``ON``."""
+
+
+def tool_reach(spline: Spline, target: Point, tool_offset_x: float, *, tolerance: float = 0.0) -> ToolReach:
+    """Where along ``spline`` a tool ``tool_offset_x`` ahead of the robot sits on ``target``.
+
+    :param tolerance: how far behind the spline's start the solution may fall and still count as
+        reached at ``t = 0``
+    """
+    t, inside = _solve_tool_t(spline, target, tool_offset_x, 0.0, 1.0)
+    if inside:
+        return ToolReach(Reach.ON, t)
+    if t > 0.0:
+        return ToolReach(Reach.BEYOND, t)
+    if _forward_distance(spline, target, 0.0) < tool_offset_x - tolerance:
+        return ToolReach(Reach.BEHIND, t)
+    return ToolReach(Reach.ON, 0.0)
+
+
+def _solve_tool_t(spline: Spline, target: Point, tool_offset_x: float,
+                  t_min: float, t_max: float, iterations: int = 25) -> tuple[float, bool]:
+    """Solve ``spline.pose(t).relative_point(target).x == tool_offset_x`` by bisection.
+
+    :return: the parameter clamped to ``[t_min, t_max]``, and whether the solution was inside it
+    """
+    # NOTE: The forward distance decreases monotonically along the spline, so a bisection converges.
+    if _forward_distance(spline, target, t_min) < tool_offset_x:
+        return t_min, False
+    if _forward_distance(spline, target, t_max) > tool_offset_x:
+        return t_max, False
+    low, high = t_min, t_max
+    for _ in range(iterations):
+        middle = (low + high) / 2
+        if _forward_distance(spline, target, middle) > tool_offset_x:
+            low = middle
+        else:
+            high = middle
+    return (low + high) / 2, True
+
+
+def _forward_distance(spline: Spline, target: Point, t: float) -> float:
+    """How far ahead of ``spline.pose(t)`` the target lies, in that pose's own frame."""
+    gx, gy = spline.gx(t), spline.gy(t)
+    length = math.hypot(gx, gy)
+    if length == 0.0:
+        return 0.0
+    return ((target.x - spline.x(t)) * gx + (target.y - spline.y(t)) * gy) / length
