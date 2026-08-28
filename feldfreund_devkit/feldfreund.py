@@ -151,7 +151,11 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                           name=config.imu.name,
                           offset_rotation=config.imu.offset_rotation,
                           min_gyro_calibration=config.imu.min_gyro_calibration) if config.imu else None
-        self.safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
+        self.safety: SafetyHardware = SafetyHardware(
+            robot_brain, estop=estop, wheels=wheels, bumper=bumper,
+            bumper_release_buffer_ms=config.bumper.bumper_release_buffer_ms
+            if config.bumper else SafetyHardware.BUMPER_RELEASE_BUFFER_MS,
+        )
         if flashlight:
             self.safety.add_module(flashlight)
         self.status_control = StatusControlHardware(robot_brain, expander=self.expander, rdyp_pin=39, vdp_pin=39)
