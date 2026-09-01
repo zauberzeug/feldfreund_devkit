@@ -43,7 +43,8 @@ class CameraSlotConfig:
     ``calibration.intrinsics.size`` when a calibration is provided,
     otherwise from ``image_size``.  At least one of the two must be set.
 
-    rotation and crop are only applied for display purposes and do not affect the actual captured images.
+    ``crop`` is applied to the captured images via ``TransformableCamera``.
+    ``rotation`` is currently not passed to the cameras.
 
     ``auto_connect`` set to ``False`` keeps the camera disconnected until the connection is
     requested explicitly, for example with the switch in the camera developer UI.
@@ -70,7 +71,8 @@ class CameraSlotConfig:
 
     @property
     def camera_kwargs(self) -> dict:
-        return {'id': self.camera_id, 'fps': self.fps, 'connect_after_init': self.auto_connect}
+        return {'id': self.camera_id, 'fps': self.fps, 'connect_after_init': self.auto_connect,
+                'crop': self.crop}
 
     @property
     def width(self) -> int:

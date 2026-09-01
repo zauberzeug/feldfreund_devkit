@@ -205,3 +205,10 @@ def _create_provider(robot_locator: RobotLocator, *, auto_connect: bool) -> Came
         back=None,
     )
     return CameraProvider(config, frame_provider=robot_locator)
+
+
+def test_crop_is_passed_to_the_camera():
+    """The configured crop reaches the camera constructor, so captured images are cropped."""
+    crop = Rectangle(x=100, y=50, width=1080, height=620)
+    config = UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720), crop=crop)
+    assert config.camera_kwargs['crop'] == crop
