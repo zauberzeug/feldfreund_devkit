@@ -632,7 +632,7 @@ requires-dist = [
     { name = "coloredlogs" },
     { name = "httpcore" },
     { name = "httpx", specifier = ">=0.25.0" },
-    { name = "nicegui", specifier = ">=3.13.0,<4.0.0" },
+    { name = "nicegui", specifier = ">=3.16.0,<4.0.0" },
     { name = "psutil" },
     { name = "rosys", git = "https://github.com/zauberzeug/rosys.git?rev=d24af94dbb7af0357eda48abb698a5c4d6275069" },
 ]
