@@ -185,8 +185,7 @@ class CameraProvider:
         if rosys.is_simulation():
             camera = SimulatedCalibratableCamera(
                 id=slot.camera_id,
-                width=slot.width,
-                height=slot.height,
+                resolution=(slot.width, slot.height),
                 fps=slot.fps,
                 color='#cccccc',
                 connect_after_init=slot.auto_connect,
@@ -280,8 +279,14 @@ class CameraProvider:
                             self._connection_button(camera.id)
                         resolution = ui.label('—')
 
-                        def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera | None = camera) -> None:
-                            if cam is None:
+                        def update_resolution(label: ui.label = resolution,
+                                              cam: rosys.vision.CalibratableCamera | None = camera,
+                                              cfg: CameraSlotConfig | None = slot_cfg) -> None:
+                            if cam is None or cfg is None:
+                                return
+                            if cfg.crop is not None and cfg.stream_size is not None:
+                                label.set_text(f'{cfg.stream_size.width}x{cfg.stream_size.height}'
+                                               f' → {cfg.width}x{cfg.height}')
                                 return
                             image = cam.latest_captured_image
                             label.set_text(f'{image.size.width}x{image.size.height}' if image else '—')

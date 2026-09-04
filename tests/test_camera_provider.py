@@ -205,3 +205,66 @@ def _create_provider(robot_locator: RobotLocator, *, auto_connect: bool) -> Came
         back=None,
     )
     return CameraProvider(config, frame_provider=robot_locator)
+
+
+def test_crop_is_passed_to_the_camera():
+    """The configured crop reaches the camera constructor, so captured images are cropped."""
+    crop = Rectangle(x=100, y=50, width=1080, height=620)
+    config = UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720), crop=crop)
+    assert config.camera_kwargs['crop'] == crop
+
+
+def _calibration_1280x960() -> Calibration:
+    """A camera calibrated on a 1280x960 full-sensor stream, with distortion."""
+    intrinsics = Intrinsics(matrix=[[720.0, 0.0, 660.0], [0.0, 720.0, 500.0], [0.0, 0.0, 1.0]],
+                            distortion=[-0.35, 0.15, 0.001, -0.002, -0.03],
+                            size=ImageSize(width=1280, height=960))
+    return Calibration(intrinsics=intrinsics)
+
+
+def test_stream_size_and_crop_derive_the_calibration():
+    """The camera is asked for the full stream resolution and crops to the configured region,
+    while the config exposes a calibration matching the cropped image."""
+    config = MjpegCameraConfig(camera_id='mac-1',
+                               password='test-pw',
+                               calibration=_calibration_1280x960(),
+                               stream_size=ImageSize(width=2560, height=1920),
+                               crop=Rectangle(x=600, y=400, width=1280, height=720))
+    assert config.camera_kwargs['resolution'] == (2560, 1920)
+    assert config.camera_kwargs['crop'] == Rectangle(x=600, y=400, width=1280, height=720)
+    assert config.width == 1280
+    assert config.height == 720
+    assert config.calibration is not None
+    assert config.calibration.intrinsics.size == ImageSize(width=1280, height=720)
+    assert config.calibration.intrinsics.matrix[0][2] == pytest.approx(660.0 * 2 - 600)
+    assert config.calibration.intrinsics.matrix[1][2] == pytest.approx(500.0 * 2 - 400)
+
+
+def test_crop_alone_shifts_the_calibration():
+    """A crop without a stream size keeps the calibrated capture resolution
+    and only shifts the principal point."""
+    config = UsbCameraConfig(camera_id='usb-0',
+                             calibration=_calibration_1280x960(),
+                             crop=Rectangle(x=181, y=2, width=1005, height=718))
+    assert config.camera_kwargs['resolution'] == (1280, 960)
+    assert config.width == 1005
+    assert config.height == 718
+    assert config.calibration is not None
+    assert config.calibration.intrinsics.matrix[0][2] == pytest.approx(660.0 - 181)
+    assert config.calibration.intrinsics.matrix[1][2] == pytest.approx(500.0 - 2)
+
+
+def test_stream_size_requires_a_calibration():
+    """Without a calibration there is nothing to scale, so stream_size is rejected."""
+    with pytest.raises(ValueError, match='calibration'):
+        UsbCameraConfig(camera_id='usb-0',
+                        image_size=ImageSize(width=1280, height=720),
+                        stream_size=ImageSize(width=2560, height=1440))
+
+
+def test_rtsp_camera_rejects_stream_size():
+    """RTSP cameras cannot control their resolution; the encoder substream determines it."""
+    with pytest.raises(ValueError, match='substream'):
+        RtspCameraConfig(camera_id='rtsp-0', mac='00:00:00:00:00:00', ip='192.168.42.5',
+                         image_size=ImageSize(width=1280, height=720),
+                         stream_size=ImageSize(width=2560, height=1440))
