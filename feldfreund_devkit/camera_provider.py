@@ -279,18 +279,17 @@ class CameraProvider:
                             self._connection_button(camera.id)
                         resolution = ui.label('—')
 
-                        def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera | None = camera) -> None:
-                            if cam is None:
+                        def update_resolution(label: ui.label = resolution,
+                                              cam: rosys.vision.CalibratableCamera | None = camera,
+                                              cfg: CameraSlotConfig | None = slot_cfg) -> None:
+                            if cam is None or cfg is None:
+                                return
+                            if cfg.crop is not None and cfg.stream_size is not None:
+                                label.set_text(f'{cfg.stream_size.width}x{cfg.stream_size.height}'
+                                               f' → {cfg.width}x{cfg.height}')
                                 return
                             image = cam.latest_captured_image
-                            if image is None:
-                                label.set_text('—')
-                                return
-                            text = f'{image.size.width}x{image.size.height}'
-                            stream = _stream_resolution(cam)
-                            if getattr(cam, 'crop', None) is not None and stream is not None and stream != text:
-                                text = f'{stream} \u2192 {text}'
-                            label.set_text(text)
+                            label.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
 
                         ui.timer(5.0, update_resolution)
                         ui.label(self._camera_config_name(slot_cfg))
@@ -318,14 +317,3 @@ class CameraProvider:
                                 backward=lambda connected: 'link_off' if connected else 'link'):
             ui.tooltip().bind_text_from(self._should_be_connected, camera_id,
                                         backward=lambda connected: 'Disconnect' if connected else 'Connect')
-
-
-def _stream_resolution(camera: rosys.vision.CalibratableCamera) -> str | None:
-    """The resolution the camera streams at before cropping, e.g. '2560x1920'."""
-    if not isinstance(camera, rosys.vision.ConfigurableCamera):
-        return None
-    parameters = camera.parameters
-    if isinstance(parameters.get('resolution'), tuple):
-        width, height = parameters['resolution']
-        return f'{width}x{height}'
-    return None
