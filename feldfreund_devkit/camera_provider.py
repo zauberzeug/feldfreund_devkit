@@ -185,8 +185,7 @@ class CameraProvider:
         if rosys.is_simulation():
             camera = SimulatedCalibratableCamera(
                 id=slot.camera_id,
-                width=slot.width,
-                height=slot.height,
+                resolution=(slot.width, slot.height),
                 fps=slot.fps,
                 color='#cccccc',
                 connect_after_init=slot.auto_connect,
@@ -329,6 +328,4 @@ def _stream_resolution(camera: rosys.vision.CalibratableCamera) -> str | None:
     if isinstance(parameters.get('resolution'), tuple):
         width, height = parameters['resolution']
         return f'{width}x{height}'
-    if parameters.get('width') and parameters.get('height'):
-        return f'{parameters["width"]}x{parameters["height"]}'
     return None

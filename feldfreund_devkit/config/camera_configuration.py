@@ -39,11 +39,14 @@ def _create_camera_matrix(*, fx: float, fy: float, cx: float, cy: float) -> list
 class CameraSlotConfig:
     """Base configuration shared by all camera types.
 
-    ``width`` and ``height`` are derived properties: they come from
-    ``calibration.intrinsics.size`` when a calibration is provided,
-    otherwise from ``image_size``.  At least one of the two must be set.
+    ``width`` and ``height`` are derived properties describing the images the camera delivers:
+    the ``crop`` size when a crop is configured, otherwise the stream size.
+    At least one of ``calibration`` and ``image_size`` must be set.
 
-    ``crop`` is applied to the captured images via ``TransformableCamera``.
+    ``stream_size`` lets the camera stream at a different resolution than the ``calibration``
+    was fit at (same field of view); the calibration is scaled to match, so it requires one.
+    ``crop`` is the region cut out of the stream, in stream pixel coordinates. It is applied to
+    the captured images via ``TransformableCamera`` and shifts the calibration's principal point.
     ``rotation`` is currently not passed to the cameras.
 
     ``auto_connect`` set to ``False`` keeps the camera disconnected until the connection is
@@ -52,6 +55,7 @@ class CameraSlotConfig:
     Defaults:
         fps: 10
         rotation: ImageRotation.NONE
+        stream_size: None (the calibration size or ``image_size``)
         crop: None
         calibration: None
         image_size: None
@@ -60,6 +64,7 @@ class CameraSlotConfig:
     camera_id: str
     fps: int = 10
     rotation: ImageRotation = ImageRotation.NONE
+    stream_size: ImageSize | None = None
     crop: Rectangle | None = None
     calibration: Calibration | None = None
     image_size: ImageSize | None = None
@@ -68,6 +73,20 @@ class CameraSlotConfig:
     def __post_init__(self) -> None:
         if self.calibration is None and self.image_size is None:
             raise ValueError('either calibration or image_size must be provided')
+        if self.stream_size is not None and self.calibration is None:
+            raise ValueError('stream_size requires a calibration to derive the stream calibration from')
+        if self.calibration is not None:
+            intrinsics = self.calibration.intrinsics
+            if self.stream_size is None:
+                self.stream_size = intrinsics.size
+            else:
+                intrinsics = intrinsics.scale(self.stream_size)
+            if self.crop is not None:
+                intrinsics = intrinsics.crop(self.crop)
+            if intrinsics is not self.calibration.intrinsics:
+                self.calibration = Calibration(intrinsics=intrinsics, extrinsics=self.calibration.extrinsics)
+        else:
+            self.stream_size = self.stream_size or self.image_size
 
     @property
     def camera_kwargs(self) -> dict:
@@ -76,17 +95,17 @@ class CameraSlotConfig:
 
     @property
     def width(self) -> int:
-        if self.calibration is not None:
-            return self.calibration.intrinsics.size.width
-        assert self.image_size is not None
-        return self.image_size.width
+        if self.crop is not None:
+            return int(self.crop.width)
+        assert self.stream_size is not None
+        return self.stream_size.width
 
     @property
     def height(self) -> int:
-        if self.calibration is not None:
-            return self.calibration.intrinsics.size.height
-        assert self.image_size is not None
-        return self.image_size.height
+        if self.crop is not None:
+            return int(self.crop.height)
+        assert self.stream_size is not None
+        return self.stream_size.height
 
 
 @dataclass(kw_only=True)
@@ -100,7 +119,8 @@ class UsbCameraConfig(CameraSlotConfig):
 
     @property
     def camera_kwargs(self) -> dict:
-        return {**super().camera_kwargs, 'width': self.width, 'height': self.height,
+        assert self.stream_size is not None
+        return {**super().camera_kwargs, 'resolution': (self.stream_size.width, self.stream_size.height),
                 'auto_exposure': self.auto_exposure}
 
 
@@ -116,6 +136,11 @@ class RtspCameraConfig(CameraSlotConfig):
     ip: str
     codec: Literal['h264', 'h265'] = 'h265'
     substream: int = 0
+
+    def __post_init__(self) -> None:
+        if self.stream_size is not None:
+            raise ValueError('RTSP cameras cannot set a stream resolution; the encoder substream determines it')
+        super().__post_init__()
 
     @property
     def camera_kwargs(self) -> dict:
@@ -139,8 +164,9 @@ class MjpegCameraConfig(CameraSlotConfig):
 
     @property
     def camera_kwargs(self) -> dict:
+        assert self.stream_size is not None
         return {**super().camera_kwargs, 'username': self.username, 'password': self.password,
-                'ip': self.ip, 'resolution': (self.width, self.height)}
+                'ip': self.ip, 'resolution': (self.stream_size.width, self.stream_size.height)}
 
 
 @dataclass(kw_only=True)

@@ -7,7 +7,7 @@ readme = "README.md"
 requires-python = ">=3.12, <3.14"
 dependencies = [
     "nicegui (>= 3.13.0, <4.0.0)",
-    "rosys @ git+https://github.com/zauberzeug/rosys.git@400b7c5ed184ae0b5a911393b9424cfc1e91a243",
+    "rosys @ git+https://github.com/zauberzeug/rosys.git@d24af94dbb7af0357eda48abb698a5c4d6275069",
     "httpx >=0.25.0",
     "coloredlogs",
     "httpcore",
