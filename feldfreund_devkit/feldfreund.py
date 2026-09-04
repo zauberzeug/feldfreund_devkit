@@ -6,8 +6,6 @@ from rosys.hardware import (
     BmsHardware,
     BmsSimulation,
     Bumper,
-    BumperHardware,
-    BumperSimulation,
     CanHardware,
     EStop,
     EStopHardware,
@@ -38,6 +36,8 @@ from .config import (
     TracksConfiguration,
 )
 from .hardware import (
+    BumperHardware,
+    BumperSimulation,
     CanOpenMasterHardware,
     Flashlight,
     FlashlightHardware,
@@ -142,20 +142,13 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                             expander=self.expander)
         headlights = HeadlightsHardware(config.headlights, robot_brain,
                                         expander=self.expander) if config.headlights else None
-        bumper = BumperHardware(robot_brain,
-                                expander=self.expander if config.bumper.on_expander else None,
-                                estop=estop,
-                                name=config.bumper.name,
-                                pins=config.bumper.pins) if config.bumper else None
+        bumper = BumperHardware(config.bumper, robot_brain,
+                                expander=self.expander, estop=estop) if config.bumper else None
         imu = ImuHardware(robot_brain,
                           name=config.imu.name,
                           offset_rotation=config.imu.offset_rotation,
                           min_gyro_calibration=config.imu.min_gyro_calibration) if config.imu else None
-        self.safety: SafetyHardware = SafetyHardware(
-            robot_brain, estop=estop, wheels=wheels, bumper=bumper,
-            bumper_release_buffer_ms=config.bumper.bumper_release_buffer_ms
-            if config.bumper else SafetyHardware.BUMPER_RELEASE_BUFFER_MS,
-        )
+        self.safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
         if flashlight:
             self.safety.add_module(flashlight)
         self.status_control = StatusControlHardware(robot_brain, expander=self.expander, rdyp_pin=39, vdp_pin=39)
@@ -251,7 +244,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         flashlight = FlashlightSimulation() if config.flashlight else None
         headlights = HeadlightsSimulation(config.headlights) if config.headlights else None
         estop = EStopSimulation()
-        bumper = BumperSimulation(estop=estop) if config.bumper else None
+        bumper = BumperSimulation(config.bumper, estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
         imu = ImuSimulation(pose_provider=wheels) if config.imu else None
         safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)

@@ -8,14 +8,14 @@ class BumperConfiguration:
     Defaults:
         name: 'bumper'
         on_expander: True
-        bumper_release_buffer_ms: 3000
+        release_buffer_ms: 3000
     """
     pin_front_top: int | None
     pin_front_bottom: int | None
     pin_back: int | None
     name: str = 'bumper'
     on_expander: bool = True
-    bumper_release_buffer_ms: int = 3000
+    release_buffer_ms: int = 3000
 
     @property
     def pins(self) -> dict[str, int]:
