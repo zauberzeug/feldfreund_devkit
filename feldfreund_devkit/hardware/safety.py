@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 
 import rosys
 
+from feldfreund_devkit.hardware.bumper import BumperHardware
 from feldfreund_devkit.hardware.tracks import TracksHardware
 
 
@@ -51,10 +52,18 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
     The generated code creates `enable()` and `disable()` functions that control
     wheels and all registered `SafetyMixin` modules. State transitions:
 
-    - E-stop or bumper triggered → `disable()` called
-    - E-stop and bumper released while disabled → `enable()` called
+    - E-stop or bumper triggered → `disable()` called immediately
+    - E-stop released while disabled → `enable()` called once the bumper is also inactive
+    - Bumper released while disabled → `enable()` called only after a `bumper.config.release_buffer_ms`
+      buffer has passed since the release, and only once the e-stop is also inactive. The buffer
+      only delays re-enabling after a bumper release; it does not affect the e-stop, and it does
+      not delay `disable()` when the bumper is triggered.
     - No messages for 1s → wheels stop
     - No messages for 20s → full disable (watchdog)
+
+    The bumper buffer is a level-triggered watchdog, not edge detection: while the bumper is
+    active, `bumper_ready_at` is pushed to `now + bumper.config.release_buffer_ms` every cycle, so
+    it settles at "last active cycle + buffer" the moment the bumper releases.
     """
 
     def __init__(self, robot_brain: rosys.hardware.RobotBrain, **kwargs) -> None:
@@ -75,12 +84,16 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
     def _generate_lizard_code(self) -> str:
         assert isinstance(self.wheels, TracksHardware | rosys.hardware.WheelsHardware)
         lizard_code = 'bool disabled = false\n'
+        # Starts at 0 so a robot that never had its bumper triggered is unaffected
+        # (`core.millis >= 0` always holds); reset to 0 on every successful `enable()` so a stale
+        # deadline can't survive a `core.millis` wrap (~49.7 days uptime, 32-bit).
+        lizard_code += 'int bumper_ready_at = 0\n'
         lizard_code += f'let disable do disabled = true; {self.wheels.name}.disable();'
         for module in self.modules:
             lizard_code += module.disable_code
         lizard_code += 'end\n'
 
-        lizard_code += f'let enable do disabled = false; {self.wheels.name}.enable();'
+        lizard_code += f'let enable do disabled = false; bumper_ready_at = 0; {self.wheels.name}.enable();'
         for module in self.modules:
             lizard_code += module.enable_code
         lizard_code += 'end\n'
@@ -92,12 +105,19 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
             disable_conditions = [f'estop_{name}.active == true' for name in self.estop.pins]
             lizard_code += f'when {" and ".join(enable_conditions)} then estop_active = false; end\n'
             lizard_code += f'when {" or ".join(disable_conditions)} then estop_active = true; end\n'
-        if isinstance(self.bumper, rosys.hardware.BumperHardware) and self.bumper.pins:
+        if isinstance(self.bumper, BumperHardware) and self.bumper.pins:
             enable_conditions = [f'bumper_{name}.active == false' for name in self.bumper.pins]
             disable_conditions = [f'bumper_{name}.active == true' for name in self.bumper.pins]
             lizard_code += f'when {" and ".join(enable_conditions)} then bumper_active = false; end\n'
             lizard_code += f'when {" or ".join(disable_conditions)} then bumper_active = true; end\n'
-        lizard_code += 'when disabled == true and estop_active == false and bumper_active == false then enable(); end\n'
+            lizard_code += (
+                f'when bumper_active then '
+                f'bumper_ready_at = core.millis + {self.bumper.config.release_buffer_ms}; end\n'
+            )
+        lizard_code += (
+            'when disabled == true and estop_active == false and bumper_active == false '
+            'and core.millis >= bumper_ready_at then enable(); end\n'
+        )
         lizard_code += 'when estop_active or bumper_active then disable(); end\n'
 
         lizard_code += f'when core.last_message_age > 1000 then {self.wheels.name}.speed(0, 0); end\n'
