@@ -174,8 +174,9 @@ class CameraProvider:
 
     def _build_camera(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         camera = self._create_camera(slot_config)
-        if slot_config.calibration is not None:
-            camera.calibration = slot_config.calibration
+        calibration = slot_config.camera_calibration
+        if calibration is not None:
+            camera.calibration = calibration
         self._should_be_connected[camera.id] = slot_config.auto_connect
         return camera
 
@@ -185,7 +186,7 @@ class CameraProvider:
         if rosys.is_simulation():
             camera = SimulatedCalibratableCamera(
                 id=slot.camera_id,
-                resolution=(slot.width, slot.height),
+                resolution=(slot.width, slot.height),  # renders the delivered size directly, nothing to crop
                 fps=slot.fps,
                 color='#cccccc',
                 connect_after_init=slot.auto_connect,
