@@ -17,6 +17,7 @@ class RobotBrainConfiguration:
         swap_pins: False
         heartbeat_interval: 0.5
         supported_lizard_versions: None
+        serial_baud_rate: 115200
 
     ``supported_lizard_versions`` is a PEP 440 version specifier like ``'<0.14.0'`` restricting which
     Lizard versions can be downloaded and flashed. ``None`` allows all versions.
@@ -27,6 +28,8 @@ class RobotBrainConfiguration:
     swap_pins: bool = False
     heartbeat_interval: float = 0.5
     supported_lizard_versions: str | None = None
+    serial_baud_rate: int = 115200
+    """Baud rate of the core console (must match the ``core.set_baudrate`` persisted on the Robot Brain)."""
 
     @property
     def flash_params(self) -> list[str]:

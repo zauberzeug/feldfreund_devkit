@@ -80,6 +80,7 @@ class Feldfreund(Robot):
         self.flashlight = flashlight
         self.headlights = headlights
         self.implement: Implement | None = None
+        self.implements: list[Implement] = []
         self.imu = imu
         self.safety = safety
         self.wheels = wheels
@@ -89,20 +90,21 @@ class Feldfreund(Robot):
 
     def add_implement(self, implement: Implement) -> None:
         self.implement = implement
+        self.implements.append(implement)
         for module in implement.modules:
             self.add_module(module)
 
     async def stop(self) -> None:
         await self.wheels.stop()
-        if self.implement:
-            await self.implement.stop()
+        for implement in self.implements:
+            await implement.stop()
 
 
 class FeldfreundHardware(Feldfreund, RobotHardware):
     """Hardware implementation of a Feldfreund robot with real hardware modules."""
 
     def __init__(self, config: FeldfreundConfiguration, **kwargs) -> None:
-        communication = SerialCommunication()
+        communication = SerialCommunication(baud_rate=config.robot_brain.serial_baud_rate)
         robot_brain = RobotBrain(communication,
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
                                  use_espresso=True,
