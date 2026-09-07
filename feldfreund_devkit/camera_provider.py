@@ -285,12 +285,12 @@ class CameraProvider:
                                               cfg: CameraSlotConfig | None = slot_cfg) -> None:
                             if cam is None or cfg is None:
                                 return
-                            if cfg.crop is not None and cfg.stream_size is not None:
-                                label.set_text(f'{cfg.stream_size.width}x{cfg.stream_size.height}'
-                                               f' → {cfg.width}x{cfg.height}')
-                                return
                             image = cam.latest_captured_image
-                            label.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
+                            text = f'{image.size.width}x{image.size.height}' if image else '—'
+                            if cfg.crop is not None:
+                                assert cfg.stream_size is not None
+                                text = f'{cfg.stream_size.width}x{cfg.stream_size.height} → {text}'
+                            label.set_text(text)
 
                         ui.timer(5.0, update_resolution)
                         ui.label(self._camera_config_name(slot_cfg))
