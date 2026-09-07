@@ -78,6 +78,7 @@ class CameraSlotConfig:
             raise ValueError('stream_size requires a calibration to derive the stream calibration from')
         if self.stream_size is None:
             self.stream_size = self.calibration.intrinsics.size if self.calibration is not None else self.image_size
+        assert self.stream_size is not None
         if self.crop is not None:
             _validate_crop(self.crop, self.stream_size)
 
@@ -112,12 +113,13 @@ class CameraSlotConfig:
         return self.stream_size.height
 
 
-def _validate_crop(crop: Rectangle, stream_size: ImageSize | None) -> None:
-    """Reject crops the camera cannot cut out of the stream: fractional coordinates or beyond the stream.
+def _validate_crop(crop: Rectangle, stream_size: ImageSize) -> None:
+    """Reject crops the camera cannot cut out of the stream.
 
+    :param crop: the region to cut out, in stream pixel coordinates
+    :param stream_size: the size of the stream the crop is cut from
     :raises ValueError: if the crop has fractional coordinates or reaches beyond the stream
     """
-    assert stream_size is not None
     if any(value != int(value) for value in crop.tuple):
         raise ValueError(f'crop must have integer coordinates, got {crop}')
     if crop.x < 0 or crop.y < 0 or crop.x + crop.width > stream_size.width or crop.y + crop.height > stream_size.height:
