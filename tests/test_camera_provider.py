@@ -271,7 +271,7 @@ async def test_cropped_camera_in_simulation(robot_locator):
         back=None,
     )
     provider = CameraProvider(config, frame_provider=robot_locator)
-    assert provider.main is not None
+    assert isinstance(provider.main, SimulatedCalibratableCamera)
     assert provider.main.parameters['resolution'] == (1280, 720)
     assert provider.main.calibration is not None
     assert provider.main.calibration.intrinsics.size == ImageSize(width=1280, height=720)
