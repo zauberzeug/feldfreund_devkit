@@ -15,11 +15,3 @@ class BumperHardware(rosys.hardware.BumperHardware):
                          name=config.name,
                          pins=config.pins,
                          estop=estop)
-
-
-class BumperSimulation(rosys.hardware.BumperSimulation):
-    """Simulated bumper carrying its `BumperConfiguration` for interface symmetry with `BumperHardware`."""
-
-    def __init__(self, config: BumperConfiguration, **kwargs) -> None:
-        self.config = config
-        super().__init__(**kwargs)

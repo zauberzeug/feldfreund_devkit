@@ -1,4 +1,4 @@
-from .bumper import BumperHardware, BumperSimulation
+from .bumper import BumperHardware
 from .can_open_master import CanOpenMasterHardware
 from .flashlight import Flashlight, FlashlightHardware, FlashlightHardwareMosfet, FlashlightSimulation
 from .headlights import Headlights, HeadlightsHardware, HeadlightsSimulation
@@ -16,7 +16,6 @@ from .tracks import ODriveTracksHardware, TracksHardware, TracksSimulation
 
 __all__ = [
     'BumperHardware',
-    'BumperSimulation',
     'CanOpenMasterHardware',
     'ConnectionStatus',
     'DeviceInfo',

@@ -37,7 +37,6 @@ from .config import (
 )
 from .hardware import (
     BumperHardware,
-    BumperSimulation,
     CanOpenMasterHardware,
     Flashlight,
     FlashlightHardware,
@@ -244,7 +243,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
         flashlight = FlashlightSimulation() if config.flashlight else None
         headlights = HeadlightsSimulation(config.headlights) if config.headlights else None
         estop = EStopSimulation()
-        bumper = BumperSimulation(config.bumper, estop=estop) if config.bumper else None
+        bumper = rosys.hardware.BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
         imu = ImuSimulation(pose_provider=wheels) if config.imu else None
         safety = SafetySimulation(wheels=wheels, estop=estop, bumper=bumper)

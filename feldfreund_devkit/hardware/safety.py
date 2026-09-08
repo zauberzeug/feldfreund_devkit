@@ -66,8 +66,9 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
     it settles at "last active cycle + buffer" the moment the bumper releases.
     """
 
-    def __init__(self, robot_brain: rosys.hardware.RobotBrain, **kwargs) -> None:
-        Safety.__init__(self, **kwargs)
+    def __init__(self, robot_brain: rosys.hardware.RobotBrain, *,
+                 bumper: BumperHardware | None = None, **kwargs) -> None:
+        Safety.__init__(self, bumper=bumper, **kwargs)
         self.estop_active = False
         lizard_code = self._generate_lizard_code()
         if self.bumper is not None:
@@ -84,15 +85,13 @@ class SafetyHardware(Safety, rosys.hardware.ModuleHardware):
     def _generate_lizard_code(self) -> str:
         assert isinstance(self.wheels, TracksHardware | rosys.hardware.WheelsHardware)
         lizard_code = 'bool disabled = false\n'
-        # Starts at 0 so a robot that never had its bumper triggered is unaffected
-        # (`core.millis >= 0` always holds); reset to 0 on every successful `enable()` so a stale
-        # deadline can't survive a `core.millis` wrap (~49.7 days uptime, 32-bit).
         lizard_code += 'int bumper_ready_at = 0\n'
         lizard_code += f'let disable do disabled = true; {self.wheels.name}.disable();'
         for module in self.modules:
             lizard_code += module.disable_code
         lizard_code += 'end\n'
 
+        # reset so a stale deadline cannot outlive a core.millis wrap
         lizard_code += f'let enable do disabled = false; bumper_ready_at = 0; {self.wheels.name}.enable();'
         for module in self.modules:
             lizard_code += module.enable_code
