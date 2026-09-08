@@ -74,7 +74,7 @@ class CameraSlotConfig:
     def __post_init__(self) -> None:
         if self.calibration is None and self.image_size is None:
             raise ValueError('either calibration or image_size must be provided')
-        if self.stream_size is not None and self.calibration is None:
+        if self.stream_size is not None and self.calibration is None and self.stream_size != self.image_size:
             raise ValueError('stream_size requires a calibration to derive the stream calibration from')
         if self.stream_size is None:
             self.stream_size = self.calibration.intrinsics.size if self.calibration is not None else self.image_size

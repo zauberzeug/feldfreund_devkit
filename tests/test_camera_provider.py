@@ -1,3 +1,5 @@
+import dataclasses
+
 import pytest
 import rosys
 from rosys.geometry import Pose3d, Rectangle, Rotation
@@ -294,6 +296,19 @@ def test_stream_size_requires_a_calibration():
         UsbCameraConfig(camera_id='usb-0',
                         image_size=ImageSize(width=1280, height=720),
                         stream_size=ImageSize(width=2560, height=1440))
+
+
+@pytest.mark.parametrize('config', [
+    UsbCameraConfig(camera_id='usb-0', image_size=ImageSize(width=1280, height=720)),
+    UsbCameraConfig(camera_id='usb-0', calibration=_calibration_1280x960(),
+                    stream_size=ImageSize(width=2560, height=1920),
+                    crop=Rectangle(x=600, y=400, width=1280, height=720)),
+])
+def test_config_survives_replace(config):
+    """A config filled in by its own defaults passes validation again when copied with ``dataclasses.replace``."""
+    copy = dataclasses.replace(config, fps=5)
+    assert copy.stream_size == config.stream_size
+    assert copy.camera_calibration == config.camera_calibration
 
 
 def test_rtsp_camera_rejects_stream_size():
