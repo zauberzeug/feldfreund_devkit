@@ -1,5 +1,4 @@
 import rosys
-from rosys.hardware.communication import Communication
 from rosys.hardware import (
     BatteryControlHardware,
     BluetoothHardware,
@@ -29,6 +28,7 @@ from rosys.hardware import (
     Wheels,
     WheelsSimulation,
 )
+from rosys.hardware.communication import Communication
 
 from .config import (
     BatteryControlConfiguration,
