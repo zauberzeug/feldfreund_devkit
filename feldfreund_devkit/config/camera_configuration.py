@@ -39,11 +39,16 @@ def _create_camera_matrix(*, fx: float, fy: float, cx: float, cy: float) -> list
 class CameraSlotConfig:
     """Base configuration shared by all camera types.
 
-    ``width`` and ``height`` are derived properties: they come from
-    ``calibration.intrinsics.size`` when a calibration is provided,
-    otherwise from ``image_size``.  At least one of the two must be set.
+    ``width`` and ``height`` are derived properties describing the images the camera delivers:
+    the ``crop`` size when a crop is configured, otherwise the stream size.
+    At least one of ``calibration`` and ``image_size`` must be set.
 
-    rotation and crop are only applied for display purposes and do not affect the actual captured images.
+    ``stream_size`` lets the camera stream at a different resolution than the ``calibration``
+    was fit at (same field of view), so it requires one. ``crop`` is the region cut out of the
+    stream, in stream pixel coordinates, applied to the captured images via ``TransformableCamera``.
+    ``calibration`` stays as fitted; ``camera_calibration`` derives the one matching the delivered
+    images by scaling to the stream size and shifting the principal point by the crop.
+    ``rotation`` is currently not passed to the cameras.
 
     ``auto_connect`` set to ``False`` keeps the camera disconnected until the connection is
     requested explicitly, for example with the switch in the camera developer UI.
@@ -51,6 +56,7 @@ class CameraSlotConfig:
     Defaults:
         fps: 10
         rotation: ImageRotation.NONE
+        stream_size: None (the calibration size or ``image_size``)
         crop: None
         calibration: None
         image_size: None
@@ -59,6 +65,7 @@ class CameraSlotConfig:
     camera_id: str
     fps: int = 10
     rotation: ImageRotation = ImageRotation.NONE
+    stream_size: ImageSize | None = None
     crop: Rectangle | None = None
     calibration: Calibration | None = None
     image_size: ImageSize | None = None
@@ -67,24 +74,56 @@ class CameraSlotConfig:
     def __post_init__(self) -> None:
         if self.calibration is None and self.image_size is None:
             raise ValueError('either calibration or image_size must be provided')
+        if self.stream_size is not None and self.calibration is None and self.stream_size != self.image_size:
+            raise ValueError('stream_size requires a calibration to derive the stream calibration from')
+        if self.stream_size is None:
+            self.stream_size = self.calibration.intrinsics.size if self.calibration is not None else self.image_size
+        assert self.stream_size is not None
+        if self.crop is not None:
+            _validate_crop(self.crop, self.stream_size)
+
+    @property
+    def camera_calibration(self) -> Calibration | None:
+        """The calibration matching the delivered images: scaled to ``stream_size``, shifted by ``crop``."""
+        if self.calibration is None:
+            return None
+        assert self.stream_size is not None
+        intrinsics = self.calibration.intrinsics.scale(self.stream_size)
+        if self.crop is not None:
+            intrinsics = intrinsics.crop(self.crop)
+        return Calibration(intrinsics=intrinsics, extrinsics=self.calibration.extrinsics)
 
     @property
     def camera_kwargs(self) -> dict:
-        return {'id': self.camera_id, 'fps': self.fps, 'connect_after_init': self.auto_connect}
+        return {'id': self.camera_id, 'fps': self.fps, 'connect_after_init': self.auto_connect,
+                'crop': self.crop}
 
     @property
     def width(self) -> int:
-        if self.calibration is not None:
-            return self.calibration.intrinsics.size.width
-        assert self.image_size is not None
-        return self.image_size.width
+        if self.crop is not None:
+            return int(self.crop.width)
+        assert self.stream_size is not None
+        return self.stream_size.width
 
     @property
     def height(self) -> int:
-        if self.calibration is not None:
-            return self.calibration.intrinsics.size.height
-        assert self.image_size is not None
-        return self.image_size.height
+        if self.crop is not None:
+            return int(self.crop.height)
+        assert self.stream_size is not None
+        return self.stream_size.height
+
+
+def _validate_crop(crop: Rectangle, stream_size: ImageSize) -> None:
+    """Reject crops the camera cannot cut out of the stream.
+
+    :param crop: the region to cut out, in stream pixel coordinates
+    :param stream_size: the size of the stream the crop is cut from
+    :raises ValueError: if the crop has fractional coordinates or reaches beyond the stream
+    """
+    if any(value != int(value) for value in crop.tuple):
+        raise ValueError(f'crop must have integer coordinates, got {crop}')
+    if crop.x < 0 or crop.y < 0 or crop.x + crop.width > stream_size.width or crop.y + crop.height > stream_size.height:
+        raise ValueError(f'crop {crop} must lie inside the stream size {stream_size}')
 
 
 @dataclass(kw_only=True)
@@ -98,13 +137,16 @@ class UsbCameraConfig(CameraSlotConfig):
 
     @property
     def camera_kwargs(self) -> dict:
-        return {**super().camera_kwargs, 'width': self.width, 'height': self.height,
+        assert self.stream_size is not None
+        return {**super().camera_kwargs, 'resolution': (self.stream_size.width, self.stream_size.height),
                 'auto_exposure': self.auto_exposure}
 
 
 @dataclass(kw_only=True)
 class RtspCameraConfig(CameraSlotConfig):
     """Configuration for an RTSP camera.
+
+    The encoder substream determines the resolution, so ``calibration`` and ``crop`` must match it.
 
     Defaults:
         codec: 'h265'
@@ -114,6 +156,11 @@ class RtspCameraConfig(CameraSlotConfig):
     ip: str
     codec: Literal['h264', 'h265'] = 'h265'
     substream: int = 0
+
+    def __post_init__(self) -> None:
+        if self.stream_size is not None:
+            raise ValueError('RTSP cameras cannot set a stream resolution; the encoder substream determines it')
+        super().__post_init__()
 
     @property
     def camera_kwargs(self) -> dict:
@@ -137,8 +184,9 @@ class MjpegCameraConfig(CameraSlotConfig):
 
     @property
     def camera_kwargs(self) -> dict:
+        assert self.stream_size is not None
         return {**super().camera_kwargs, 'username': self.username, 'password': self.password,
-                'ip': self.ip, 'resolution': (self.width, self.height)}
+                'ip': self.ip, 'resolution': (self.stream_size.width, self.stream_size.height)}
 
 
 @dataclass(kw_only=True)

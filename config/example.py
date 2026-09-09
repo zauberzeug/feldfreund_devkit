@@ -1,3 +1,4 @@
+from rosys.geometry import Rectangle
 from rosys.vision import ImageSize
 
 from feldfreund_devkit.config import (
@@ -13,6 +14,7 @@ from feldfreund_devkit.config import (
     RobotBrainConfiguration,
     Secrets,
     UsbCameraConfig,
+    create_calibration,
 )
 
 
@@ -22,7 +24,15 @@ def build_config(secrets: Secrets) -> FeldfreundConfiguration:
         bluetooth=BluetoothConfiguration(name='example', pin_code=123456),
         bumper=BumperConfiguration(pin_front_top=21, pin_front_bottom=35, pin_back=18),
         cameras=CameraConfiguration(
-            main=UsbCameraConfig(camera_id='example-usb-0', image_size=ImageSize(width=1280, height=720), fps=10),
+            # streams the full sensor and crops to the working area; the calibration was fit at 1280x960
+            main=UsbCameraConfig(camera_id='example-usb-0', fps=10,
+                                 calibration=create_calibration(fx=720.0, fy=720.0, cx=640.0, cy=480.0,
+                                                                distortion=[0.0, 0.0, 0.0, 0.0, 0.0],
+                                                                width=1280, height=960,
+                                                                x=0.4, y=0.0, z=0.6,
+                                                                roll=3.14, pitch=0.0, yaw=-1.57),
+                                 stream_size=ImageSize(width=2560, height=1920),
+                                 crop=Rectangle(x=640, y=480, width=1280, height=960)),
             front=MjpegCameraConfig(camera_id='example-mac-4', image_size=ImageSize(width=1280, height=720),
                                     password=secrets.MJPEG_CAMERA_PASSWORD),
             back=MjpegCameraConfig(camera_id='example-mac-3', image_size=ImageSize(width=1280, height=720),

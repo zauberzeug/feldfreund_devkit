@@ -174,8 +174,9 @@ class CameraProvider:
 
     def _build_camera(self, slot_config: CameraSlotConfig) -> rosys.vision.CalibratableCamera:
         camera = self._create_camera(slot_config)
-        if slot_config.calibration is not None:
-            camera.calibration = slot_config.calibration
+        calibration = slot_config.camera_calibration
+        if calibration is not None:
+            camera.calibration = calibration
         self._should_be_connected[camera.id] = slot_config.auto_connect
         return camera
 
@@ -185,8 +186,7 @@ class CameraProvider:
         if rosys.is_simulation():
             camera = SimulatedCalibratableCamera(
                 id=slot.camera_id,
-                width=slot.width,
-                height=slot.height,
+                resolution=(slot.width, slot.height),  # renders the delivered size directly, nothing to crop
                 fps=slot.fps,
                 color='#cccccc',
                 connect_after_init=slot.auto_connect,
@@ -280,11 +280,17 @@ class CameraProvider:
                             self._connection_button(camera.id)
                         resolution = ui.label('—')
 
-                        def update_resolution(label: ui.label = resolution, cam: rosys.vision.CalibratableCamera | None = camera) -> None:
-                            if cam is None:
+                        def update_resolution(label: ui.label = resolution,
+                                              cam: rosys.vision.CalibratableCamera | None = camera,
+                                              cfg: CameraSlotConfig | None = slot_cfg) -> None:
+                            if cam is None or cfg is None:
                                 return
                             image = cam.latest_captured_image
-                            label.set_text(f'{image.size.width}x{image.size.height}' if image else '—')
+                            text = f'{image.size.width}x{image.size.height}' if image else '—'
+                            if cfg.crop is not None:
+                                assert cfg.stream_size is not None
+                                text = f'{cfg.stream_size.width}x{cfg.stream_size.height} → {text}'
+                            label.set_text(text)
 
                         ui.timer(5.0, update_resolution)
                         ui.label(self._camera_config_name(slot_cfg))
