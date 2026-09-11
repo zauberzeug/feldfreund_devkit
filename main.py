@@ -38,7 +38,7 @@ class IntervalImplement(Implement[IntervalRun]):
 
     def __init__(self, *, interval: float = 0.5, dwell: float = 1.0) -> None:
         super().__init__(ImplementConfiguration(lizard_name='None', display_name='Interval',
-                                                offset=Pose3d(x=0.3), work_radius=0.0))
+                                                default_offset=Pose3d(x=0.3), work_radius=0.0))
         self.interval = interval
         self.dwell = dwell
 
