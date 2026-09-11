@@ -1,4 +1,7 @@
 from dataclasses import dataclass
+from typing import Literal
+
+SUPPORTED_BAUD_RATES = (115200, 230400, 460800, 921600)
 
 
 @dataclass(kw_only=True)
@@ -17,6 +20,7 @@ class RobotBrainConfiguration:
         swap_pins: False
         heartbeat_interval: 0.5
         supported_lizard_versions: None
+        serial_baud_rate: 115200
 
     ``supported_lizard_versions`` is a PEP 440 version specifier like ``'<0.14.0'`` restricting which
     Lizard versions can be downloaded and flashed. ``None`` allows all versions.
@@ -27,6 +31,14 @@ class RobotBrainConfiguration:
     swap_pins: bool = False
     heartbeat_interval: float = 0.5
     supported_lizard_versions: str | None = None
+    serial_baud_rate: Literal[115200, 230400, 460800, 921600] = 115200
+    """Baud rate of the core console, one of the rates Lizard's ``core.set_baudrate`` accepts.
+    It must match the rate persisted on the Robot Brain."""
+
+    def __post_init__(self) -> None:
+        if self.serial_baud_rate not in SUPPORTED_BAUD_RATES:
+            raise ValueError(
+                f'unsupported serial_baud_rate {self.serial_baud_rate}, use one of {SUPPORTED_BAUD_RATES}')
 
     @property
     def flash_params(self) -> list[str]:

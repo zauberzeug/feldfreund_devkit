@@ -7,6 +7,7 @@ from rosys.hardware import (
     BmsSimulation,
     Bumper,
     CanHardware,
+    Communication,
     EStop,
     EStopHardware,
     EStopSimulation,
@@ -100,8 +101,9 @@ class Feldfreund(Robot):
 class FeldfreundHardware(Feldfreund, RobotHardware):
     """Hardware implementation of a Feldfreund robot with real hardware modules."""
 
-    def __init__(self, config: FeldfreundConfiguration, **kwargs) -> None:
-        communication = SerialCommunication()
+    def __init__(self, config: FeldfreundConfiguration, *, communication: Communication | None = None, **kwargs) -> None:
+        if communication is None:
+            communication = SerialCommunication(baud_rate=config.robot_brain.serial_baud_rate)
         robot_brain = RobotBrain(communication,
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
                                  use_espresso=True,
