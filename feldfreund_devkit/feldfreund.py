@@ -9,6 +9,7 @@ from rosys.hardware import (
     BumperHardware,
     BumperSimulation,
     CanHardware,
+    Communication,
     EStop,
     EStopHardware,
     EStopSimulation,
@@ -28,7 +29,6 @@ from rosys.hardware import (
     Wheels,
     WheelsSimulation,
 )
-from rosys.hardware.communication import Communication
 
 from .config import (
     BatteryControlConfiguration,
