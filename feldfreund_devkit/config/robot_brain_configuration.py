@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+SUPPORTED_BAUD_RATES = (115200, 230400, 460800, 921600)
+
 
 @dataclass(kw_only=True)
 class RobotBrainConfiguration:
@@ -29,7 +31,13 @@ class RobotBrainConfiguration:
     heartbeat_interval: float = 0.5
     supported_lizard_versions: str | None = None
     serial_baud_rate: int = 115200
-    """Baud rate of the core console (must match the ``core.set_baudrate`` persisted on the Robot Brain)."""
+    """Baud rate of the core console: 115200, 230400, 460800 or 921600, the rates Lizard's ``core.set_baudrate``
+    accepts. It must match the rate persisted on the Robot Brain."""
+
+    def __post_init__(self) -> None:
+        if self.serial_baud_rate not in SUPPORTED_BAUD_RATES:
+            raise ValueError(
+                f'unsupported serial_baud_rate {self.serial_baud_rate}, use one of {SUPPORTED_BAUD_RATES}')
 
     @property
     def flash_params(self) -> list[str]:
