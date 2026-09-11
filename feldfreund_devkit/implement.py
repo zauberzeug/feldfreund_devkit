@@ -20,14 +20,15 @@ class Implement[ImplementContext](rosys.persistence.Persistable):
     def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
         self._config = config
+        self.offset: Pose3d = config.default_offset
 
     @property
     def name(self) -> str:
         return self._config.display_name
 
     @property
-    def offset(self) -> Pose3d:
-        return self._config.offset
+    def work_radius(self) -> float:
+        return self._config.work_radius
 
     @property
     @abstractmethod
