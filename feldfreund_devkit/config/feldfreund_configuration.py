@@ -38,8 +38,6 @@ class FeldfreundConfiguration:
     gnss: GnssConfiguration | None = None
     headlights: HeadlightsConfiguration | None = None
     implement: ImplementConfiguration | None = None
-    implements: list[ImplementConfiguration] = field(default_factory=list)
-    """Further implements mounted next to ``implement``, e.g. the four arms of a multi-arm rig."""
     imu: ImuConfiguration | None = None
     robot_brain: RobotBrainConfiguration
     wheels: TracksConfiguration

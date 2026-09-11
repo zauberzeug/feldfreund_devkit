@@ -81,7 +81,6 @@ class Feldfreund(Robot):
         self.flashlight = flashlight
         self.headlights = headlights
         self.implement: Implement | None = None
-        self.implements: list[Implement] = []
         self.imu = imu
         self.safety = safety
         self.wheels = wheels
@@ -91,14 +90,13 @@ class Feldfreund(Robot):
 
     def add_implement(self, implement: Implement) -> None:
         self.implement = implement
-        self.implements.append(implement)
         for module in implement.modules:
             self.add_module(module)
 
     async def stop(self) -> None:
         await self.wheels.stop()
-        for implement in self.implements:
-            await implement.stop()
+        if self.implement:
+            await self.implement.stop()
 
 
 class FeldfreundHardware(Feldfreund, RobotHardware):
