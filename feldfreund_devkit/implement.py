@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from collections.abc import AsyncGenerator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from dataclasses import replace
 from typing import Any, NoReturn
 
 import rosys
@@ -20,7 +21,7 @@ class Implement[ImplementContext](rosys.persistence.Persistable):
     def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
         self._config = config
-        self.offset: Pose3d = config.default_offset
+        self.offset: Pose3d = replace(config.default_offset)
 
     @property
     def name(self) -> str:
