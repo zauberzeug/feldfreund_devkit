@@ -1,4 +1,6 @@
 import abc
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 import rosys
 from nicegui import ui
@@ -15,6 +17,15 @@ class Flashlight(rosys.hardware.Module, abc.ABC):
         super().__init__(**kwargs)
         self._duty_cycle: float = 1.0
         self._is_active: bool = False
+
+    @asynccontextmanager
+    async def on(self) -> AsyncGenerator[None, None]:
+        """Keep the flashlight on for the block."""
+        await self.turn_on()
+        try:
+            yield
+        finally:
+            await self.turn_off()
 
     @property
     def duty_cycle(self) -> float:
