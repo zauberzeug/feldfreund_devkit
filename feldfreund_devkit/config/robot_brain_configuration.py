@@ -16,7 +16,12 @@ class RobotBrainConfiguration:
         nand: False
         swap_pins: False
         heartbeat_interval: 0.5
+        baud_rate: 115200
         supported_lizard_versions: None
+
+    ``baud_rate`` is the rate of the serial link to the Robot Brain. The ESP must already run at it:
+    a stock board talks 115200 and is switched once from a console at the old rate with
+    ``core.set_baudrate(<rate>)`` followed by ``core.restart()`` (Lizard >= 0.12.0 persists it).
 
     ``supported_lizard_versions`` is a PEP 440 version specifier like ``'<0.14.0'`` restricting which
     Lizard versions can be downloaded and flashed. ``None`` allows all versions.
@@ -26,6 +31,7 @@ class RobotBrainConfiguration:
     nand: bool = False
     swap_pins: bool = False
     heartbeat_interval: float = 0.5
+    baud_rate: int = 115200
     supported_lizard_versions: str | None = None
 
     @property

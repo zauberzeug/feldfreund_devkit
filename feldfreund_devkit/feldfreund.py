@@ -101,7 +101,7 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
     """Hardware implementation of a Feldfreund robot with real hardware modules."""
 
     def __init__(self, config: FeldfreundConfiguration, **kwargs) -> None:
-        communication = SerialCommunication()
+        communication = SerialCommunication(baud_rate=config.robot_brain.baud_rate)
         robot_brain = RobotBrain(communication,
                                  enable_esp_on_startup=config.robot_brain.enable_esp_on_startup,
                                  use_espresso=True,
