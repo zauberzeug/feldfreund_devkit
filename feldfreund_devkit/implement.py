@@ -20,14 +20,24 @@ class Implement[ImplementContext](rosys.persistence.Persistable):
     def __init__(self, config: ImplementConfiguration) -> None:
         super().__init__()
         self._config = config
+        self.calibrated_offset: Pose3d | None = None
 
     @property
     def name(self) -> str:
         return self._config.display_name
 
     @property
+    def default_offset(self) -> Pose3d:
+        return self._config.default_offset
+
+    @property
     def offset(self) -> Pose3d:
-        return self._config.offset
+        """The tool's pose in the robot frame: the calibrated one when there is one, else the config default."""
+        return self.default_offset if self.calibrated_offset is None else self.calibrated_offset
+
+    @property
+    def work_radius(self) -> float:
+        return self._config.work_radius
 
     @property
     @abstractmethod

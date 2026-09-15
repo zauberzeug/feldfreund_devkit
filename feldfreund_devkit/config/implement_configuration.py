@@ -10,9 +10,10 @@ class ImplementConfiguration:
     """Base configuration for all implements.
 
     Defaults:
-        offset: Pose3d.zero
+        default_offset: Pose3d.zero
     """
     lizard_name: str
     display_name: str
-    offset: Pose3d = field(default_factory=Pose3d.zero)
+    default_offset: Pose3d = field(default_factory=Pose3d.zero)
+    """Tool pose in the robot frame until an implement calibrates or persists its own."""
     work_radius: float
