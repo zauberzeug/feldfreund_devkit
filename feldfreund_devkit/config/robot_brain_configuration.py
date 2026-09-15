@@ -20,8 +20,9 @@ class RobotBrainConfiguration:
         supported_lizard_versions: None
 
     ``baud_rate`` is the rate of the serial link to the Robot Brain. The ESP must already run at it:
-    a stock board talks 115200 and is switched once from a console at the old rate with
-    ``core.set_baudrate(<rate>)`` followed by ``core.restart()`` (Lizard >= 0.12.0 persists it).
+    a stock board talks 115200 and is switched once with ``core.set_baudrate(<rate>)`` (Lizard >= 0.12.0
+    persists it). Deploy the new rate first, then reset the ESP -- an ESP restarted while the app still
+    sends at the old rate stops reading UART0 until its next reset.
 
     ``supported_lizard_versions`` is a PEP 440 version specifier like ``'<0.14.0'`` restricting which
     Lizard versions can be downloaded and flashed. ``None`` allows all versions.
