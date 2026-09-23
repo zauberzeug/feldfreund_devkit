@@ -6,6 +6,8 @@ on:
 
 jobs:
   check-milestone:
+    # The export branch is written by a machine; its milestone is the one on the release that ships it.
+    if: github.event.pull_request.head.ref != 'export'
     runs-on: ubuntu-latest
 
     steps:
