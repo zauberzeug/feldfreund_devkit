@@ -19,7 +19,7 @@ sync:
 install-ci:
 	uv sync --no-sources
 
-## lock		Update the lock file and ignore the local rosys source.
+## lock		Update the lock file, ignoring any local sources.
 lock:
 	uv lock --no-sources
 

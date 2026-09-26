@@ -11,6 +11,14 @@ There is also a [ROS2 implementation](https://github.com/zauberzeug/feldfreund_d
 
 Please see the [documentation](https://docs.feldfreund.de) for details on installation, setup and usage.
 
+## This repository is a mirror
+
+Development happens in Zauberzeug's internal monorepo.
+This repository is a read-only export of the package folder, so its history is a series of sync commits rather than the individual changes.
+
+Issues and pull requests are welcome and are read here.
+A pull request is reviewed on this repository and then applied as a patch in the monorepo, so the change arrives with the next export and the pull request is closed rather than merged.
+
 ## Development
 
 1. create a virtual environment and activate it (you can skip this if you use uv, it creates and manages the venv for you):
@@ -24,8 +32,6 @@ source .venv/bin/activate # to activate your virtual environment
 
 ```bash
 uv sync
-# or this if you don't want to install RoSys as an editable dependency from ../rosys
-uv sync --no-sources
 ```
 
 3. start your project:

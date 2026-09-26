@@ -3,6 +3,16 @@
 Thank you for your interest in contributing to Feldfreund_devkit!
 This document provides guidelines to help you get started.
 
+## How this repository works
+
+Development happens in Zauberzeug's internal monorepo.
+This repository is a read-only export of the package folder, written by an automated job, so its history is a series of sync commits rather than the individual changes.
+
+That does not close the door.
+Issues and pull requests are welcome and are read here.
+A pull request is reviewed on this repository and then applied as a patch in the monorepo, so the change arrives with the next export and the pull request is closed rather than merged.
+Everything below describes how to work on the code and what a change has to look like, and applies unchanged.
+
 ## Reporting Issues
 
 If you encounter a bug or have a feature request:
@@ -172,14 +182,6 @@ Select Agent Mode with claude-sonnet-4 and write:
 ```
 Review my current branch according to @.github/copilot-instructions.md
 ```
-
-Or in **Cursor**, use these custom commands for easy access:
-1. Type `/` in Cursor chat
-2. Select commands:
-   - `/review-uncommitted` - Review your local uncommitted changes
-   - `/review-branch` - Review your current branch vs main
-   - `/simplify` - Suggest ways to simplify code
-   - `/explain` - Explain what code does
 
 Ensure to address any valid feedback. This will make your life and that of the maintainers much easier.
 

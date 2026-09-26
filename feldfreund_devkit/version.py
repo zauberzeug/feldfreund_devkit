@@ -1,3 +1,7 @@
-from importlib.metadata import version
+from importlib.metadata import PackageNotFoundError, version
 
-__version__ = version('feldfreund_devkit')
+try:
+    __version__ = version('feldfreund_devkit')
+except PackageNotFoundError:
+    # the package is run from a checkout that was never installed
+    __version__ = 'unknown'

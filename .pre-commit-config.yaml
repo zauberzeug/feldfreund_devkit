@@ -8,8 +8,8 @@ repos:
     hooks:
       - id: uv-lock-no-sources
         name: uv.lock pinned to git and in sync with pyproject
-        # --no-sources ignores [tool.uv.sources], so local editable paths (../rosys, ../feldfreund_devkit)
-        # can never be committed; --check additionally fails if pyproject.toml and uv.lock diverged.
+        # --no-sources ignores [tool.uv.sources], so a local editable path can never be committed;
+        # --check additionally fails if pyproject.toml and uv.lock diverged.
         # Run `make lock` to fix.
         entry: uv lock --check --no-sources
         language: system
