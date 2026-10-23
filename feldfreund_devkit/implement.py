@@ -1,13 +1,14 @@
 from abc import abstractmethod
-from collections.abc import AsyncGenerator
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from collections.abc import AsyncIterator, Sequence
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
+from dataclasses import dataclass
 from typing import Any, NoReturn
 
 import rosys
 from rosys.geometry import Point3d, Pose3d
 
 from .config import ImplementConfiguration
-from .work_context import WorkContext, never
+from .work_context import WorkContext
 
 
 class ImplementException(Exception):
@@ -25,6 +26,11 @@ class Implement[ImplementContext](rosys.persistence.Persistable):
     @property
     def name(self) -> str:
         return self._config.display_name
+
+    @property
+    def lizard_name(self) -> str:
+        """What the tool is called in the configuration, unlike ``name`` not renameable per robot."""
+        return self._config.lizard_name
 
     @property
     def default_offset(self) -> Pose3d:
@@ -75,32 +81,30 @@ class Implement[ImplementContext](rosys.persistence.Persistable):
         """Create UI for developer tools."""
 
 
-class ImplementDummy(Implement[None]):
-    """A no-op implement for testing or when no implement is attached."""
+@dataclass(frozen=True)
+class ActivatedImplement[C]:
+    """A tool readied for a run, together with the context it handed over."""
 
-    def __init__(self) -> None:
-        super().__init__(ImplementConfiguration(lizard_name='None', display_name='None', work_radius=0.0))
+    implement: Implement[C]
+    context: C
 
-    @property
-    def modules(self) -> list[rosys.hardware.Module]:
-        return []
+    async def work(self, ctx: WorkContext) -> NoReturn:
+        """Run the tool's work loop, naming it in whatever it fails with."""
+        try:
+            await self.implement.work(ctx, self.context)
+        except ImplementException as e:
+            raise ImplementException(f'{self.implement.name}: {e}') from e
 
-    async def stop(self) -> None:
-        pass
 
-    # NOTE: the decorator makes this the context manager the abstract asks for; pylint sees only the async def
-    @asynccontextmanager
-    async def activated(self) -> AsyncGenerator[None, None]:  # pylint: disable=invalid-overridden-method
-        yield None
-
-    async def work(self, ctx: WorkContext, context: None) -> NoReturn:
-        await never()
-
-    def can_reach(self, local_point: Point3d) -> bool:
-        return True
-
-    def backup_to_dict(self) -> dict[str, Any]:
-        return {}
-
-    def restore_from_dict(self, data: dict[str, Any]) -> None:
-        ...
+@asynccontextmanager
+async def activated(implements: Sequence[Implement[Any]]) -> AsyncIterator[list[ActivatedImplement[Any]]]:
+    """Ready every tool for the block, in order, and put them away again in reverse."""
+    async with AsyncExitStack() as stack:
+        tools: list[ActivatedImplement[Any]] = []
+        for implement in implements:
+            try:
+                context = await stack.enter_async_context(implement.activated())
+            except ImplementException as e:
+                raise ImplementException(f'{implement.name}: {e}') from e
+            tools.append(ActivatedImplement(implement, context))
+        yield tools

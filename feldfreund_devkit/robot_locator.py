@@ -99,7 +99,10 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
 
     @property
     def uncertainty(self) -> tuple[float, float, float]:
-        return self._Sxx[0, 0], self._Sxx[1, 1], self._Sxx[2, 2]
+        """Standard deviation of the pose estimate: x and y in meters, yaw in radians."""
+        return (float(np.sqrt(self._Sxx[0, 0])),
+                float(np.sqrt(self._Sxx[1, 1])),
+                float(np.sqrt(self._Sxx[2, 2])))
 
     def pose_at(self, time: float) -> Pose:
         """Return the estimated pose at the given ``time``, interpolated from the history.
@@ -335,10 +338,8 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
         self._pose_frame.x = self._x[0, 0]
         self._pose_frame.y = self._x[1, 0]
         self._pose_frame.rotation = Rotation.from_euler(0, 0, self._x[2, 0])
-        self._pose.x = self._x[0, 0]
-        self._pose.y = self._x[1, 0]
-        self._pose.yaw = self._x[2, 0]
-        self._pose.time = self._pose_timestamp
+        # replaced, not mutated: whoever holds `pose` or an emitted payload keeps the value of that update
+        self._pose = Pose(x=self._x[0, 0], y=self._x[1, 0], yaw=self._x[2, 0], time=self._pose_timestamp)
         self._record_pose_history()
         self.FRAME_UPDATED.emit(self._pose_frame)
         self.POSE_UPDATED.emit(self._pose)
@@ -396,11 +397,11 @@ class RobotLocator(rosys.persistence.Persistable, FrameProvider, PoseProvider, V
             ui.label('Kalman Filter').classes('text-center text-bold')
             with ui.grid(columns=2).classes('w-full gap-0'):
                 ui.label().bind_text_from(self, 'pose', lambda p: f'x: {p.x:.3f}m')
-                ui.label().bind_text_from(self, '_Sxx', lambda m: f'± {m[0, 0]:.3f}m')
+                ui.label().bind_text_from(self, 'uncertainty', lambda u: f'± {u[0]:.3f}m')
                 ui.label().bind_text_from(self, 'pose', lambda p: f'y: {p.y:.3f}m')
-                ui.label().bind_text_from(self, '_Sxx', lambda m: f'± {m[1, 1]:.3f}m')
+                ui.label().bind_text_from(self, 'uncertainty', lambda u: f'± {u[1]:.3f}m')
                 ui.label().bind_text_from(self, 'pose', lambda p: f'θ: {p.yaw_deg:.2f}°')
-                ui.label().bind_text_from(self, '_Sxx', lambda m: f'± {np.rad2deg(m[2, 2]):.2f}°')
+                ui.label().bind_text_from(self, 'uncertainty', lambda u: f'± {np.rad2deg(u[2]):.2f}°')
                 ui.label().bind_text_from(self, '_velocity', lambda v: f'v: {v.linear:.2f}m/s')
                 ui.label().bind_text_from(self, '_velocity', lambda v: f'ω: {np.rad2deg(v.angular):.1f}°/s')
 

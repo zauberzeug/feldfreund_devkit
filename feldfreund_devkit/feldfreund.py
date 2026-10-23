@@ -31,21 +31,13 @@ from rosys.hardware import (
 from .config import (
     BatteryControlConfiguration,
     FeldfreundConfiguration,
-    FlashlightConfiguration,
-    FlashlightMosfetConfiguration,
     ODriveTracksConfiguration,
     TracksConfiguration,
 )
 from .hardware import (
     BumperHardware,
     CanOpenMasterHardware,
-    Flashlight,
-    FlashlightHardware,
-    FlashlightHardwareMosfet,
-    FlashlightSimulation,
-    Headlights,
-    HeadlightsHardware,
-    HeadlightsSimulation,
+    Lights,
     ODriveTracksHardware,
     Safety,
     SafetyHardware,
@@ -54,7 +46,10 @@ from .hardware import (
     StatusControlHardware,
     TracksHardware,
     TracksSimulation,
+    setup_light_hardware,
+    setup_light_simulation,
 )
+from .hardware.light import light_modules
 from .implement import Implement
 
 
@@ -65,37 +60,40 @@ class Feldfreund(Robot):
                  bms: Bms,
                  bumper: Bumper | None,
                  estop: EStop,
-                 flashlight: Flashlight | None,
-                 headlights: Headlights | None,
+                 headlights: Lights | None,
                  imu: Imu | None,
                  safety: Safety,
                  wheels: Wheels,
                  gnss: Gnss | None,
+                 work_lights: Lights | None,
                  **kwargs) -> None:
         super().__init__(**kwargs)
         self.config = config
         self.bms = bms
         self.bumper = bumper
         self.estop = estop
-        self.flashlight = flashlight
         self.headlights = headlights
-        self.implement: Implement | None = None
+        self.implements: list[Implement] = []
         self.imu = imu
         self.safety = safety
         self.wheels = wheels
         self.gnss = gnss
+        self.work_lights = work_lights
         self.estop.ESTOP_TRIGGERED.subscribe(self.stop)
         rosys.on_shutdown(self.stop)
 
     def add_implement(self, implement: Implement) -> None:
-        self.implement = implement
+        self.implements.append(implement)
         for module in implement.modules:
             self.add_module(module)
 
     async def stop(self) -> None:
         await self.wheels.stop()
-        if self.implement:
-            await self.implement.stop()
+        for implement in self.implements:
+            try:
+                await implement.stop()
+            except Exception:  # pylint: disable=broad-exception-caught
+                self.log.exception('could not stop %s', implement.name)
 
 
 class FeldfreundHardware(Feldfreund, RobotHardware):
@@ -137,12 +135,9 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                                                            robot_brain=robot_brain,
                                                            bms=bms,
                                                            expander=self.expander)
-        flashlight = self._setup_flashlight(config.flashlight,
-                                            robot_brain=robot_brain,
-                                            bms=bms,
-                                            expander=self.expander)
-        headlights = HeadlightsHardware(config.headlights, robot_brain,
-                                        expander=self.expander) if config.headlights else None
+        work_lights, headlights = setup_light_hardware(config.work_lights, config.headlights,
+                                                       robot_brain=robot_brain,
+                                                       expander=self.expander)
         bumper = BumperHardware(config.bumper, robot_brain,
                                 expander=self.expander, estop=estop) if config.bumper else None
         imu = ImuHardware(robot_brain,
@@ -150,23 +145,27 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
                           offset_rotation=config.imu.offset_rotation,
                           min_gyro_calibration=config.imu.min_gyro_calibration) if config.imu else None
         self.safety: SafetyHardware = SafetyHardware(robot_brain, estop=estop, wheels=wheels, bumper=bumper)
-        if flashlight:
-            self.safety.add_module(flashlight)
+        lights = light_modules(work_lights, headlights)
+        for light in lights:
+            assert isinstance(light, SafetyMixin)
+            if light.safety_managed:
+                self.safety.add_module(light)
         self.status_control = StatusControlHardware(robot_brain, expander=self.expander, rdyp_pin=39, vdp_pin=39)
         gnss = GnssHardware(antenna_pose=config.gnss.pose) if config.gnss else None
         modules = [self.bluetooth, self.can, wheels, serial, self.expander, can_open_master,
-                   flashlight, headlights, bms, estop, self.battery_control, bumper, imu, self.safety, self.status_control]
+                   *lights, bms, estop, self.battery_control, bumper, imu,
+                   self.safety, self.status_control]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
                          bms=bms,
                          bumper=bumper,
                          estop=estop,
-                         flashlight=flashlight,
                          headlights=headlights,
                          imu=imu,
                          safety=self.safety,
                          wheels=wheels,
                          gnss=gnss,
+                         work_lights=work_lights,
                          modules=active_modules,
                          robot_brain=robot_brain,
                          **kwargs)
@@ -212,18 +211,6 @@ class FeldfreundHardware(Feldfreund, RobotHardware):
         rosys.on_startup(wait_and_release_battery_relay)
         return battery_control
 
-    def _setup_flashlight(self, config: FlashlightConfiguration | FlashlightMosfetConfiguration | None, *,
-                          robot_brain: RobotBrain,
-                          bms: Bms,
-                          expander: ExpanderHardware) -> FlashlightHardware | FlashlightHardwareMosfet | None:
-        if config is None:
-            return None
-        if isinstance(config, FlashlightConfiguration):
-            return FlashlightHardware(config, robot_brain, expander=expander if config.on_expander else None)
-        if isinstance(config, FlashlightMosfetConfiguration):
-            return FlashlightHardwareMosfet(config, robot_brain, bms, expander=expander if config.on_expander else None)
-        raise NotImplementedError(f'Unknown flashlight configuration: {config}')
-
     def _setup_tracks(self, config: TracksConfiguration, *,
                       robot_brain: RobotBrain,
                       estop: EStopHardware,
@@ -242,8 +229,7 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
     def __init__(self, config: FeldfreundConfiguration, *, use_acceleration: bool = False, **kwargs) -> None:
         wheels = TracksSimulation(config.wheels.width) if use_acceleration \
             else WheelsSimulation(config.wheels.width)
-        flashlight = FlashlightSimulation() if config.flashlight else None
-        headlights = HeadlightsSimulation(config.headlights) if config.headlights else None
+        work_lights, headlights = setup_light_simulation(config.work_lights, config.headlights)
         estop = EStopSimulation()
         bumper = rosys.hardware.BumperSimulation(estop=estop) if config.bumper else None
         bms = BmsSimulation(battery_low_threshold=config.bms.battery_low_threshold)
@@ -255,17 +241,17 @@ class FeldfreundSimulation(Feldfreund, RobotSimulation):
                               heading_std_dev=0.01,
                               interval=0.1,
                               latency=0.1) if config.gnss else None
-        modules = [wheels, flashlight, headlights, bumper, imu, bms, estop, safety]
+        modules = [wheels, *light_modules(work_lights, headlights), bumper, imu, bms, estop, safety]
         active_modules = [module for module in modules if module is not None]
         super().__init__(config,
                          bms=bms,
                          bumper=bumper,
                          estop=estop,
-                         flashlight=flashlight,
                          headlights=headlights,
                          imu=imu,
                          safety=safety,
                          wheels=wheels,
                          gnss=gnss,
+                         work_lights=work_lights,
                          modules=active_modules,
                          **kwargs)

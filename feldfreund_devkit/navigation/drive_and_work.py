@@ -1,11 +1,10 @@
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import aclosing
-from functools import partial
 
 import rosys
 from rosys.analysis import track
 
-from ..implement import Implement, ImplementException
+from ..implement import ImplementException
 from ..robot_locator import RobotLocator
 from ..work_context import WorkContext, WorkFunction
 from .drive_segment import DriveSegment
@@ -16,40 +15,36 @@ from .path_driver import PathDriver
 @track
 async def drive(navigation: Navigation, path_driver: PathDriver, *, speed_limit: float) -> None:
     """Drive a navigation to its end without working."""
-    await _drive_navigation(navigation, path_driver, speed_limit=speed_limit, work=None)
+    await _drive_navigation(navigation, path_driver, speed_limit=speed_limit, work=[])
 
 
 @track
-async def drive_and_work[ImplementContext](navigation: Navigation, path_driver: PathDriver,
-                                           locator: RobotLocator, *, speed_limit: float,
-                                           implement: Implement[ImplementContext],
-                                           context: ImplementContext) -> None:
-    """Drive a navigation to its end, letting a tool work the stretches that are workable."""
-    work = partial(implement.work, context=context)
-    await _drive_navigation(navigation, path_driver, speed_limit=speed_limit, work=work,
-                            locator=locator)
+async def drive_and_work(navigation: Navigation, path_driver: PathDriver, locator: RobotLocator, *,
+                         speed_limit: float, work: Sequence[WorkFunction]) -> None:
+    """Drive a navigation to its end, letting every tool work the stretches that are workable."""
+    await _drive_navigation(navigation, path_driver, speed_limit=speed_limit, work=work, locator=locator)
 
 
 async def _drive_navigation(navigation: Navigation, path_driver: PathDriver, *, speed_limit: float,
-                            work: WorkFunction | None,
+                            work: Sequence[WorkFunction],
                             locator: RobotLocator | None = None) -> None:
     async def drive_stretch(stream: '_SegmentStream') -> None:
         while (segment := await stream.current()) is not None and segment.use_implement:
             await path_driver.drive(segment)
             stream.advance()
 
-    async def work_until_cancelled() -> None:
-        assert work is not None and locator is not None
-        await work(WorkContext(motion=path_driver, locator=locator))
+    async def until_cancelled(loop: WorkFunction) -> None:
+        assert locator is not None
+        await loop(WorkContext(motion=path_driver, locator=locator))
         raise ImplementException('the work loop returned; it must run until the stretch ends')
 
     try:
         async with aclosing(navigation.segments(speed_limit)) as segments:
             stream = _SegmentStream(segments)
             while (segment := await stream.current()) is not None:
-                if segment.use_implement and work is not None:
+                if segment.use_implement and work:
                     await rosys.automation.parallelize(
-                        work_until_cancelled(),
+                        *(until_cancelled(loop) for loop in work),
                         drive_stretch(stream),
                         return_when_first_completed=True,
                     )

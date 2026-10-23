@@ -199,26 +199,6 @@ async def test_a_failed_actuation_still_lets_the_robot_go(devkit_system) -> None
     assert_pose(2, 0, deg=0, position_tolerance=0.1)
 
 
-async def test_a_second_stop_at_the_same_time_is_unsupported(devkit_system) -> None:
-    """A second holder would silently take over the single stop slot."""
-    path_driver, run = navigation_run(devkit_system, OneLegNavigation())
-    crashed: list[bool] = []
-
-    async def work() -> None:
-        await until(lambda: devkit_system.driver.pose.x > 0.2)
-        async with path_driver.stop_over(Point(x=1.0, y=0.0), TOOL_OFFSET):
-            with pytest.raises(AssertionError):
-                async with path_driver.stop_over(Point(x=1.5, y=0.0), TOOL_OFFSET):
-                    pass
-            crashed.append(True)
-
-    devkit_system.automator.start(rosys.automation.parallelize(run, work()))
-    await forward(until=lambda: devkit_system.automator.is_running)
-    await forward(until=lambda: devkit_system.automator.is_stopped)
-
-    assert crashed == [True]
-
-
 async def test_a_stop_on_a_later_segment_is_honoured_when_it_starts(devkit_system) -> None:
     """A tool should not have to know where the segments end; it asks for a stop and waits."""
     at_rest: list[float] = []

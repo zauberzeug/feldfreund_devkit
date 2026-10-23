@@ -1,11 +1,9 @@
 """Navigations and waiting helpers shared by the run-loop and path-driver tests."""
-from typing import NoReturn
-
 import rosys
 from conftest import DRIVE_SPEED
 from rosys.geometry import Pose
 
-from feldfreund_devkit import ImplementDummy, WorkContext, WorkFunction
+from feldfreund_devkit import WorkFunction
 from feldfreund_devkit.navigation import DriveSegment, PathDriver, StaticNavigation, drive_and_work
 
 TOOL_OFFSET = 0.1
@@ -41,20 +39,9 @@ async def until(condition) -> None:
         await rosys.sleep(0.1)
 
 
-class ToolDoing(ImplementDummy):
-
-    def __init__(self, work: WorkFunction) -> None:
-        super().__init__()
-        self._work = work
-
-    async def work(self, ctx: WorkContext, context: None) -> NoReturn:
-        await self._work(ctx)
-
-
 def navigation_run(devkit_system, navigation, *, work: WorkFunction | None = None):
     """A path driver and the run that drives ``navigation`` with it; without ``work`` the tool keeps still."""
     path_driver = PathDriver(devkit_system.driver)
-    implement = ImplementDummy() if work is None else ToolDoing(work)
+    loops = [] if work is None else [work]
     return path_driver, drive_and_work(navigation, path_driver, devkit_system.robot_locator,
-                                       speed_limit=DRIVE_SPEED,
-                                       implement=implement, context=None)
+                                       speed_limit=DRIVE_SPEED, work=loops)

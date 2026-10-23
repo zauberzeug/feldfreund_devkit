@@ -41,6 +41,7 @@ class PathDriver:
         self._caps: list[float] = []
         self._segment: DriveSegment | None = None
         self._stop: _Stop | None = None
+        self._stop_turns = asyncio.Lock()
 
         self.SEGMENT_STARTED = Event[DriveSegment]()
         self.SEGMENT_COMPLETED = Event[DriveSegment]()
@@ -67,21 +68,20 @@ class PathDriver:
 
         :raises CannotStop: the target cannot be driven onto; the robot keeps going, skip it
         """
-        if not self._is_ahead(target, tool_offset_x):
-            raise CannotStop(f'{target} is already behind the robot')
-        if self._stop is not None:
-            # not CannotStop: callers absorb that, and the second holder would take over the slot unnoticed
-            raise AssertionError('only one stop at a time is supported')
-        stop = self._stop = _Stop(target, tool_offset_x)
-        self._replan()
-        try:
-            await stop.reached.wait()
-            if stop.refusal is not None:
-                raise CannotStop(stop.refusal)
-            yield
-        finally:
-            self._stop = None
-            stop.released.set()
+        # tools take turns: while one holds the robot, the next waits, and may find its target behind by then
+        async with self._stop_turns:
+            if not self._is_ahead(target, tool_offset_x):
+                raise CannotStop(f'{target} is already behind the robot')
+            stop = self._stop = _Stop(target, tool_offset_x)
+            self._replan()
+            try:
+                await stop.reached.wait()
+                if stop.refusal is not None:
+                    raise CannotStop(stop.refusal)
+                yield
+            finally:
+                self._stop = None
+                stop.released.set()
 
     @track
     async def drive(self, segment: DriveSegment) -> None:

@@ -1,7 +1,14 @@
 from .bumper import BumperHardware
 from .can_open_master import CanOpenMasterHardware
-from .flashlight import Flashlight, FlashlightHardware, FlashlightHardwareMosfet, FlashlightSimulation
-from .headlights import Headlights, HeadlightsHardware, HeadlightsSimulation
+from .light import (
+    Light,
+    LightHardware,
+    Lights,
+    LightSimulation,
+    WorkLightHardwareMosfet,
+    setup_light_hardware,
+    setup_light_simulation,
+)
 from .safety import Safety, SafetyHardware, SafetyMixin, SafetySimulation
 from .status_control import StatusControlHardware
 from .teltonika_router import (
@@ -19,13 +26,10 @@ __all__ = [
     'CanOpenMasterHardware',
     'ConnectionStatus',
     'DeviceInfo',
-    'Flashlight',
-    'FlashlightHardware',
-    'FlashlightHardwareMosfet',
-    'FlashlightSimulation',
-    'Headlights',
-    'HeadlightsHardware',
-    'HeadlightsSimulation',
+    'Light',
+    'LightHardware',
+    'LightSimulation',
+    'Lights',
     'ModemStatus',
     'ODriveTracksHardware',
     'Safety',
@@ -38,4 +42,7 @@ __all__ = [
     'TracksSimulation',
     'WifiClientNetwork',
     'WifiInfo',
+    'WorkLightHardwareMosfet',
+    'setup_light_hardware',
+    'setup_light_simulation',
 ]

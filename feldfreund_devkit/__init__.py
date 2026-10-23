@@ -1,7 +1,7 @@
 from . import log_configuration
 from .camera_provider import CameraProvider, PoseMetadataMixin
 from .feldfreund import Feldfreund, FeldfreundHardware, FeldfreundSimulation
-from .implement import Implement, ImplementDummy, ImplementException
+from .implement import ActivatedImplement, Implement, ImplementException, activated
 from .robot_locator import RobotLocator
 from .settings_ui import SettingsUI
 from .system import System
@@ -10,12 +10,12 @@ from .version import __version__
 from .work_context import WorkContext, WorkFunction, never
 
 __all__ = [
+    'ActivatedImplement',
     'CameraProvider',
     'Feldfreund',
     'FeldfreundHardware',
     'FeldfreundSimulation',
     'Implement',
-    'ImplementDummy',
     'ImplementException',
     'PoseMetadataMixin',
     'RobotLocator',
@@ -25,6 +25,7 @@ __all__ = [
     'WorkContext',
     'WorkFunction',
     '__version__',
+    'activated',
     'log_configuration',
     'never',
 ]

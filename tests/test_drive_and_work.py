@@ -3,18 +3,21 @@ from collections.abc import AsyncGenerator
 from typing import NoReturn
 
 import pytest
+from conftest import DRIVE_SPEED
 from navigation_helpers import TOOL_OFFSET, RowTurnRowNavigation, navigation_run
 from rosys.geometry import Point, Pose
 from rosys.testing import assert_pose, forward
 
-from feldfreund_devkit import WorkContext, never
+from feldfreund_devkit import WorkContext, WorkFunction, never
 from feldfreund_devkit.implement import ImplementException
 from feldfreund_devkit.navigation import (
     CannotStop,
     DriveSegment,
     Navigation,
     NavigationRefused,
+    PathDriver,
     StaticNavigation,
+    drive_and_work,
 )
 
 
@@ -106,6 +109,51 @@ async def test_work_spans_a_stretch_and_never_a_turn(devkit_system) -> None:
     assert_pose(4, 0, deg=0, position_tolerance=0.1)
 
 
+async def test_every_tool_works_every_stretch(devkit_system) -> None:
+    working: list[str] = []
+
+    def loop_named(name: str) -> WorkFunction:
+        async def work(ctx: WorkContext) -> NoReturn:
+            working.append(name)
+            await never()
+        return work
+
+    run = drive_and_work(RowTurnRowNavigation(), PathDriver(devkit_system.driver), devkit_system.robot_locator,
+                         speed_limit=DRIVE_SPEED, work=[loop_named('a'), loop_named('b')])
+    devkit_system.automator.start(run)
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert sorted(working) == ['a', 'a', 'b', 'b'], 'both tools, on both stretches'
+
+
+async def test_tools_take_turns_stopping_the_robot(devkit_system) -> None:
+    at_rest: dict[str, float] = {}
+    run = drive_and_work(RowTurnRowNavigation(), PathDriver(devkit_system.driver), devkit_system.robot_locator,
+                         speed_limit=DRIVE_SPEED, work=[_stopping_at(at_rest, 'a', 0.5, TOOL_OFFSET),
+                                                        _stopping_at(at_rest, 'b', 1.0, TOOL_OFFSET)])
+    devkit_system.automator.start(run)
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert at_rest['a'] == pytest.approx(0.5 - TOOL_OFFSET, abs=0.05)
+    assert at_rest['b'] == pytest.approx(1.0 - TOOL_OFFSET, abs=0.05)
+
+
+async def test_a_tool_waiting_for_its_turn_skips_a_stop_the_robot_has_passed(devkit_system) -> None:
+    """Turns go by request order: the second tool's stop lies before the first one's, so it is skipped."""
+    at_rest: dict[str, float] = {}
+    run = drive_and_work(RowTurnRowNavigation(), PathDriver(devkit_system.driver), devkit_system.robot_locator,
+                         speed_limit=DRIVE_SPEED, work=[_stopping_at(at_rest, 'a', 0.5, -0.3),
+                                                        _stopping_at(at_rest, 'b', 1.0, 0.4)])
+    devkit_system.automator.start(run)
+    await forward(until=lambda: devkit_system.automator.is_running)
+    await forward(until=lambda: devkit_system.automator.is_stopped)
+
+    assert at_rest['a'] == pytest.approx(0.8, abs=0.05)
+    assert 'b' not in at_rest
+
+
 async def test_a_work_loop_that_returns_is_an_error(devkit_system) -> None:
     """Returning early would silently halt the drive, so it is reported instead."""
     async def work(ctx: WorkContext) -> None:
@@ -136,3 +184,18 @@ async def test_work_stops_the_robot_where_the_tool_needs_it(devkit_system) -> No
 
     assert at_rest[0] == pytest.approx(0.5 - TOOL_OFFSET, abs=0.05)
     assert_pose(4, 0, deg=0, position_tolerance=0.1)
+
+
+def _stopping_at(at_rest: dict[str, float], name: str, x: float, tool_offset_x: float) -> WorkFunction:
+    """A work loop that stops once with its tool on ``x`` and records where the robot came to rest.
+
+    :param at_rest: where each tool's robot came to rest, filled in by name
+    """
+    async def work(ctx: WorkContext) -> NoReturn:
+        try:
+            async with ctx.motion.stop_over(Point(x=x, y=0.0), tool_offset_x):
+                at_rest[name] = ctx.locator.pose.x
+        except CannotStop:
+            pass
+        await never()
+    return work
