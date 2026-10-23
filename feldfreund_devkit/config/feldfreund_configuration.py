@@ -8,11 +8,10 @@ from .bumper_configuration import BumperConfiguration
 from .camera_configuration import CameraConfiguration
 from .can_configuration import CanConfiguration
 from .estop_configuration import EstopConfiguration
-from .flashlight_configuration import FlashlightConfiguration, FlashlightMosfetConfiguration
 from .gnss_configuration import GnssConfiguration
-from .headlights_configuration import HeadlightsConfiguration
 from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
+from .light_configuration import HeadlightConfigurations, WorkLightConfigurations
 from .robot_brain_configuration import RobotBrainConfiguration
 from .robot_footprint import RobotFootprint
 from .tracks_configuration import (
@@ -34,10 +33,10 @@ class FeldfreundConfiguration:
     cameras: CameraConfiguration | None = None
     driver: DriveParameters = field(default_factory=create_drive_parameters)
     estop: EstopConfiguration = field(default_factory=EstopConfiguration)
-    flashlight: FlashlightConfiguration | FlashlightMosfetConfiguration | None = None
     gnss: GnssConfiguration | None = None
-    headlights: HeadlightsConfiguration | None = None
-    implement: ImplementConfiguration | None = None
+    headlights: HeadlightConfigurations = None
+    implements: list[ImplementConfiguration] = field(default_factory=list)
     imu: ImuConfiguration | None = None
     robot_brain: RobotBrainConfiguration
     wheels: TracksConfiguration
+    work_lights: WorkLightConfigurations = None

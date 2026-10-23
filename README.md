@@ -40,6 +40,9 @@ uv sync
 uv run ./main.py
 ```
 
+This starts the hardware whenever a serial port is reachable — on a Jetson that is always the case.
+Set `SIMULATION=true` in the environment to force the simulation.
+
 4. run your tests:
 
 ```bash

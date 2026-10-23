@@ -16,11 +16,15 @@ from .camera_configuration import (
 from .can_configuration import CanConfiguration
 from .estop_configuration import EstopConfiguration
 from .feldfreund_configuration import FeldfreundConfiguration
-from .flashlight_configuration import FlashlightConfiguration, FlashlightMosfetConfiguration
 from .gnss_configuration import GnssConfiguration
-from .headlights_configuration import HeadlightsConfiguration
 from .implement_configuration import ImplementConfiguration
 from .imu_configuration import ImuConfiguration
+from .light_configuration import (
+    HeadlightConfigurations,
+    LightConfiguration,
+    WorkLightConfigurations,
+    WorkLightMosfetConfiguration,
+)
 from .robot_brain_configuration import RobotBrainConfiguration
 from .robot_footprint import RobotFootprint
 from .secrets import Secrets
@@ -59,12 +63,11 @@ __all__ = [
     'CanConfiguration',
     'EstopConfiguration',
     'FeldfreundConfiguration',
-    'FlashlightConfiguration',
-    'FlashlightMosfetConfiguration',
     'GnssConfiguration',
-    'HeadlightsConfiguration',
+    'HeadlightConfigurations',
     'ImplementConfiguration',
     'ImuConfiguration',
+    'LightConfiguration',
     'MjpegCameraConfig',
     'ODriveTracksConfiguration',
     'RobotBrainConfiguration',
@@ -73,6 +76,8 @@ __all__ = [
     'Secrets',
     'TracksConfiguration',
     'UsbCameraConfig',
+    'WorkLightConfigurations',
+    'WorkLightMosfetConfiguration',
     'config_from_file',
     'config_from_id',
     'create_calibration',

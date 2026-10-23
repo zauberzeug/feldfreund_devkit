@@ -84,6 +84,14 @@ async def test_standstill_freezes_state(devkit_system):
     np.testing.assert_array_equal(s.robot_locator._Sxx, covariance_before)
 
 
+async def test_uncertainty_is_reported_as_a_standard_deviation(devkit_system):
+    """A reset adopts the measurement noise of the fix it snaps to, so the reported uncertainty must
+    come back as that noise itself, in meters and radians, and not as its square."""
+    s = devkit_system
+    s.robot_locator._reset(r_xy=0.3, r_theta=0.2)
+    assert s.robot_locator.uncertainty == pytest.approx((0.3, 0.3, 0.2))
+
+
 async def test_uncertainty_grows_during_dead_reckoning(devkit_system):
     """Driving without GNSS corrections must increase the pose uncertainty."""
     s = devkit_system

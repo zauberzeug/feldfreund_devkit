@@ -9,7 +9,6 @@ from rosys.geometry import GeoPoint, GeoReference, Pose
 from rosys.hardware import GnssSimulation, ImuSimulation, WheelsSimulation
 from rosys.testing import forward, helpers
 
-from feldfreund_devkit import ImplementDummy
 from feldfreund_devkit.config import Secrets, config_from_id, create_drive_parameters
 from feldfreund_devkit.hardware.tracks import TracksSimulation
 from feldfreund_devkit.navigation import (
@@ -43,6 +42,7 @@ DRIVE_SPEED = 0.13
 
 class TestSystem(System):
     def __init__(self, *args, **kwargs):
+        rosys.enter_simulation()
         super().__init__(*args, **kwargs)
         GeoReference.update_current(GEO_REFERENCE)
         assert isinstance(self.feldfreund.gnss, GnssSimulation)
@@ -61,7 +61,6 @@ class TestSystem(System):
         helpers.odometer = self.odometer
         helpers.driver = self.driver
         helpers.automator = self.automator
-        self.current_implement = ImplementDummy()
         self.straight_line_navigation = StraightLineNavigation(self.robot_locator)
 
         self.recorded_track_provider = RecordedTrackProvider()
@@ -77,8 +76,7 @@ class TestSystem(System):
 
     def use_navigation(self, navigation: Navigation, *, speed_limit: float = DRIVE_SPEED) -> None:
         self.automator.default_automation = lambda: drive_and_work(
-            navigation, self.path_driver, self.robot_locator, speed_limit=speed_limit,
-            implement=self.current_implement, context=None)
+            navigation, self.path_driver, self.robot_locator, speed_limit=speed_limit, work=[])
 
     def use_recorded_track_navigation(self) -> None:
         self.use_navigation(self.recorded_track_navigation)

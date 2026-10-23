@@ -1,4 +1,6 @@
 #! /usr/bin/env python
+import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -11,7 +13,7 @@ from rosys.driving import Driver, Steerer, keyboard_control, robot_object
 from rosys.geometry import Point, Point3d, Pose3d
 
 import feldfreund_devkit
-from feldfreund_devkit import Implement, RobotLocator, WorkContext
+from feldfreund_devkit import Implement, RobotLocator, WorkContext, activated
 from feldfreund_devkit.config import FeldfreundConfiguration, ImplementConfiguration, Secrets, config_from_id
 from feldfreund_devkit.navigation import (
     CannotStop,
@@ -24,6 +26,12 @@ from feldfreund_devkit.navigation import (
 )
 
 DemoNavigation = StraightLineNavigation | RecordedTrackNavigation
+
+SIMULATION = os.environ.get('SIMULATION', '').lower() in ('1', 'true', 'yes')
+if SIMULATION:
+    rosys.enter_simulation()
+
+log = logging.getLogger('feldfreund_devkit.demo')
 
 
 @dataclass
@@ -114,10 +122,9 @@ class System(feldfreund_devkit.System):
         return self.navigations[self.navigation_name]
 
     async def _drive(self) -> None:
-        async with self.implement.activated() as context:
+        async with activated([self.implement]) as readied:
             await drive_and_work(self.navigation, self.path_driver, self.robot_locator,
-                                 speed_limit=self.linear_speed_limit,
-                                 implement=self.implement, context=context)
+                                 speed_limit=self.linear_speed_limit, work=[tool.work for tool in readied])
 
     def backup_to_dict(self) -> dict[str, Any]:
         return super().backup_to_dict() | {'linear_speed_limit': self.linear_speed_limit}
@@ -140,9 +147,12 @@ def speed_setting(system: System) -> None:
 
 
 def startup() -> None:
+    log.info('Starting the devkit demo in %s mode', 'simulation' if SIMULATION else 'hardware')
     secrets = Secrets()
     config = config_from_id('example', secrets=secrets)
     system = System(config, secrets).persistent()
+    if not SIMULATION and rosys.is_simulation():
+        log.info('No serial port found, running in simulation mode anyway')
 
     @ui.page('/')
     def ui_content() -> None:
