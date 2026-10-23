@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
       
 
@@ -880,7 +880,7 @@ uv<span class="w"> </span>sync
 <p>The repository includes a minimal example in <code>main.py</code> that demonstrates:</p>
 <ul>
 <li>Robot simulation with keyboard control</li>
-<li>Straight line navigation automation</li>
+<li>A single straight line navigation, driven as an automation</li>
 <li>Real-time 3D visualization</li>
 </ul>
 <p>Start it with:</p>
@@ -889,63 +889,162 @@ uv<span class="w"> </span>sync
 <p>Open <a href="http://localhost:8080">http://localhost:8080</a> in your browser. Hold <strong>SHIFT</strong> and use the <strong>arrow keys</strong> to steer the robot, or use the automation controls to run a straight line navigation.</p>
 <h2 id="understanding-the-example">Understanding the Example<a class="headerlink" href="#understanding-the-example" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><span class="ch">#! /usr/bin/env python</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections.abc</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncGenerator</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">contextlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">asynccontextmanager</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">NoReturn</span>
+
 <span class="kn">import</span><span class="w"> </span><span class="nn">rosys</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">nicegui</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span><span class="p">,</span> <span class="n">ui</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">rosys.automation</span><span class="w"> </span><span class="kn">import</span> <span class="n">Automator</span><span class="p">,</span> <span class="n">automation_controls</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">rosys.driving</span><span class="w"> </span><span class="kn">import</span> <span class="n">Driver</span><span class="p">,</span> <span class="n">Steerer</span><span class="p">,</span> <span class="n">keyboard_control</span><span class="p">,</span> <span class="n">robot_object</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rosys.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Point</span><span class="p">,</span> <span class="n">Point3d</span><span class="p">,</span> <span class="n">Pose3d</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">feldfreund_devkit</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">feldfreund_devkit.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeldfreundConfiguration</span><span class="p">,</span> <span class="n">Secrets</span><span class="p">,</span> <span class="n">config_from_id</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">feldfreund_devkit.implement</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImplementDummy</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">feldfreund_devkit</span><span class="w"> </span><span class="kn">import</span> <span class="n">Implement</span><span class="p">,</span> <span class="n">RobotLocator</span><span class="p">,</span> <span class="n">WorkContext</span><span class="p">,</span> <span class="n">activated</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">feldfreund_devkit.config</span><span class="w"> </span><span class="kn">import</span> <span class="n">FeldfreundConfiguration</span><span class="p">,</span> <span class="n">ImplementConfiguration</span><span class="p">,</span> <span class="n">Secrets</span><span class="p">,</span> <span class="n">config_from_id</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">feldfreund_devkit.navigation</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CannotStop</span><span class="p">,</span>
+    <span class="n">PathDriver</span><span class="p">,</span>
     <span class="n">RecordedTrackNavigation</span><span class="p">,</span>
     <span class="n">RecordedTrackProvider</span><span class="p">,</span>
     <span class="n">StraightLineNavigation</span><span class="p">,</span>
     <span class="n">TrackRecordingController</span><span class="p">,</span>
-    <span class="n">WaypointNavigation</span><span class="p">,</span>
+    <span class="n">drive_and_work</span><span class="p">,</span>
 <span class="p">)</span>
+
+<span class="n">DemoNavigation</span> <span class="o">=</span> <span class="n">StraightLineNavigation</span> <span class="o">|</span> <span class="n">RecordedTrackNavigation</span>
+
+<span class="n">SIMULATION</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'SIMULATION'</span><span class="p">,</span> <span class="s1">''</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">'1'</span><span class="p">,</span> <span class="s1">'true'</span><span class="p">,</span> <span class="s1">'yes'</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">SIMULATION</span><span class="p">:</span>
+    <span class="n">rosys</span><span class="o">.</span><span class="n">enter_simulation</span><span class="p">()</span>
+
+<span class="n">log</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="s1">'feldfreund_devkit.demo'</span><span class="p">)</span>
+
+
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">IntervalRun</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">"""What the demo tool keeps for one run."""</span>
+
+    <span class="n">stops</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">IntervalImplement</span><span class="p">(</span><span class="n">Implement</span><span class="p">[</span><span class="n">IntervalRun</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">"""A demo tool that comes to rest every ``interval`` metres and holds there for ``dwell`` seconds."""</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">interval</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">dwell</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ImplementConfiguration</span><span class="p">(</span><span class="n">lizard_name</span><span class="o">=</span><span class="s1">'None'</span><span class="p">,</span> <span class="n">display_name</span><span class="o">=</span><span class="s1">'Interval'</span><span class="p">,</span>
+                                                <span class="n">default_offset</span><span class="o">=</span><span class="n">Pose3d</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mf">0.3</span><span class="p">),</span> <span class="n">work_radius</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">interval</span> <span class="o">=</span> <span class="n">interval</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dwell</span> <span class="o">=</span> <span class="n">dwell</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">modules</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="n">rosys</span><span class="o">.</span><span class="n">hardware</span><span class="o">.</span><span class="n">Module</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@asynccontextmanager</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">activated</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AsyncGenerator</span><span class="p">[</span><span class="n">IntervalRun</span><span class="p">,</span> <span class="kc">None</span><span class="p">]:</span>  <span class="c1"># pylint: disable=invalid-overridden-method</span>
+        <span class="n">run</span> <span class="o">=</span> <span class="n">IntervalRun</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">run</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">rosys</span><span class="o">.</span><span class="n">notify</span><span class="p">(</span><span class="sa">f</span><span class="s1">'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s1"> stopped </span><span class="si">{</span><span class="n">run</span><span class="o">.</span><span class="n">stops</span><span class="si">}</span><span class="s1"> times'</span><span class="p">)</span>
+
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">work</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span> <span class="n">WorkContext</span><span class="p">,</span> <span class="n">context</span><span class="p">:</span> <span class="n">IntervalRun</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NoReturn</span><span class="p">:</span>
+        <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+            <span class="n">target</span> <span class="o">=</span> <span class="n">ctx</span><span class="o">.</span><span class="n">locator</span><span class="o">.</span><span class="n">pose</span><span class="o">.</span><span class="n">transform</span><span class="p">(</span><span class="n">Point</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">.</span><span class="n">x</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">interval</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">async</span> <span class="k">with</span> <span class="n">ctx</span><span class="o">.</span><span class="n">motion</span><span class="o">.</span><span class="n">stop_over</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">offset</span><span class="o">.</span><span class="n">x</span><span class="p">):</span>
+                    <span class="n">context</span><span class="o">.</span><span class="n">stops</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">await</span> <span class="n">rosys</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dwell</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">CannotStop</span><span class="p">:</span>  <span class="c1"># We have already driven over the stop, skip it</span>
+                <span class="k">await</span> <span class="n">rosys</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">can_reach</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">local_point</span><span class="p">:</span> <span class="n">Point3d</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">backup_to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">restore_from_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="o">...</span>
 
 
 <span class="k">class</span><span class="w"> </span><span class="nc">System</span><span class="p">(</span><span class="n">feldfreund_devkit</span><span class="o">.</span><span class="n">System</span><span class="p">):</span>
+    <span class="n">LINEAR_SPEED_LIMIT</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.13</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">FeldfreundConfiguration</span><span class="p">,</span> <span class="n">secrets</span><span class="p">:</span> <span class="n">Secrets</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">secrets</span><span class="o">=</span><span class="n">secrets</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">robot_locator</span> <span class="o">=</span> <span class="n">RobotLocator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">wheels</span><span class="p">,</span>
+                                          <span class="n">gnss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">gnss</span><span class="p">,</span>
+                                          <span class="n">imu</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">imu</span><span class="p">,</span>
+                                          <span class="n">gnss_config</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">gnss</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">steerer</span> <span class="o">=</span> <span class="n">Steerer</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">wheels</span><span class="p">,</span> <span class="n">speed_scaling</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">driver</span> <span class="o">=</span> <span class="n">Driver</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">wheels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">odometer</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">driver</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">driver</span> <span class="o">=</span> <span class="n">Driver</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">wheels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">robot_locator</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">driver</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">shape</span> <span class="o">=</span> <span class="n">rosys</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">Prism</span><span class="o">.</span><span class="n">default_robot_shape</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">automator</span> <span class="o">=</span> <span class="n">Automator</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">steerer</span><span class="p">,</span> <span class="n">on_interrupt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">stop</span><span class="p">,</span> <span class="n">notify</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">recorded_track_provider</span> <span class="o">=</span> <span class="n">RecordedTrackProvider</span><span class="p">()</span><span class="o">.</span><span class="n">persistent</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">track_recording_controller</span> <span class="o">=</span> <span class="n">TrackRecordingController</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">recorded_track_provider</span><span class="p">,</span> <span class="n">pose_provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">odometer</span><span class="p">,</span> <span class="n">gnss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">gnss</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">recorded_track_provider</span><span class="p">,</span> <span class="n">pose_provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">robot_locator</span><span class="p">,</span> <span class="n">gnss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">gnss</span><span class="p">)</span>
 
-        <span class="n">common</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;implement&#39;</span><span class="p">:</span> <span class="n">ImplementDummy</span><span class="p">(),</span> <span class="s1">&#39;driver&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">,</span> <span class="s1">&#39;pose_provider&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">odometer</span><span class="p">}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">navigations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">WaypointNavigation</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="n">n</span><span class="o">.</span><span class="n">name</span><span class="p">:</span> <span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="p">[</span>
-            <span class="n">StraightLineNavigation</span><span class="p">(</span><span class="o">**</span><span class="n">common</span><span class="p">),</span>
-            <span class="n">RecordedTrackNavigation</span><span class="p">(</span><span class="n">recorded_track_provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">recorded_track_provider</span><span class="p">,</span>
-                                    <span class="n">track_recording_controller</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">track_recording_controller</span><span class="p">,</span>
-                                    <span class="n">gnss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">gnss</span><span class="p">,</span>
-                                    <span class="n">automator</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">automator</span><span class="p">,</span>
-                                    <span class="o">**</span><span class="n">common</span><span class="p">),</span>
-        <span class="p">]}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_current_navigation</span><span class="p">:</span> <span class="n">WaypointNavigation</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navigations</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">automator</span><span class="o">.</span><span class="n">default_automation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_navigation</span><span class="o">.</span><span class="n">start</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path_driver</span> <span class="o">=</span> <span class="n">PathDriver</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">driver</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">implement</span> <span class="o">=</span> <span class="n">IntervalImplement</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navigations</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">DemoNavigation</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">'Straight Line'</span><span class="p">:</span> <span class="n">StraightLineNavigation</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">robot_locator</span><span class="p">),</span>
+            <span class="s1">'Recorded Track'</span><span class="p">:</span> <span class="n">RecordedTrackNavigation</span><span class="p">(</span>
+                <span class="n">recorded_track_provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">recorded_track_provider</span><span class="p">,</span>
+                <span class="n">track_recording_controller</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">track_recording_controller</span><span class="p">,</span>
+                <span class="n">gnss</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">feldfreund</span><span class="o">.</span><span class="n">gnss</span><span class="p">,</span>
+                <span class="n">pose_provider</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">robot_locator</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">navigation_name</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navigations</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linear_speed_limit</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LINEAR_SPEED_LIMIT</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">automator</span><span class="o">.</span><span class="n">default_automation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_drive</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">current_navigation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">WaypointNavigation</span><span class="p">:</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_current_navigation</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">navigation</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DemoNavigation</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">navigations</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">navigation_name</span><span class="p">]</span>
 
-    <span class="nd">@current_navigation</span><span class="o">.</span><span class="n">setter</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">current_navigation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">navigation</span><span class="p">:</span> <span class="n">WaypointNavigation</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_current_navigation</span> <span class="o">=</span> <span class="n">navigation</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">automator</span><span class="o">.</span><span class="n">default_automation</span> <span class="o">=</span> <span class="n">navigation</span><span class="o">.</span><span class="n">start</span>
+    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">_drive</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">async</span> <span class="k">with</span> <span class="n">activated</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">implement</span><span class="p">])</span> <span class="k">as</span> <span class="n">readied</span><span class="p">:</span>
+            <span class="k">await</span> <span class="n">drive_and_work</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">navigation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path_driver</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">robot_locator</span><span class="p">,</span>
+                                 <span class="n">speed_limit</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">linear_speed_limit</span><span class="p">,</span> <span class="n">work</span><span class="o">=</span><span class="p">[</span><span class="n">tool</span><span class="o">.</span><span class="n">work</span> <span class="k">for</span> <span class="n">tool</span> <span class="ow">in</span> <span class="n">readied</span><span class="p">])</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">backup_to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">backup_to_dict</span><span class="p">()</span> <span class="o">|</span> <span class="p">{</span><span class="s1">'linear_speed_limit'</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear_speed_limit</span><span class="p">}</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">restore_from_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">restore_from_dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">linear_speed_limit</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">'linear_speed_limit'</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">linear_speed_limit</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">speed_setting</span><span class="p">(</span><span class="n">system</span><span class="p">:</span> <span class="n">System</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">minimum</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">throttle_at_end_min_speed</span>
+    <span class="n">maximum</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">driver</span><span class="o">.</span><span class="n">parameters</span><span class="o">.</span><span class="n">linear_speed_limit</span>
+    <span class="n">ui</span><span class="o">.</span><span class="n">number</span><span class="p">(</span><span class="s1">'Linear Speed'</span><span class="p">,</span> <span class="n">step</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="n">minimum</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">maximum</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s1">'</span><span class="si">%.2f</span><span class="s1">'</span><span class="p">,</span> <span class="n">suffix</span><span class="o">=</span><span class="s1">'m/s'</span><span class="p">,</span>
+              <span class="n">on_change</span><span class="o">=</span><span class="n">system</span><span class="o">.</span><span class="n">request_backup</span><span class="p">)</span> \
+        <span class="o">.</span><span class="n">bind_value</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="s1">'linear_speed_limit'</span><span class="p">)</span> \
+        <span class="o">.</span><span class="n">props</span><span class="p">(</span><span class="s1">'dense outlined'</span><span class="p">)</span> \
+        <span class="o">.</span><span class="n">classes</span><span class="p">(</span><span class="s1">'w-24'</span><span class="p">)</span> \
+        <span class="o">.</span><span class="n">tooltip</span><span class="p">(</span><span class="sa">f</span><span class="s1">'Forward speed limit between </span><span class="si">{</span><span class="n">minimum</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> and </span><span class="si">{</span><span class="n">maximum</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1"> m/s '</span>
+                 <span class="sa">f</span><span class="s1">'(default: </span><span class="si">{</span><span class="n">System</span><span class="o">.</span><span class="n">LINEAR_SPEED_LIMIT</span><span class="si">:</span><span class="s1">.2f</span><span class="si">}</span><span class="s1">)'</span><span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">startup</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">'Starting the devkit demo in </span><span class="si">%s</span><span class="s1"> mode'</span><span class="p">,</span> <span class="s1">'simulation'</span> <span class="k">if</span> <span class="n">SIMULATION</span> <span class="k">else</span> <span class="s1">'hardware'</span><span class="p">)</span>
     <span class="n">secrets</span> <span class="o">=</span> <span class="n">Secrets</span><span class="p">()</span>
-    <span class="n">config</span> <span class="o">=</span> <span class="n">config_from_id</span><span class="p">(</span><span class="s1">&#39;example&#39;</span><span class="p">,</span> <span class="n">secrets</span><span class="o">=</span><span class="n">secrets</span><span class="p">)</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">config_from_id</span><span class="p">(</span><span class="s1">'example'</span><span class="p">,</span> <span class="n">secrets</span><span class="o">=</span><span class="n">secrets</span><span class="p">)</span>
     <span class="n">system</span> <span class="o">=</span> <span class="n">System</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">secrets</span><span class="p">)</span><span class="o">.</span><span class="n">persistent</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">SIMULATION</span> <span class="ow">and</span> <span class="n">rosys</span><span class="o">.</span><span class="n">is_simulation</span><span class="p">():</span>
+        <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">'No serial port found, running in simulation mode anyway'</span><span class="p">)</span>
 
-    <span class="nd">@ui</span><span class="o">.</span><span class="n">page</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+    <span class="nd">@ui</span><span class="o">.</span><span class="n">page</span><span class="p">(</span><span class="s1">'/'</span><span class="p">)</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">ui_content</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">keyboard_control</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">steerer</span><span class="p">)</span>
         <span class="k">with</span> <span class="n">ui</span><span class="o">.</span><span class="n">scene</span><span class="p">():</span>
@@ -953,75 +1052,87 @@ uv<span class="w"> </span>sync
 
         <span class="nd">@ui</span><span class="o">.</span><span class="n">refreshable</span>
         <span class="k">def</span><span class="w"> </span><span class="nf">navigation_settings</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">system</span><span class="o">.</span><span class="n">current_navigation</span><span class="o">.</span><span class="n">settings_ui</span><span class="p">()</span>
-
-        <span class="k">def</span><span class="w"> </span><span class="nf">select_navigation</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">system</span><span class="o">.</span><span class="n">current_navigation</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">navigations</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
-            <span class="n">navigation_settings</span><span class="o">.</span><span class="n">refresh</span><span class="p">()</span>
+            <span class="n">system</span><span class="o">.</span><span class="n">navigation</span><span class="o">.</span><span class="n">settings_ui</span><span class="p">()</span>
 
         <span class="k">with</span> <span class="n">ui</span><span class="o">.</span><span class="n">card</span><span class="p">():</span>
-            <span class="n">ui</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">&#39;hold SHIFT to steer with the keyboard arrow keys or use the automation controls&#39;</span><span class="p">)</span>
-            <span class="n">ui</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">navigations</span><span class="p">),</span> <span class="n">value</span><span class="o">=</span><span class="n">system</span><span class="o">.</span><span class="n">current_navigation</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Navigation&#39;</span><span class="p">,</span>
-                      <span class="n">on_change</span><span class="o">=</span><span class="k">lambda</span> <span class="n">e</span><span class="p">:</span> <span class="n">select_navigation</span><span class="p">(</span><span class="n">e</span><span class="o">.</span><span class="n">value</span><span class="p">))</span><span class="o">.</span><span class="n">classes</span><span class="p">(</span><span class="s1">&#39;w-64&#39;</span><span class="p">)</span>
+            <span class="n">ui</span><span class="o">.</span><span class="n">label</span><span class="p">(</span><span class="s1">'hold SHIFT to steer with the keyboard arrow keys or use the automation controls'</span><span class="p">)</span>
+            <span class="n">ui</span><span class="o">.</span><span class="n">select</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">navigations</span><span class="p">),</span> <span class="n">label</span><span class="o">=</span><span class="s1">'Navigation'</span><span class="p">,</span>
+                      <span class="n">on_change</span><span class="o">=</span><span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="n">navigation_settings</span><span class="o">.</span><span class="n">refresh</span><span class="p">())</span> \
+                <span class="o">.</span><span class="n">bind_value</span><span class="p">(</span><span class="n">system</span><span class="p">,</span> <span class="s1">'navigation_name'</span><span class="p">)</span> \
+                <span class="o">.</span><span class="n">classes</span><span class="p">(</span><span class="s1">'w-64'</span><span class="p">)</span>
             <span class="k">with</span> <span class="n">ui</span><span class="o">.</span><span class="n">row</span><span class="p">():</span>
                 <span class="n">navigation_settings</span><span class="p">()</span>
-            <span class="k">with</span> <span class="n">ui</span><span class="o">.</span><span class="n">row</span><span class="p">():</span>
+            <span class="k">with</span> <span class="n">ui</span><span class="o">.</span><span class="n">row</span><span class="p">()</span><span class="o">.</span><span class="n">classes</span><span class="p">(</span><span class="s1">'items-center'</span><span class="p">):</span>
+                <span class="n">speed_setting</span><span class="p">(</span><span class="n">system</span><span class="p">)</span>
                 <span class="n">automation_controls</span><span class="p">(</span><span class="n">system</span><span class="o">.</span><span class="n">automator</span><span class="p">)</span>
 
 
 <span class="n">app</span><span class="o">.</span><span class="n">on_startup</span><span class="p">(</span><span class="n">startup</span><span class="p">)</span>
 
-<span class="n">ui</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">&#39;Feldfreund_devkit&#39;</span><span class="p">)</span>
+<span class="n">ui</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s1">'Feldfreund_devkit'</span><span class="p">)</span>
 </code></pre></div>
 <p>The <code>System</code> class extends <code>feldfreund_devkit.System</code> which initializes the robot hardware (or simulation) based on the configuration. Key components:</p>
 <ul>
 <li><strong>config</strong>: Loaded from <code>config/example.py</code> via <code>config_from_id('example')</code></li>
 <li><strong>steerer</strong>: Manual steering control</li>
-<li><strong>driver</strong>: Path-following driver for automations</li>
-<li><strong>navigation</strong>: <code>StraightLineNavigation</code> drives forward for a configurable distance</li>
+<li><strong>driver</strong>: Follows a single spline, and holds the tunable driving parameters</li>
+<li><strong>path_driver</strong>: Drives one <code>DriveSegment</code> at a time with the <code>driver</code>, and is what a tool asks to stop over a target</li>
+<li><strong>navigation</strong>: <code>StraightLineNavigation</code> plans the segments to drive — here a single one, forward for a configurable distance</li>
 <li><strong>automator</strong>: Manages automation lifecycle (play/pause/stop)</li>
 </ul>
+<p>A navigation only plans; it never drives.
+<code>drive(navigation, path_driver, speed_limit=...)</code> is what runs it, pulling segments from the navigation and handing each to the <code>path_driver</code>.
+The speed limit is passed in per run rather than stored on the navigation, so the caller decides how fast a job may go while a navigation may still ask for less on an individual segment.
+To work the ground while driving, use <code>drive_and_work(...)</code> instead and pass an <code>Implement</code>.</p>
 <h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
 <p>Robot configurations live in the <code>config/</code> directory. See <code>config/example.py</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">rosys.vision</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageSize</span>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">rosys.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Rectangle</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rosys.vision</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageSize</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">feldfreund_devkit.config</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
     <span class="n">BluetoothConfiguration</span><span class="p">,</span>
     <span class="n">BumperConfiguration</span><span class="p">,</span>
     <span class="n">CameraConfiguration</span><span class="p">,</span>
     <span class="n">FeldfreundConfiguration</span><span class="p">,</span>
-    <span class="n">FlashlightConfiguration</span><span class="p">,</span>
     <span class="n">GnssConfiguration</span><span class="p">,</span>
     <span class="n">ImuConfiguration</span><span class="p">,</span>
+    <span class="n">LightConfiguration</span><span class="p">,</span>
     <span class="n">MjpegCameraConfig</span><span class="p">,</span>
     <span class="n">ODriveTracksConfiguration</span><span class="p">,</span>
     <span class="n">RobotBrainConfiguration</span><span class="p">,</span>
     <span class="n">Secrets</span><span class="p">,</span>
     <span class="n">UsbCameraConfig</span><span class="p">,</span>
+    <span class="n">create_calibration</span><span class="p">,</span>
 <span class="p">)</span>
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">build_config</span><span class="p">(</span><span class="n">secrets</span><span class="p">:</span> <span class="n">Secrets</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">FeldfreundConfiguration</span><span class="p">:</span>
     <span class="k">return</span> <span class="n">FeldfreundConfiguration</span><span class="p">(</span>
-        <span class="n">robot_id</span><span class="o">=</span><span class="s1">&#39;Example&#39;</span><span class="p">,</span>
-        <span class="n">bluetooth</span><span class="o">=</span><span class="n">BluetoothConfiguration</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;example&#39;</span><span class="p">,</span> <span class="n">pin_code</span><span class="o">=</span><span class="mi">123456</span><span class="p">),</span>
+        <span class="n">robot_id</span><span class="o">=</span><span class="s1">'Example'</span><span class="p">,</span>
+        <span class="n">bluetooth</span><span class="o">=</span><span class="n">BluetoothConfiguration</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">'example'</span><span class="p">,</span> <span class="n">pin_code</span><span class="o">=</span><span class="mi">123456</span><span class="p">),</span>
         <span class="n">bumper</span><span class="o">=</span><span class="n">BumperConfiguration</span><span class="p">(</span><span class="n">pin_front_top</span><span class="o">=</span><span class="mi">21</span><span class="p">,</span> <span class="n">pin_front_bottom</span><span class="o">=</span><span class="mi">35</span><span class="p">,</span> <span class="n">pin_back</span><span class="o">=</span><span class="mi">18</span><span class="p">),</span>
         <span class="n">cameras</span><span class="o">=</span><span class="n">CameraConfiguration</span><span class="p">(</span>
-            <span class="n">main</span><span class="o">=</span><span class="n">UsbCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">&#39;example-usb-0&#39;</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span> <span class="n">fps</span><span class="o">=</span><span class="mi">10</span><span class="p">),</span>
-            <span class="n">front</span><span class="o">=</span><span class="n">MjpegCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">&#39;example-mac-4&#39;</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span>
+            <span class="c1"># streams the full sensor and crops to the working area; the calibration was fit at 1280x960</span>
+            <span class="n">main</span><span class="o">=</span><span class="n">UsbCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">'example-usb-0'</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                                 <span class="n">calibration</span><span class="o">=</span><span class="n">create_calibration</span><span class="p">(</span><span class="n">fx</span><span class="o">=</span><span class="mf">720.0</span><span class="p">,</span> <span class="n">fy</span><span class="o">=</span><span class="mf">720.0</span><span class="p">,</span> <span class="n">cx</span><span class="o">=</span><span class="mf">640.0</span><span class="p">,</span> <span class="n">cy</span><span class="o">=</span><span class="mf">480.0</span><span class="p">,</span>
+                                                                <span class="n">distortion</span><span class="o">=</span><span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span>
+                                                                <span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">960</span><span class="p">,</span>
+                                                                <span class="n">x</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+                                                                <span class="n">roll</span><span class="o">=</span><span class="mf">3.14</span><span class="p">,</span> <span class="n">pitch</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">yaw</span><span class="o">=-</span><span class="mf">1.57</span><span class="p">),</span>
+                                 <span class="n">stream_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">2560</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">1920</span><span class="p">),</span>
+                                 <span class="n">crop</span><span class="o">=</span><span class="n">Rectangle</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mi">640</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mi">480</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">960</span><span class="p">)),</span>
+            <span class="n">front</span><span class="o">=</span><span class="n">MjpegCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">'example-mac-4'</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span>
                                     <span class="n">password</span><span class="o">=</span><span class="n">secrets</span><span class="o">.</span><span class="n">MJPEG_CAMERA_PASSWORD</span><span class="p">),</span>
-            <span class="n">back</span><span class="o">=</span><span class="n">MjpegCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">&#39;example-mac-3&#39;</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span>
+            <span class="n">back</span><span class="o">=</span><span class="n">MjpegCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">'example-mac-3'</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span>
                                    <span class="n">password</span><span class="o">=</span><span class="n">secrets</span><span class="o">.</span><span class="n">MJPEG_CAMERA_PASSWORD</span><span class="p">),</span>
-            <span class="n">right</span><span class="o">=</span><span class="n">MjpegCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">&#39;example-mac-1&#39;</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span>
+            <span class="n">right</span><span class="o">=</span><span class="n">MjpegCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">'example-mac-1'</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span>
                                     <span class="n">password</span><span class="o">=</span><span class="n">secrets</span><span class="o">.</span><span class="n">MJPEG_CAMERA_PASSWORD</span><span class="p">),</span>
-            <span class="n">left</span><span class="o">=</span><span class="n">MjpegCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">&#39;example-mac-2&#39;</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span>
+            <span class="n">left</span><span class="o">=</span><span class="n">MjpegCameraConfig</span><span class="p">(</span><span class="n">camera_id</span><span class="o">=</span><span class="s1">'example-mac-2'</span><span class="p">,</span> <span class="n">image_size</span><span class="o">=</span><span class="n">ImageSize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="mi">1280</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="mi">720</span><span class="p">),</span>
                                    <span class="n">password</span><span class="o">=</span><span class="n">secrets</span><span class="o">.</span><span class="n">MJPEG_CAMERA_PASSWORD</span><span class="p">),</span>
         <span class="p">),</span>
-        <span class="n">flashlight</span><span class="o">=</span><span class="n">FlashlightConfiguration</span><span class="p">(),</span>
         <span class="n">gnss</span><span class="o">=</span><span class="n">GnssConfiguration</span><span class="p">(),</span>
-        <span class="n">implement</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">imu</span><span class="o">=</span><span class="n">ImuConfiguration</span><span class="p">(),</span>
-        <span class="n">robot_brain</span><span class="o">=</span><span class="n">RobotBrainConfiguration</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;rbexample&#39;</span><span class="p">,</span> <span class="n">nand</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+        <span class="n">robot_brain</span><span class="o">=</span><span class="n">RobotBrainConfiguration</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">'rbexample'</span><span class="p">,</span> <span class="n">nand</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
         <span class="n">wheels</span><span class="o">=</span><span class="n">ODriveTracksConfiguration</span><span class="p">(</span><span class="n">is_left_reversed</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                          <span class="n">is_right_reversed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                                          <span class="n">left_back_can_address</span><span class="o">=</span><span class="mh">0x000</span><span class="p">,</span>
@@ -1029,6 +1140,8 @@ uv<span class="w"> </span>sync
                                          <span class="n">right_back_can_address</span><span class="o">=</span><span class="mh">0x200</span><span class="p">,</span>
                                          <span class="n">right_front_can_address</span><span class="o">=</span><span class="mh">0x300</span><span class="p">,</span>
                                          <span class="n">odrive_version</span><span class="o">=</span><span class="mi">6</span><span class="p">),</span>
+        <span class="n">work_lights</span><span class="o">=</span><span class="p">[</span><span class="n">LightConfiguration</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">'work_light_front'</span><span class="p">,</span> <span class="n">pin</span><span class="o">=</span><span class="mi">12</span><span class="p">),</span>
+                     <span class="n">LightConfiguration</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">'work_light_back'</span><span class="p">,</span> <span class="n">pin</span><span class="o">=</span><span class="mi">23</span><span class="p">)],</span>
     <span class="p">)</span>
 </code></pre></div>
 <p>In simulation mode (when no hardware is detected), mock implementations are used automatically.</p>
@@ -1090,7 +1203,7 @@ uv<span class="w"> </span>sync
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.code.annotate"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>
